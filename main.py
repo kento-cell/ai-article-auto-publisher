@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 
 from collectors.arxiv_collector import ArxivCollector
 from collectors.reddit_collector import RedditCollector
+from collectors.rss_collector import RssCollector
 from collectors.trend_detector import TrendDetector
 from generators.claude_automator import ClaudeAutomator
 from generators.local_llm import LocalLLM
@@ -115,6 +116,23 @@ def collect_articles(config: dict) -> dict:
         logger.info("Reddit: %d件収集", len(articles))
     except Exception as e:
         logger.error("Reddit収集エラー: %s", e)
+
+    # 日本語ソース（RSS）
+    try:
+        rss_zenn = RssCollector(target_platform="zenn", max_results=10)
+        articles = rss_zenn.collect()
+        collected["zenn"].extend(articles)
+        logger.info("RSS(Zenn向け): %d件収集", len(articles))
+    except Exception as e:
+        logger.error("RSS(Zenn)収集エラー: %s", e)
+
+    try:
+        rss_note = RssCollector(target_platform="note", max_results=10)
+        articles = rss_note.collect()
+        collected["note"].extend(articles)
+        logger.info("RSS(note向け): %d件収集", len(articles))
+    except Exception as e:
+        logger.error("RSS(note)収集エラー: %s", e)
 
     return collected
 
