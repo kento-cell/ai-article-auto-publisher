@@ -25,6 +25,10 @@ data/
 *.db
 *.sqlite
 
+# 生成画像
+docs/images/covers/
+docs/images/diagrams/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -48,6 +48,14 @@ HEADER_ROW = [
     "critic_summary",   # N: 1-line summary
 ]
 
+REJECTED_HEADER_ROW = [
+    "title",            # A: article title
+    "platform",         # B: zenn / note
+    "rejection_reasons",# C: blocking issues
+    "timestamp",        # D: ISO timestamp
+    "content",          # E: generated content (truncated)
+]
+
 STATUS_CHOICES = [
     "\u23f3\u627f\u8a8d\u5f85\u3061",   # ⏳承認待ち
     "\u2705\u627f\u8a8d",               # ✅承認
@@ -90,6 +98,7 @@ class SheetsManager:
         self._worksheet_name = worksheet_name
         self._client: gspread.Client | None = self._authorize()
         self._sheet: gspread.Worksheet | None = self._open_worksheet()
+        self._rejected_sheet: gspread.Worksheet | None = self._open_rejected_worksheet()
 
     # ------------------------------------------------------------------
     # Auth helpers
@@ -155,6 +164,31 @@ class SheetsManager:
             ws.update(f"A1:{end_col}1", [HEADER_ROW])
             self._logger.info("Header row written")
 
+    def _open_rejected_worksheet(self) -> gspread.Worksheet | None:
+        """Open (or create) the '不合格' worksheet for rejected articles."""
+        if self._client is None or not self._spreadsheet_id:
+            return None
+        try:
+            spreadsheet = self._client.open_by_key(self._spreadsheet_id)
+            try:
+                ws = spreadsheet.worksheet("不合格")
+            except gspread.WorksheetNotFound:
+                ws = spreadsheet.add_worksheet(
+                    title="不合格",
+                    rows=1000,
+                    cols=len(REJECTED_HEADER_ROW),
+                )
+                self._logger.info("Created worksheet '不合格'")
+            # Ensure headers
+            if not ws.acell("A1").value:
+                end_col = chr(ord("A") + len(REJECTED_HEADER_ROW) - 1)
+                ws.update(f"A1:{end_col}1", [REJECTED_HEADER_ROW])
+                self._logger.info("Rejected sheet header row written")
+            return ws
+        except Exception as exc:
+            self._logger.warning("Failed to open rejected worksheet: %s", exc)
+            return None
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -181,6 +215,44 @@ class SheetsManager:
         row_num = len(self._sheet.get_all_values())
         self._logger.info(
             "Added article row %d: %s", row_num, data.get("title", ""),
+        )
+        return row_num
+
+    def add_rejected_article(self, data: dict[str, Any]) -> int | None:
+        """Append a rejected article row to the '不合格' sheet.
+
+        Args:
+            data: Dict with keys: title, platform, rejection_reasons,
+                timestamp, content. Content is truncated to 40000 chars
+                to stay within Google Sheets cell limits.
+
+        Returns:
+            Row number of the newly appended row, or ``None`` if Sheets
+            is not configured.
+        """
+        if self._rejected_sheet is None:
+            self._logger.warning(
+                "Rejected sheet not configured; skipping add_rejected_article",
+            )
+            return None
+        # Truncate content to avoid exceeding Sheets cell character limit
+        content = str(data.get("content", ""))
+        if len(content) > 40000:
+            content = content[:40000] + "\n...(truncated)"
+        row = [
+            str(data.get("title", "")),
+            str(data.get("platform", "")),
+            str(data.get("rejection_reasons", "")),
+            str(data.get("timestamp", "")),
+            content,
+        ]
+        self._rejected_sheet.append_row(
+            row, value_input_option="USER_ENTERED",
+        )
+        row_num = len(self._rejected_sheet.get_all_values())
+        self._logger.info(
+            "Added rejected article row %d: %s",
+            row_num, data.get("title", ""),
         )
         return row_num
 
