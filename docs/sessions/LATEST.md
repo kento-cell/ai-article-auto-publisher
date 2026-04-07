@@ -78,14 +78,33 @@ Codex指摘 #1（main.py構文破損）は偽陽性。現在のコミット版�
 4. その後に提案Aと提案Dの軽量導入
 5. 提案B/C/E/F本格版は v1.1 以降
 
+## Pending Codex Consultation
+
+`docs/sessions/20260407_codex_consultation.md` に5件の相談事項をバッチで記載。
+
+1. 設計とコードの乖離（フルリライト vs 段階的移行）
+2. QualityEvaluator再設計（2層構造: ObjectiveScorer + SubjectiveEvaluator）
+3. Sheets列設計の過不足確認
+4. ディスカッションエンジンの実装方針（ハイブリッド型）
+5. v1.0 / v1.1 スコープ再確認
+
+## Completed Today
+
+- [x] バグ修正9件（Codexレビュー対応）
+- [x] graceful degradation（SlackNotifier, config defaults）
+- [x] 提案A反映（週2本化）
+- [x] 提案D軽量版（5構成パターン + FeedbackRecorder）
+- [x] マルチエージェント再設計（パイプライン→ディスカッション型）
+- [x] スコアリング再設計（客観足切り + 根拠付き主観）
+- [x] 画像Visionパイプライン設計（CLIP + Qwen2.5-VL）
+- [x] マネタイズ戦略リサーチ + Codex判断取得
+
 ## Next Resume Actions
 
-1. graceful degradation の残り修正（SlackNotifier等）
-2. 最小E2E: `python main.py --collect-only` → `--dry-run`
-3. 提案Aの反映（頻度/本数の見直し）
-4. 提案D軽量版の実装方針整理
-5. 提案B/C/E/F本格版は v1.1 以降に切り分け
+1. Codex相談への回答待ち
+2. 回答に基づいてコード実装の優先順位を決定
+3. QualityEvaluator or Sheets拡張 or ディスカッションエンジンのいずれかから着手
 
 ## Updated At
 
-2026-04-07 15:20 JST
+2026-04-07 16:30 JST
