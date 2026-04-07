@@ -105,7 +105,7 @@ Researcher:
 Coordinatorが議論を進行し、収束を判定する。
 
 ```
-Round N（自然収束するまで繰り返し）:
+Round N（Writer↔Critic 最大2ラウンド、例外時のみ3。Researcher/Strategistは必要時のみ再参加）:
 
   1. Strategist発言:
      「この角度で差別化すべき。理由: Researcherの調査でXが判明、
@@ -133,7 +133,9 @@ Round N（自然収束するまで繰り返し）:
      「引用差し替え確認 → 引用品質向上」
      「残課題: 結論セクションが弱い」
 
-  → 批評すべき点が残っている限り、議論は続く
+  → Writer↔Critic は最大2ラウンド（例外時のみ3）
+  → 同一論点が2回反復したらCoordinatorが打ち切り（REVISE or REJECT）
+  → Researcher/Strategistは必要時のみ再呼び出し（Tier1不足、戦略角度問題等）
   → 批評すべき点がなくなったら、Coordinatorが収束を宣言
 ```
 
@@ -174,9 +176,10 @@ Coordinatorが以下の条件で議論の収束を判定:
   4. evidence_level が B以上
 
 収束しない場合:
-  - 議論を継続（自然に収束するまで）
-  - ただし、同じ論点が3回以上ループしたらCoordinatorが判断:
-    → 解決不能な論点を明示してスコアに反映
+  - Writer↔Criticの追加ラウンド（上限内で）
+  - Researcher/Strategistの再呼び出し（必要時のみ: ソース不足、角度問題等）
+  - 同一論点が2回反復したらCoordinatorが打ち切り:
+    → 解決不能な論点をblocking_issuesとしてスコアに明記
     → その論点をリスクとしてSheetsに記録
 ```
 
