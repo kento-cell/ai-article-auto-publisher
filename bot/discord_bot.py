@@ -63,6 +63,52 @@ def _is_allowed_channel(ctx: commands.Context) -> bool:
     return ctx.channel.name == ALLOWED_CHANNEL
 
 
+def _get_sheets_url() -> str:
+    """Get the Google Sheets URL from env."""
+    sheet_id = os.getenv("GOOGLE_SHEET_ID", "")
+    if sheet_id:
+        return f"https://docs.google.com/spreadsheets/d/{sheet_id}"
+    return ""
+
+
+async def _send_sheets_link(ctx: commands.Context, mode: str):
+    """Send a Sheets link with context-appropriate message after task completion."""
+    url = _get_sheets_url()
+    if not url:
+        return
+
+    if mode == "generate":
+        embed = discord.Embed(
+            title="📊 承認待ちの記事があります",
+            description=(
+                "Google Sheetsでスコアを確認し、\n"
+                "ステータスを「✅承認」に変更してください。\n\n"
+                "承認後に `!publish` で投稿できます。"
+            ),
+            url=url,
+            color=0xFEE75C,
+        )
+        embed.add_field(
+            name="Sheets", value=f"[開く]({url})", inline=False
+        )
+        await ctx.send(embed=embed)
+
+    elif mode == "publish":
+        embed = discord.Embed(
+            title="📤 投稿結果",
+            description="投稿済み記事の詳細はSheetsで確認できます。",
+            url=url,
+            color=0x57F287,
+        )
+        embed.add_field(
+            name="Sheets", value=f"[開く]({url})", inline=False
+        )
+        await ctx.send(embed=embed)
+
+    elif mode in ("collect-only", "dry-run"):
+        await ctx.send(f"📊 Sheets: {url}")
+
+
 async def _run_pipeline(ctx: commands.Context, mode: str, label: str):
     """Run main.py in a subprocess and stream output to Discord."""
     global _current_process
@@ -111,6 +157,8 @@ async def _run_pipeline(ctx: commands.Context, mode: str, label: str):
             await ctx.send(
                 f"✅ **{label}** 完了（{elapsed}秒）"
             )
+            # Sheetsリンクを送信
+            await _send_sheets_link(ctx, mode)
         else:
             last_lines = "\n".join(output_lines[-5:])
             await ctx.send(
