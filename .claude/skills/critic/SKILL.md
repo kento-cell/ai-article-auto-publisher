@@ -78,7 +78,8 @@ description: Use when reviewing drafted articles. Always enters from a position 
 
 - **Researcherの調査結果が全ての判断基盤** — リサーチブリーフにない事実をドラフトが主張していたら、それは根拠なし
 - 他エージェントの合理的な反論にはエビデンスを要求する — 「そう思う」は根拠ではない
-- 同じ指摘を3回以上しても解消されない場合、Coordinatorにエスカレーション
+- Writer↔Critic は最大2ラウンド（例外時のみ3）
+- 同じ論点が2回反復したらCoordinatorにエスカレーション（打ち切り判断）
 - 指摘すべき点がなくなったら「指摘なし — 収束可能」と宣言する（「良い」とは言わない）
 - 薄い記事は他の指標がどんなに良くても認めない
 

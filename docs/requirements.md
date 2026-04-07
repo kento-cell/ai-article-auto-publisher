@@ -326,7 +326,7 @@ AI Article Auto Publisher
 ## 9. 将来拡張（Won't for now）
 
 - Qiita対応
-- Medium英語記事投稿
+- ~~Medium英語記事投稿~~ → **除外**: MediumはAI生成コンテンツをPartner Program対象外としており、マネタイズ不可
 - YouTube台本自動生成
 - ポッドキャスト原稿生成
 - 読者コメントへの自動返信
