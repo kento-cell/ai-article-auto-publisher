@@ -20,8 +20,9 @@ python-markdown==3.5.1
 # LLM
 ollama>=0.3.0
 
-# Discord Bot（遠隔操作）
-discord.py>=2.3.0
+# Slack Bot（遠隔操作）
+slack-bolt>=1.18.0
+slack-sdk>=3.27.0
 
 # Image quality assessment (v1.1 — uncomment when ready)
 # pyiqa>=0.1.10
