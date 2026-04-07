@@ -229,6 +229,17 @@ class SheetsManager:
             if rec.get("status") == STATUS_CHOICES[1]
         ]
 
+    def get_regeneration_requests(self) -> list[dict[str, Any]]:
+        """Return rows where status is '🔄再生成'.
+
+        Returns:
+            List of dicts keyed by :data:`HEADER_ROW` names.
+        """
+        return [
+            rec for rec in self.get_all_articles()
+            if rec.get("status") == STATUS_CHOICES[2]
+        ]
+
     def get_all_articles(self) -> list[dict[str, Any]]:
         """Return every data row as a list of dicts.
 

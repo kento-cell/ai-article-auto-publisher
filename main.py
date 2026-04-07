@@ -35,6 +35,7 @@ from publishers.zenn_publisher import ZennPublisher
 from publishers.note_publisher import NotePublisher
 from publishers.slack_notifier import SlackNotifier
 from publishers.gmail_notifier import GmailNotifier
+from utils.article_store import ArticleStore
 from utils.sheets_manager import SheetsManager
 from utils.token_manager import TokenManager, estimate_tokens
 from utils.feedback_recorder import FeedbackRecorder
@@ -278,6 +279,17 @@ def _generate_single_article(
         final["evidence_level"],
     )
 
+    # Save article content for later --publish retrieval
+    store = ArticleStore()
+    store.save(slug, {
+        "title": article["title"],
+        "content": content,
+        "platform": platform,
+        "source": article,
+        "cover_image": cover_path,
+        "scores": final,
+    })
+
     return {
         "title": article["title"],
         "content": content,
@@ -413,11 +425,23 @@ def publish_approved(
         title = article_data.get("title", "")
         article_id = article_data.get("article_id", "")
 
+        # Load persisted article content from local store
+        store = ArticleStore()
+        stored = store.load(article_id)
+        if not stored:
+            logger.error("記事コンテンツが見つかりません: %s", article_id)
+            continue
+        content = stored.get("content", "")
+        source = stored.get("source", "")
+
         try:
             if platform == "zenn":
                 url = _publish_zenn(article_id, title)
             elif platform == "note":
-                url = _publish_note(title, config)
+                overall_grade = stored.get("scores", {}).get("overall_grade", "C")
+                evidence_level = stored.get("scores", {}).get("evidence_level", "C")
+                price = NotePublisher.determine_price(overall_grade, evidence_level)
+                url = _publish_note(title, content, config, source=str(source), price=price)
             else:
                 logger.warning("不明なplatform: %s", platform)
                 continue
@@ -459,7 +483,7 @@ def _publish_zenn(slug: str, title: str) -> str | None:
 
 
 def _publish_note(
-    title: str, content: str, config: dict, source: str = ""
+    title: str, content: str, config: dict, source: str = "", price: int = 0
 ) -> str | None:
     """note記事を投稿する（ハッシュタグ自動生成付き）。"""
     note_pub = None
@@ -481,7 +505,7 @@ def _publish_note(
             title=title,
             content=content,
             tags=tags,
-            price=0,
+            price=price,
         )
         return url
     except Exception as e:
@@ -530,6 +554,19 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
         logger.info("スコアリング合格: %d件", len(approved))
 
         register_for_approval(approved, sheets, gmail)
+
+        # 再生成リクエストの確認
+        regen_requests = sheets.get_regeneration_requests()
+        if regen_requests:
+            logger.info("再生成リクエスト: %d件", len(regen_requests))
+            # TODO: Re-generate articles from stored source data.
+            # For now, log the requests. Full pipeline integration is planned.
+            for req in regen_requests:
+                logger.info(
+                    "  再生成対象: %s (article_id=%s)",
+                    req.get("title", "?")[:40],
+                    req.get("article_id", "?"),
+                )
 
         # 日次サマリー
         stats = {

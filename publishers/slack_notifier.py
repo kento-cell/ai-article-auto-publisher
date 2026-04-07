@@ -1,7 +1,13 @@
-"""Slack webhook notifier for article publishing events.
+"""Slack webhook notifier for pipeline notifications (non-interactive).
 
 Sends formatted messages to a Slack channel via an incoming webhook
 URL, covering publication success, errors, and daily summaries.
+
+This module handles one-way pipeline notifications only.  Interactive
+commands (generate, publish, stop, status, etc.) are handled by the
+Socket Mode bot in ``bot/slack_bot.py``, which uses ``SLACK_BOT_TOKEN``
+and ``SLACK_APP_TOKEN``.  Both can coexist: the webhook notifier pushes
+automated alerts while the bot listens for user commands.
 """
 
 import json

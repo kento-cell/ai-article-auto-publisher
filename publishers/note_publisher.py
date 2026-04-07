@@ -1,7 +1,7 @@
 """note.com article publisher using Selenium browser automation.
 
 Automates the note.com editor to create and publish articles, with
-support for paid article pricing tiers based on quality score.
+support for paid article pricing tiers based on A/B/C quality grades.
 """
 
 import logging
@@ -31,14 +31,15 @@ _NOTE_EDITOR_URL: Final[str] = "https://note.com/notes/new"
 _PAGE_LOAD_TIMEOUT: Final[int] = 30
 _ELEMENT_WAIT: Final[int] = 15
 
-# Price tiers: (min_score, price_yen)
-# Quality score is on a 70-point scale (7 axes x 10 points each).
-_PRICE_TIERS: Final[list[tuple[int, int]]] = [
-    (65, 1980),   # 93%+ -> 1,980 yen
-    (58, 980),    # 83%+ -> 980 yen
-    (50, 500),    # 71%+ -> 500 yen
-    (45, 300),    # 64%+ -> 300 yen
-]
+# Price tiers by grade combination (overall_grade, evidence_level) -> price_yen.
+# Grades are "A", "B", or "C".
+_PRICE_TIERS: Final[dict[tuple[str, str], int]] = {
+    ("A", "A"): 1980,  # premium
+    ("A", "B"): 980,
+    ("B", "A"): 500,
+    ("B", "B"): 300,
+    # All other combinations (C in either position): free
+}
 
 
 class NotePublisher:
@@ -103,32 +104,31 @@ class NotePublisher:
             raise
 
     @staticmethod
-    def determine_price(quality_score: float, word_count: int) -> int:
-        """Calculate the article price tier from quality metrics.
+    def determine_price(overall_grade: str, evidence_level: str) -> int:
+        """Calculate the article price from quality grades.
 
-        Quality score is on a 70-point scale (7 axes x 10 points).
-        Pricing tiers (by *quality_score*):
-
-        * < 45 : free (0)
-        * 45--49 : 300 yen  (64%+)
-        * 50--57 : 500 yen  (71%+)
-        * 58--64 : 980 yen  (83%+)
-        * 65+    : 1,980 yen (93%+)
+        Pricing tiers (by overall_grade + evidence_level):
+          A + A evidence: 1,980 yen (premium)
+          A + B evidence: 980 yen
+          B + A evidence: 500 yen
+          B + B evidence: 300 yen
+          Otherwise: free
 
         Args:
-            quality_score: Numeric quality score of the article.
-            word_count: Total word count (reserved for future rules).
+            overall_grade: "A", "B", or "C".
+            evidence_level: "A", "B", or "C".
 
         Returns:
             Price in JPY.
         """
-        _ = word_count  # reserved for future adjustments
-        for min_score, price_yen in _PRICE_TIERS:
-            if quality_score >= min_score:
-                logger.debug(
-                    "Score %.1f -> %d yen", quality_score, price_yen
-                )
-                return price_yen
+        if overall_grade == "A" and evidence_level == "A":
+            return 1980
+        if overall_grade == "A":
+            return 980
+        if overall_grade == "B" and evidence_level == "A":
+            return 500
+        if overall_grade == "B":
+            return 300
         return 0
 
     def close(self) -> None:
