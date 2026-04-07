@@ -21,7 +21,8 @@ Collectors → TrendDetector → Generators → QualityEvaluator → Publishers 
 | `publishers/` | プラットフォーム（Zenn/note）への投稿 |
 | `utils/` | 横断的関心事（ログ、トークン管理、Sheets連携） |
 | `config/` | 設定・プロンプトテンプレート |
-| `.codex/skills/` | エージェントスキル定義 |
+| `.claude/skills/` | エージェントスキル定義（Claude Code用、プライマリ） |
+| `.codex/skills/` | エージェントスキル定義（Codex CLI互換エイリアス） |
 | `docs/` | 実行ログ・知見・アーキテクチャ決定 |
 
 ## Key Design Decisions
