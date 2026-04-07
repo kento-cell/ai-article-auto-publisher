@@ -135,3 +135,40 @@ slug生成が英語タイトル前提で、日本語タイトル（このシス�
 3. **Mermaidオンラインレンダリングは意図的に無効化**: セキュリティ上の判断。復活させないこと。
 4. **Seleniumセレクタはハードコード**: note.com / Claude.ai のUI変更で壊れるリスクあり。セレクタの外部設定化は中期課題。
 5. **main.py はまだ旧パイプライン**: マルチエージェント体制のスキル定義は完了したが、Pythonコード上はまだ Coordinator/Researcher/Strategist/Writer/Critic の呼び出しフローが未実装。
+---
+
+## Double-Check Note (Codex)
+
+展望の方向性自体は妥当だが、優先順位は安定化寄りに補正した方がよい。
+現時点では機能拡張よりも、既存経路の契約不一致と安全性の修正を先に片付けるべき。
+
+### 優先順の補正
+
+1. 契約不一致の修正を最優先
+- `SheetsManager` の初期化と `add_article()` 呼び出し整合
+- `SlackNotifier.notify_daily_summary()` の stats 契約整合
+- `ZennPublisher.publish()` の `published: false` 問題修正
+- note 価格閾値を 70 点スケールに合わせて再設計
+
+2. 外部依存未設定時の graceful degradation を次に入れる
+- `.env` や `config/settings.yaml` が未設定でも、収集やドライランが必要以上に落ちないようにする
+- Google Sheets 未設定時はログ警告のみにして、全体停止を避ける
+
+3. セキュリティ/外部送信リスクをその次に潰す
+- Mermaid のオンラインレンダリングを既定で無効化
+- arXiv API を HTTPS に切り替え
+- 共有 Chrome プロファイル依存箇所の前提を明文化
+
+4. 品質評価と予算計測の精度改善
+- `QualityEvaluator` の JSON 抽出をネスト対応に修正
+- token 管理を文字数ベースから近似 token 見積もりへ改善
+
+5. ここまで終わってから最小 E2E
+- `python main.py --collect-only`
+- `python main.py --dry-run`
+
+6. `ImageSourcer` / `RichFormatter` の本線統合はその後
+- 先に入れると差分が広がり、バグ修正の検証が難しくなる
+
+7. KPI、A/B テスト、ソース拡張は長期タスクへ後ろ倒し
+- まずは「動く」「誤公開しない」「外部送信しない」を満たすこと

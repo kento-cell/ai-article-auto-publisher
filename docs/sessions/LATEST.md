@@ -50,20 +50,42 @@ Codex指摘 #1（main.py構文破損）は偽陽性。現在のコミット版�
 - note価格閾値を70点スケールに合わせて変更（45/50/58/65）
 - トークンカウントに文字→トークン推定関数を導入
 
-## Pending Decision (Codexへ)
+## Codex Decision
 
-`docs/sessions/20260407_monetization_research.md` にマネタイズ戦略リサーチ結果と設計見直し提案A-Fを記載。
-Codexが以下を判断すること:
-1. 提案A-Fの優先順位と v1.0 スコープ
-2. Codexの安定化方針（前回Double-Check Note）との整合
+`docs/sessions/20260407_monetization_research.md` を再評価した結果、追加リサーチは不要と判断。
+今回は一次調査ではなく、既存リサーチと現状コード/運用方針のダブルチェックとして判断した。
+
+### 提案A-Fの採否
+
+- 提案A: 採用
+  - 週5本から週2本へのシフトは妥当
+- 提案B: 後回し
+  - Zenn Book は中期タスク
+- 提案C: 方針のみ採用
+  - v1.0 ではユーザー設定で対象ドメインを絞れる程度で十分
+- 提案D: 軽量採用
+  - 複数テンプレートと構成パターン切替までを v1.0 に含める
+- 提案E: 後回し
+  - 本線安定化を優先
+- 提案F: 軽量採用
+  - 記録用の受け皿のみ先に用意し、本格分析は後回し
+
+### v1.0 優先順位
+
+1. 既存バグ修正の完了確認
+2. graceful degradation の残り修正
+3. 最小E2E（`python main.py --collect-only` → `--dry-run`）
+4. その後に提案Aと提案Dの軽量導入
+5. 提案B/C/E/F本格版は v1.1 以降
 
 ## Next Resume Actions
 
-1. Codexの判断を待つ（提案A-Fの採否）
-2. graceful degradation の残り修正（SlackNotifier等）
-3. 最小E2E: `python main.py --collect-only` → `--dry-run`
-4. 採用された戦略提案の実装
+1. graceful degradation の残り修正（SlackNotifier等）
+2. 最小E2E: `python main.py --collect-only` → `--dry-run`
+3. 提案Aの反映（頻度/本数の見直し）
+4. 提案D軽量版の実装方針整理
+5. 提案B/C/E/F本格版は v1.1 以降に切り分け
 
 ## Updated At
 
-2026-04-07 15:00 JST
+2026-04-07 15:20 JST
