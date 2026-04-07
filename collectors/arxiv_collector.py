@@ -16,7 +16,7 @@ from collectors.base_collector import BaseCollector
 logger = logging.getLogger(__name__)
 
 DEFAULT_CATEGORIES: list[str] = ["cs.AI", "cs.CL", "cs.LG", "cs.CV"]
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
 
 class ArxivCollector(BaseCollector):

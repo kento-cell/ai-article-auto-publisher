@@ -43,7 +43,10 @@ class DiagramGenerator:
         if self.use_cli:
             logger.info("Mermaid CLI (mmdc) detected; will use local rendering.")
         else:
-            logger.info("mmdc not found; falling back to mermaid.ink online renderer.")
+            logger.warning(
+                "mmdc not found. Mermaid blocks will be kept as-is. "
+                "Online rendering disabled to prevent content leakage."
+            )
 
     # ------------------------------------------------------------------
     # Public API
@@ -84,7 +87,10 @@ class DiagramGenerator:
 
         if self.use_cli:
             return self._render_via_cli(mermaid_code, output_path)
-        return self._render_via_ink(mermaid_code, output_path)
+        raise RuntimeError(
+            "No local Mermaid renderer (mmdc) available. "
+            "Online rendering is disabled to prevent content leakage."
+        )
 
     def embed_diagrams(
         self,
@@ -119,8 +125,8 @@ class DiagramGenerator:
                 self.render_to_svg(block, svg_path)
                 image_ref = f"![{base_name} {idx}]({svg_path})"
             except RuntimeError:
-                logger.error("Skipping diagram %d due to render failure.", idx)
-                image_ref = f"<!-- Diagram {idx} failed to render -->"
+                logger.warning("Diagram %d: keeping Mermaid code block (no local renderer).", idx)
+                continue  # Don't replace, keep original
 
             # Replace the first remaining mermaid block.
             result = MERMAID_BLOCK_RE.sub(image_ref, result, count=1)
@@ -155,24 +161,5 @@ class DiagramGenerator:
         finally:
             os.unlink(tmp_path)
 
-    def _render_via_ink(self, mermaid_code: str, output_path: str) -> str:
-        """Render using the mermaid.ink online service."""
-        import base64
-
-        encoded = base64.urlsafe_b64encode(
-            mermaid_code.encode("utf-8")
-        ).decode("ascii")
-        url = f"{MERMAID_INK_URL}/{encoded}"
-
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            logger.error("mermaid.ink request failed: %s", exc)
-            raise RuntimeError(
-                f"Online Mermaid rendering failed: {exc}"
-            ) from exc
-
-        Path(output_path).write_bytes(resp.content)
-        logger.debug("Rendered SVG via mermaid.ink -> %s", output_path)
-        return os.path.abspath(output_path)
+    # _render_via_ink removed: online rendering disabled to prevent
+    # leaking potentially sensitive article content to external services.

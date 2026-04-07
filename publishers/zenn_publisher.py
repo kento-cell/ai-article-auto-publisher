@@ -5,6 +5,7 @@ creates markdown files with the required frontmatter in the ``articles/``
 directory of the local Zenn repo clone, then commits and pushes.
 """
 
+import hashlib
 import logging
 import os
 import re
@@ -86,6 +87,10 @@ class ZennPublisher:
             article_type=article_type,
         )
         file_path = self.articles_dir / f"{slug}.md"
+        counter = 1
+        while file_path.exists():
+            file_path = self.articles_dir / f"{slug}-{counter}.md"
+            counter += 1
         file_path.write_text(
             f"{frontmatter}\n{content}\n", encoding="utf-8"
         )
@@ -104,6 +109,22 @@ class ZennPublisher:
         file_path = self.articles_dir / f"{slug}.md"
         if not file_path.exists():
             logger.error("Article file not found: %s", file_path)
+            return False
+
+        # Flip frontmatter to published: true before committing
+        try:
+            text = file_path.read_text(encoding="utf-8")
+            updated = re.sub(
+                r"^published:\s*false\s*$",
+                "published: true",
+                text,
+                flags=re.MULTILINE,
+            )
+            if updated != text:
+                file_path.write_text(updated, encoding="utf-8")
+                logger.info("Set published: true in %s", file_path.name)
+        except OSError:
+            logger.exception("Failed to update frontmatter for %s", slug)
             return False
 
         try:
@@ -145,6 +166,10 @@ class ZennPublisher:
     def _generate_slug(title: str) -> str:
         """Create a URL-friendly slug from *title*.
 
+        For non-ASCII titles (e.g. Japanese) where the ASCII transliteration
+        is very short or empty, a hash suffix derived from the original title
+        is appended to avoid slug collisions.
+
         Args:
             title: Human-readable article title.
 
@@ -154,6 +179,12 @@ class ZennPublisher:
         normalised = unicodedata.normalize("NFKD", title)
         ascii_text = normalised.encode("ascii", "ignore").decode("ascii")
         slug_body = re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")
+
+        # If ASCII body is empty/short (e.g. Japanese-only title), use hash
+        if len(slug_body) < 4:
+            title_hash = hashlib.md5(title.encode("utf-8")).hexdigest()[:8]
+            slug_body = f"{slug_body}-{title_hash}" if slug_body else title_hash
+
         date_prefix = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
         slug = f"{date_prefix}-{slug_body}"
         return slug[:_MAX_SLUG_LENGTH]

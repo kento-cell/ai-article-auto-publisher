@@ -37,6 +37,19 @@ def _current_week_key() -> str:
     return f"{now.isocalendar()[0]}-W{now.isocalendar()[1]:02d}"
 
 
+def estimate_tokens(text: str) -> int:
+    """Estimate token count from text.
+
+    Uses a heuristic: count ASCII characters (~4 chars per token) and
+    non-ASCII characters (~1.5 chars per token, typical for CJK) for a
+    rough approximation.
+    """
+    ascii_chars = sum(1 for c in text if ord(c) < 128)
+    non_ascii_chars = len(text) - ascii_chars
+    # ASCII: ~4 chars per token; non-ASCII (CJK): ~1.5 chars per token
+    return int(ascii_chars / 4 + non_ascii_chars / 1.5)
+
+
 class TokenManager:
     """Manage weekly token budgets with JSON-file persistence.
 
