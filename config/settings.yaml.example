@@ -1,0 +1,71 @@
+# 収集設定
+collection:
+  zenn:
+    sources:
+      - arxiv
+      - google_research
+      - anthropic_blog
+      - openai_blog
+      - hackernews
+    frequency: daily
+    time: "22:00"
+    max_articles: 10
+
+  note:
+    sources:
+      - reddit
+      - twitter
+      - youtube
+      - tiktok
+      - google_trends
+      - product_hunt
+    frequency: daily
+    time: "22:00"
+    max_articles: 20
+
+# 生成設定
+generation:
+  zenn:
+    articles_per_week: 3
+    min_quality_score: 45
+    target_word_count:
+      min: 2500
+      max: 3500
+
+  note:
+    articles_per_week: 2
+    min_quality_score: 40
+    target_word_count:
+      min: 2500
+      max: 3500
+    enable_paid: true
+
+# トークン管理
+token_management:
+  weekly_limit: 2000000  # 2M tokens
+  buffer_percentage: 50  # 50%はバッファ確保
+  alert_threshold: 80    # 80%で警告
+
+# 有料化設定（note）
+pricing:
+  thresholds:
+    free: 0
+    tier1: 700      # ¥300
+    tier2: 1000     # ¥500
+    tier3: 1500     # ¥980
+    tier4: 2000     # ¥1,980
+
+  prices:
+    tier1: 300
+    tier2: 500
+    tier3: 980
+    tier4: 1980
+
+# エビデンス要件
+evidence:
+  citation_required: true
+  screenshot_min_count: 5  # 検証系記事
+  forbidden_phrases:
+    - "月.*万円.*稼いだ"
+    - "誰でも.*稼げる"
+    - "簡単.*収益"
