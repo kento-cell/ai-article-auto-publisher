@@ -42,6 +42,37 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "Togetter",
         "target": "note",
     },
+    # --- note向け（韓国トレンド・美容・カルチャー） ---
+    "korea_allkpop": {
+        "url": "https://www.allkpop.com/feed",
+        "name": "allkpop (K-POP/韓国カルチャー)",
+        "target": "note",
+    },
+    "korea_soompi": {
+        "url": "https://www.soompi.com/feed",
+        "name": "Soompi (韓国エンタメ)",
+        "target": "note",
+    },
+    "korea_koreaboo": {
+        "url": "https://www.koreaboo.com/feed/",
+        "name": "Koreaboo (韓国トレンド)",
+        "target": "note",
+    },
+    "korea_koreaherald": {
+        "url": "https://www.koreaherald.com/common/rss_xml.php?ct=102",
+        "name": "Korea Herald (韓国ニュース/ライフスタイル)",
+        "target": "note",
+    },
+    "beautynesia": {
+        "url": "https://www.beautynesia.id/feed",
+        "name": "Beautynesia (アジア美容)",
+        "target": "note",
+    },
+    "cosme_ranking": {
+        "url": "https://www.cosme.net/rss/pickup.xml",
+        "name": "@cosme (コスメ・美容)",
+        "target": "note",
+    },
     # --- Zenn向け（技術） ---
     "publickey": {
         "url": "https://www.publickey1.jp/atom.xml",
