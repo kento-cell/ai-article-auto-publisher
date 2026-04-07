@@ -9,6 +9,7 @@ import os
 import time
 from typing import Final
 
+from generators.note_content_converter import NoteContentConverter
 from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchElementException,
@@ -73,6 +74,7 @@ class NotePublisher:
         content: str,
         tags: list[str],
         price: int = 0,
+        slug: str = "article",
     ) -> str:
         """Create and publish an article on note.com.
 
@@ -81,6 +83,7 @@ class NotePublisher:
             content: Article body text (plain text or HTML).
             tags: List of tags to attach.
             price: Price in JPY. ``0`` means free.
+            slug: Article slug for naming generated image files.
 
         Returns:
             URL of the published article.
@@ -90,6 +93,10 @@ class NotePublisher:
             WebDriverException: On unexpected browser errors.
         """
         try:
+            # Convert mermaid diagrams and tables to images for note.com
+            converter = NoteContentConverter()
+            content = converter.convert(content, slug)
+
             self._navigate_to_editor()
             self._input_title(title)
             self._input_content(content)
