@@ -2,7 +2,7 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — Codexレビュー指摘のバグ修正 + マルチエージェント体制構築完了
+ai-article-auto-publisher — バグ修正完了 → マネタイズ戦略リサーチ → Codex判断待ち
 
 ## Current Status
 
@@ -50,15 +50,20 @@ Codex指摘 #1（main.py構文破損）は偽陽性。現在のコミット版�
 - note価格閾値を70点スケールに合わせて変更（45/50/58/65）
 - トークンカウントに文字→トークン推定関数を導入
 
+## Pending Decision (Codexへ)
+
+`docs/sessions/20260407_monetization_research.md` にマネタイズ戦略リサーチ結果と設計見直し提案A-Fを記載。
+Codexが以下を判断すること:
+1. 提案A-Fの優先順位と v1.0 スコープ
+2. Codexの安定化方針（前回Double-Check Note）との整合
+
 ## Next Resume Actions
 
-1. バグ修正の完了確認 + コミット・プッシュ
-2. `python -c "import main"` で最低限のインポートテスト
-3. `.env` を設定
-4. `config/settings.yaml` を作成
-5. `python main.py --collect-only` で収集テスト
-6. `python main.py --dry-run` でドライラン
+1. Codexの判断を待つ（提案A-Fの採否）
+2. graceful degradation の残り修正（SlackNotifier等）
+3. 最小E2E: `python main.py --collect-only` → `--dry-run`
+4. 採用された戦略提案の実装
 
 ## Updated At
 
-2026-04-07 14:00 JST
+2026-04-07 15:00 JST
