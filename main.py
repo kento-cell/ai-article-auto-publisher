@@ -199,7 +199,8 @@ def _generate_single_article(
     """1記事を生成し、2層スコアリングを行う。
 
     Returns:
-        スコアリング済み記事dict、またはNone（生成失敗/却下時）。
+        スコアリング済み記事dict (with "rejected" key if failed),
+        or None on generation failure.
     """
     # --- 生成 ---
     try:
@@ -236,7 +237,14 @@ def _generate_single_article(
             "[%s] 客観スコア不合格: %s — %s",
             platform, article["title"][:30], obj_result["blocking_issues"]
         )
-        return None
+        return {
+            "rejected": True,
+            "title": article["title"],
+            "platform": platform,
+            "content": content,
+            "rejection_reasons": "; ".join(obj_result["blocking_issues"]),
+            "rejection_stage": "objective_score",
+        }
 
     # --- 主観スコア ---
     eval_fn = (
@@ -268,7 +276,14 @@ def _generate_single_article(
             "[%s] 総合C却下: %s — %s",
             platform, article["title"][:30], final["summary"]
         )
-        return None
+        return {
+            "rejected": True,
+            "title": article["title"],
+            "platform": platform,
+            "content": content,
+            "rejection_reasons": final.get("summary", "aggregate reject"),
+            "rejection_stage": "aggregate_score",
+        }
 
     # --- カバー画像生成 ---
     cover_gen = CoverGenerator()
@@ -314,18 +329,20 @@ def generate_and_score(
     config: dict,
     prompts: dict,
     token_manager: TokenManager,
-) -> list[dict]:
+) -> tuple[list[dict], list[dict]]:
     """記事を生成し、2層スコアリングで評価する。
 
     Returns:
-        スコアリング合格（A/B）の記事リスト。Cは含まれない。
+        Tuple of (approved articles list, rejected articles list).
+        Approved = grade A/B. Rejected = grade C with content & reasons.
     """
     logger.info("=== Phase 2: 生成 + スコアリング ===")
     claude, local_llm, use_local = _init_llm(token_manager)
     if local_llm is None and claude is None:
-        return []
+        return [], []
 
     approved = []
+    rejected = []
 
     for platform in ["zenn", "note"]:
         template = prompts.get(f"{platform}_article_prompt", "")
@@ -340,7 +357,12 @@ def generate_and_score(
                     claude, local_llm, use_local,
                     token_manager, config,
                 )
-                if result:
+                if result is None:
+                    # Generation failure (template error, etc.)
+                    pass
+                elif result.get("rejected"):
+                    rejected.append(result)
+                else:
                     approved.append(result)
             except Exception as e:
                 logger.error(
@@ -351,7 +373,77 @@ def generate_and_score(
     if claude:
         claude.close()
 
-    return approved
+    return approved, rejected
+
+
+# =====================================================================
+# Rejected article handling
+# =====================================================================
+
+def _post_rejected_to_slack(rejected: list[dict]) -> None:
+    """Post rejected article content to Slack as file attachments."""
+    bot_token = os.getenv("SLACK_BOT_TOKEN")
+    channel_id = "C0AR7E9AFJ9"
+    if not bot_token:
+        logger.warning("SLACK_BOT_TOKEN not set; skipping rejected article Slack upload")
+        return
+
+    try:
+        from slack_sdk import WebClient
+        client = WebClient(token=bot_token)
+    except ImportError:
+        logger.warning("slack_sdk not installed; skipping rejected article Slack upload")
+        return
+
+    for article in rejected:
+        title = article.get("title", "untitled")
+        platform = article.get("platform", "?")
+        reasons = article.get("rejection_reasons", "unknown")
+        content = article.get("content", "")
+        stage = article.get("rejection_stage", "unknown")
+
+        filename = re.sub(r'[\\/:*?"<>|]', '_', title[:40]) + ".md"
+        comment = (
+            f":x: *不合格記事*: {title}\n"
+            f"*プラットフォーム*: {platform}\n"
+            f"*却下段階*: {stage}\n"
+            f"*理由*: {reasons}"
+        )
+
+        try:
+            client.files_upload_v2(
+                channel=channel_id,
+                content=content,
+                filename=filename,
+                title=f"[不合格] {title[:80]}",
+                initial_comment=comment,
+            )
+            logger.info("Slack uploaded rejected article: %s", title[:40])
+        except Exception as e:
+            logger.error("Slack file upload failed for '%s': %s", title[:30], e)
+
+
+def _save_rejected_articles(
+    rejected: list[dict],
+    sheets: SheetsManager,
+) -> None:
+    """Save rejected articles to the '不合格' sheet and post to Slack."""
+    if not rejected:
+        return
+
+    logger.info("不合格記事を保存: %d件", len(rejected))
+    now = datetime.now().isoformat()
+
+    for article in rejected:
+        sheets.add_rejected_article({
+            "title": article.get("title", ""),
+            "platform": article.get("platform", ""),
+            "rejection_reasons": article.get("rejection_reasons", ""),
+            "timestamp": now,
+            "content": article.get("content", ""),
+        })
+
+    _post_rejected_to_slack(rejected)
 
 
 # =====================================================================
@@ -557,10 +649,11 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
             return
 
         ranked = rank_articles(collected)
-        approved = generate_and_score(ranked, config, prompts, token_manager)
-        logger.info("スコアリング合格: %d件", len(approved))
+        approved, rejected = generate_and_score(ranked, config, prompts, token_manager)
+        logger.info("スコアリング合格: %d件, 不合格: %d件", len(approved), len(rejected))
 
         register_for_approval(approved, sheets, gmail)
+        _save_rejected_articles(rejected, sheets)
 
         # 再生成リクエストの確認
         regen_requests = sheets.get_regeneration_requests()
@@ -653,10 +746,10 @@ def main():
         collected = collect_articles(config)
         ranked = rank_articles(collected)
         token_manager = TokenManager()
-        approved = generate_and_score(
+        approved, rejected = generate_and_score(
             ranked, config, prompts, token_manager
         )
-        print(f"\n=== スコアリング合格: {len(approved)}件 ===")
+        print(f"\n=== スコアリング合格: {len(approved)}件, 不合格: {len(rejected)}件 ===")
         for a in approved:
             scores = a["scores"]
             print(

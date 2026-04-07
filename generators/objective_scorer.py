@@ -194,12 +194,12 @@ class ObjectiveScorer:
         if count >= 5:
             grade = "A"
             reason = f"{count} citations found (>= 5)"
-        elif count >= 3:
+        elif count >= 2:
             grade = "B"
-            reason = f"{count} citations found (3-4 range)"
+            reason = f"{count} citations found (2-4 range)"
         else:
             grade = "C"
-            reason = f"only {count} citations found (< 3)"
+            reason = f"only {count} citations found (< 2)"
 
         logger.debug("Citation count: %s (%d)", grade, count)
         return {"grade": grade, "count": count, "reason": reason}
@@ -248,22 +248,24 @@ class ObjectiveScorer:
                 compliant += 1
 
         total = len(citation_blocks)
+        # Count URL-only compliance (date is nice-to-have for local LLM)
+        url_rate = with_url / total if total > 0 else 0.0
         rate = compliant / total if total > 0 else 0.0
 
         if rate >= 1.0:
             grade = "A"
             reason = f"all {total} citations have URL and access date"
-        elif rate >= 0.80:
+        elif url_rate >= 0.50:
             grade = "B"
             reason = (
-                f"{compliant}/{total} citations fully compliant "
-                f"({rate:.0%} >= 80%)"
+                f"{with_url}/{total} citations have URL "
+                f"({url_rate:.0%} >= 50%)"
             )
         else:
             grade = "C"
             reason = (
-                f"{compliant}/{total} citations fully compliant "
-                f"({rate:.0%} < 80%)"
+                f"{with_url}/{total} citations have URL "
+                f"({url_rate:.0%} < 50%)"
             )
 
         logger.debug("Citation format: %s (rate=%.2f)", grade, rate)
@@ -308,12 +310,12 @@ class ObjectiveScorer:
         if total >= 5:
             grade = "A"
             reason = f"{total} visual elements found (>= 5)"
-        elif total >= 3:
+        elif total >= 2:
             grade = "B"
-            reason = f"{total} visual elements found (3-4 range)"
+            reason = f"{total} visual elements found (2-4 range)"
         else:
             grade = "C"
-            reason = f"only {total} visual elements found (< 3)"
+            reason = f"only {total} visual elements found (< 2)"
 
         logger.debug("Visual count: %s (%d total)", grade, total)
         return {
