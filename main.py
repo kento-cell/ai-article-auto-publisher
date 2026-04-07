@@ -543,7 +543,7 @@ def publish_approved(
 
         try:
             if platform == "zenn":
-                url = _publish_zenn(article_id, title)
+                url = _publish_zenn(article_id, title, content, stored)
             elif platform == "note":
                 overall_grade = stored.get("scores", {}).get("overall_grade", "C")
                 evidence_level = stored.get("scores", {}).get("evidence_level", "C")
@@ -577,16 +577,35 @@ def publish_approved(
     return results
 
 
-def _publish_zenn(slug: str, title: str) -> str | None:
+def _publish_zenn(
+    slug: str, title: str, content: str, stored: dict
+) -> str | None:
     """Zenn記事を投稿する。"""
     zenn_repo = os.getenv("ZENN_REPO_PATH")
     if not zenn_repo:
         logger.warning("ZENN_REPO_PATH未設定。Zenn投稿スキップ。")
         return None
     publisher = ZennPublisher(zenn_repo)
-    # slug に対応するファイルが既にある前提（generate時にcreate_article済み）
-    success = publisher.publish(slug)
-    return f"https://zenn.dev/articles/{slug}" if success else None
+
+    # Create the article file if it doesn't exist yet
+    source = stored.get("source", {})
+    topics = []
+    if isinstance(source, dict):
+        topics = source.get("topics", source.get("tags", []))
+    if not topics:
+        topics = ["ai", "tech"]
+
+    zenn_slug = publisher.create_article(
+        title=title,
+        content=content,
+        topics=topics[:5],
+        article_type="tech",
+    )
+    success = publisher.publish(zenn_slug)
+    if success:
+        zenn_user = os.getenv("ZENN_USERNAME", "kento_cell")
+        return f"https://zenn.dev/{zenn_user}/articles/{zenn_slug}"
+    return None
 
 
 def _publish_note(
