@@ -37,6 +37,7 @@ class ObjectiveScorer:
         context = context or {}
         forbidden = context.get("forbidden_phrases", [])
         sources = context.get("sources", [])
+        chain_blacklist = context.get("chain_blacklist", [])
 
         evidence = self._score_evidence_level(sources)
         citations = self._score_citation_count(article)
@@ -45,6 +46,7 @@ class ObjectiveScorer:
         words = self._score_word_count(article)
         forbidden_result = self._score_forbidden_phrases(article, forbidden)
         headings = self._score_heading_structure(article)
+        chain_check = self._score_chain_stores(article, chain_blacklist)
 
         # Collect blocking issues
         blocking: list[str] = []
@@ -64,6 +66,10 @@ class ObjectiveScorer:
             blocking.append(f"forbidden_phrases: {forbidden_result['hits']}")
         if headings["grade"] == "Fail":
             blocking.append(f"heading_structure: {headings['issues']}")
+        if chain_check["grade"] == "Fail":
+            blocking.append(
+                f"chain_stores: チェーン店検出 {chain_check['hits']}"
+            )
 
         objective_pass = len(blocking) == 0
 
@@ -81,6 +87,7 @@ class ObjectiveScorer:
             "word_count": words,
             "forbidden_phrases": forbidden_result,
             "heading_structure": headings,
+            "chain_stores": chain_check,
             "objective_pass": objective_pass,
             "blocking_issues": blocking,
         }
@@ -479,4 +486,46 @@ class ObjectiveScorer:
             "h3_count": h3_count,
             "issues": issues,
             "reason": reason,
+        }
+
+    @staticmethod
+    def _score_chain_stores(
+        article: str, blacklist: list[str]
+    ) -> dict:
+        """Check if the article mentions any chain store names.
+
+        Chain stores are banned in gourmet/spot recommendation articles.
+        Individual, hidden-gem restaurants only.
+
+        Args:
+            article: Full markdown text.
+            blacklist: List of chain store names to check.
+
+        Returns:
+            Dict with grade (Pass/Fail), hits list, and reason.
+        """
+        if not blacklist:
+            return {
+                "grade": "Pass",
+                "hits": [],
+                "reason": "no chain blacklist configured",
+            }
+
+        hits: list[str] = []
+        for chain in blacklist:
+            if chain in article:
+                hits.append(chain)
+
+        if hits:
+            reason = (
+                f"チェーン店検出: {', '.join(hits)}。"
+                "個人店・隠れた名店のみ紹介可。チェーン店は禁止。"
+            )
+            logger.warning("Chain store detected: %s", hits)
+            return {"grade": "Fail", "hits": hits, "reason": reason}
+
+        return {
+            "grade": "Pass",
+            "hits": [],
+            "reason": "チェーン店なし",
         }
