@@ -27,14 +27,14 @@ collection:
 generation:
   zenn:
     articles_per_week: 3
-    min_quality_score: 45
+    min_quality_score: 60  # 7軸70点満点中
     target_word_count:
       min: 2500
       max: 3500
 
   note:
     articles_per_week: 2
-    min_quality_score: 40
+    min_quality_score: 45  # 7軸70点満点中
     target_word_count:
       min: 2500
       max: 3500
@@ -61,10 +61,58 @@ pricing:
     tier3: 980
     tier4: 1980
 
+# 画像・ビジュアル設定
+visuals:
+  image_sources:
+    - unsplash
+    - pexels
+  hero_image: true
+  min_visual_elements: 3          # 記事あたり最低視覚要素数
+  max_chars_without_visual: 800   # この文字数を超えたら視覚ブレイク挿入
+  allowed_licenses:
+    - CC0
+    - "Unsplash License"
+    - "Pexels License"
+    - AI-generated
+    - self-created
+  attribution_required: true       # CC0でも帰属表示する
+
+# リッチテキスト設定
+rich_text:
+  zenn:
+    callout_style: ":::message"
+    toggle_style: ":::details"
+    enable_toc: true
+  note:
+    callout_style: "> **💡**"
+    toggle_style: "<details>"
+    enable_toc: true
+
+# マルチエージェント設定
+agents:
+  max_revision_cycles: 2          # Writer↔Critic 最大修正回数
+  require_human_approval: true     # 投稿前に人間承認必須
+  min_source_credibility_tier: 2   # 核心主張に必要な最低ソースティア
+  min_independent_sources: 3       # 主要主張あたりの独立ソース数
+
 # エビデンス要件
 evidence:
   citation_required: true
   screenshot_min_count: 5  # 検証系記事
+  source_credibility_tiers:
+    tier1:
+      - academic_papers
+      - official_docs
+      - government_data
+    tier2:
+      - major_tech_blogs
+      - reputable_news
+    tier3:
+      - community_posts
+      - personal_blogs
+    tier4:
+      - anonymous_sources
+      - unverified_claims
   forbidden_phrases:
     - "月.*万円.*稼いだ"
     - "誰でも.*稼げる"
