@@ -14,16 +14,22 @@ AI記事自動生成・投稿システムのエージェント運用ガイド。
 
 ## Local Skill Set
 
-Keep the repository-local skills under `.codex/skills/<skill-name>/SKILL.md`.
+スキル定義は2箇所に配置（内容は同一）:
+- **`.claude/skills/`** — Claude Code (cc) 用（プライマリ）
+- **`.codex/skills/`** — Codex CLI 互換エイリアス
 
-The current intended local skill set is:
+### スキル一覧
 
-- `.codex/skills/core/SKILL.md` — コンテキスト復元・基本行動
-- `.codex/skills/collection/SKILL.md` — 記事収集・トレンド分析
-- `.codex/skills/generation/SKILL.md` — 記事生成・LLM連携
-- `.codex/skills/quality-gate/SKILL.md` — 品質評価・エビデンス検証
-- `.codex/skills/publishing/SKILL.md` — 投稿・通知
-- `.codex/skills/self-improvement/SKILL.md` — 振り返り・学習
+| Skill | Claude Code | Codex CLI | Role |
+|-------|------------|-----------|------|
+| core | `.claude/skills/core/SKILL.md` | `.codex/skills/core/SKILL.md` | コンテキスト復元・基本行動 |
+| collection | `.claude/skills/collection/SKILL.md` | `.codex/skills/collection/SKILL.md` | 記事収集・トレンド分析 |
+| generation | `.claude/skills/generation/SKILL.md` | `.codex/skills/generation/SKILL.md` | 記事生成・LLM連携 |
+| quality-gate | `.claude/skills/quality-gate/SKILL.md` | `.codex/skills/quality-gate/SKILL.md` | 品質評価・エビデンス検証 |
+| publishing | `.claude/skills/publishing/SKILL.md` | `.codex/skills/publishing/SKILL.md` | 投稿・通知 |
+| self-improvement | `.claude/skills/self-improvement/SKILL.md` | `.codex/skills/self-improvement/SKILL.md` | 振り返り・学習 |
+
+スキルを更新する場合は両方のパスを同期すること。
 
 ## Pipeline Workflow
 
