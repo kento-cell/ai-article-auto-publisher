@@ -176,3 +176,115 @@ C. **ハイブリッド** — Researcher（1回）→ Strategist+Writer（1回�
 - Chrome Profileの管理（Claude.ai / note.com の自動ログイン維持）
 - Zennの投稿レートリミットの具体的な値（公式に明示されているか）
 - noteのSeleniumセレクタが変わった場合の検知・自動修復の仕組み
+
+---
+
+## Codex Answers
+
+以下は、現状のコードベース、直近のバグ修正方針、v1.0の安定化優先方針を前提にした判断。
+
+### 回答1: 設計とコードの乖離
+
+1. `main.py` の旧パイプラインからディスカッション型への移行は、**段階的移行**が適切。
+   - フルリライトは差分が広すぎて、直近で修正した publish/generate 周辺の回帰確認が難しくなる
+   - 新しいディスカッションエンジンは別モジュールとして実装し、`main.py` からフラグまたは設定で切り替える形がよい
+   - 旧パイプラインは最小E2E確認用の安全網として一旦残す
+
+2. コード実装の優先順位は **D → A/C → B** が妥当。
+   - 最初に D: 最小E2E（旧コードのまま）を通す
+   - 次に A と C のうち、v1.0ではスコアリング再設計を先に入れる
+   - ディスカッションエンジンは最小版のみ。全面移行は v1.1
+   - Sheets拡張はUI価値は高いが、評価ロジックと実行経路が固まる前に広げると手戻りが大きい
+
+### 回答2: QualityEvaluator 再設計
+
+- **C案で進めてよい。**
+- `ObjectiveScorer` と `SubjectiveEvaluator` を分離し、Coordinator相当の集約器が最終判定する形が最も扱いやすい。
+
+推奨インターフェース:
+
+- `ObjectiveScorer.score(article, context) -> dict`
+  - 返却例: `citation_count`, `tier12_ratio`, `visual_count`, `structure_variant`, `forbidden_phrase_hits`, `objective_pass`, `reasons`
+- `SubjectiveEvaluator.score(article, context) -> dict`
+  - 返却例: `originality`, `accuracy`, `readability`, `engagement`, `feedback`, `confidence`, `reasons`
+- `CoordinatorScoreAggregator.aggregate(objective_result, subjective_result) -> dict`
+  - 返却例: `overall_grade`, `approve/revise/reject`, `blocking_issues`, `summary`
+
+設計上の注意:
+- Objective は「足切り条件」と「嘘がつけない測定値」に限定する
+- Subjective は「根拠付きコメント」を必須化する
+- 合計点だけでなく `blocking_issues` を残す
+
+### 回答3: Sheets のカラム設計
+
+- 列構成は概ね妥当。大きな不足はない
+- ただし v1.0 では一度に 19 列へ広げず、**12〜14列程度の中間形**から始める方が安全
+- `議論Round数` は有用
+- `Critic要約` も有用
+- `判断メモ` は人間承認フロー上ほぼ必須
+
+追加または調整推奨:
+- `Article ID` か `Slug/Key` を1列追加
+  - タイトルは変更されうるので、安定な識別子が必要
+- `Evidence URL/Ref` は列で持つより、まず要約列または別シート参照で十分
+- `Platform` は残す
+- `Price` は note 専用でも残す
+
+gspread について:
+- 条件付き書式とデータ入力規則は、**gspread 単体の高水準APIだけでは弱い**
+- ただし Google Sheets API の `batchUpdate` を使えば設定可能
+- つまり「gspread で簡単に」ではなく、「Sheets API を直接叩けば可能」という理解が正しい
+
+結論:
+- 列設計は方向性OK
+- v1.0 では中間形で始める
+- 条件付き書式 / ドロップダウンは Google Sheets API `batchUpdate` 前提で設計する
+
+### 回答4: ディスカッションエンジン
+
+- **C案で妥当。**
+
+理由:
+- 全ターン制はトークン消費と実装複雑性が重い
+- 単一ロールプレイは批評の独立性が弱い
+- Writer↔Critic だけターン制にするのが最も費用対効果が高い
+
+追加判断:
+- Researcher / Strategist は、**必要時のみ再呼び出し**でよい
+  - 例: Tier1ソース不足、戦略角度の差別化不足、事実の矛盾
+  - 毎回戻す必要はない
+
+- ターン制には**上限を設けるべき**
+  - 「上限なし」は運用上危険
+  - 推奨は `Writer↔Critic 最大2ラウンド、例外時のみ3`
+  - 同一論点が 2 回以上反復したら Coordinator が打ち切って `REVISE` か `REJECT` を決める
+
+### 回答5: v1.0 / v1.1 スコープ
+
+- スコープ分けは概ね妥当
+- ただし **ディスカッションエンジン全面実装は v1.0 に入れない方がよい**
+- v1.0 に入れるのは「最小版の評価/再生成ループ」まで
+
+推奨スコープ:
+
+v1.0:
+- バグ修正9件
+- graceful degradation
+- 最小E2Eテスト
+- QualityEvaluator 再設計（ObjectiveScorer + SubjectiveEvaluator + 集約）
+- 提案A反映
+- 提案D軽量版
+- Sheets 中間形拡張
+
+v1.1:
+- ディスカッションエンジン全面実装
+- 画像Visionパイプライン
+- Zenn Book パイプライン
+- 読者フィードバック自動収集
+- note AI学習収益シェア
+- Google Docsプレビュー連携
+
+補足:
+- 「ディスカッションなしだとスコアの質が担保できない」懸念は理解できる
+- ただし v1.0 では Objective + Subjective + 最小Writer/Critic再評価で十分に改善可能
+- 全面ディスカッション型を先に入れると、E2E安定化より設計追随コストが勝つ
