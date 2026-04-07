@@ -15,7 +15,7 @@ google-auth==2.27.0
 google-api-python-client==2.114.0
 
 # Markdown
-python-markdown==3.5.1
+markdown==3.5.1
 
 # LLM
 ollama>=0.3.0

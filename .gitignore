@@ -3,6 +3,8 @@
 
 # 認証情報
 config/credentials.json
+ai-publisher-*.json
+config/settings.yaml
 
 # Python
 __pycache__/

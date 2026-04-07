@@ -50,13 +50,17 @@ class ObjectiveScorer:
 
         # Collect blocking issues
         blocking: list[str] = []
-        for metric_name, result in [
-            ("evidence_level", evidence),
+        metrics_to_check = [
             ("citation_count", citations),
             ("citation_format", cite_format),
             ("visual_count", visuals),
             ("word_count", words),
-        ]:
+        ]
+        # Only check evidence_level when source data is actually available
+        if sources:
+            metrics_to_check.insert(0, ("evidence_level", evidence))
+
+        for metric_name, result in metrics_to_check:
             if result["grade"] == "C":
                 blocking.append(
                     f"{metric_name}: {result.get('reason', 'grade C')}"
@@ -108,11 +112,11 @@ class ObjectiveScorer:
         """
         if not sources:
             return {
-                "grade": "C",
+                "grade": "N/A",
                 "tier12_ratio": 0.0,
                 "total_sources": 0,
                 "tier12_count": 0,
-                "reason": "no source data available",
+                "reason": "no source data available (skipped)",
             }
 
         total = len(sources)

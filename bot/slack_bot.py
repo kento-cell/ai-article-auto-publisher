@@ -22,10 +22,16 @@ Setup:
 Required pip: slack-bolt
 """
 
+import io
 import logging
 import os
 import subprocess
 import sys
+
+# Fix Windows cp932 encoding for Unicode output
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -54,7 +60,9 @@ ALLOWED_USER_IDS = set(
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PYTHON = str(PROJECT_ROOT / "venv" / "Scripts" / "python.exe")
+# Cross-platform venv python path
+_venv_scripts = PROJECT_ROOT / "venv" / ("Scripts" if sys.platform == "win32" else "bin")
+PYTHON = str(_venv_scripts / ("python.exe" if sys.platform == "win32" else "python"))
 
 # Track running process
 _current_process: subprocess.Popen | None = None
@@ -68,10 +76,16 @@ app = App(token=BOT_TOKEN)
 # Security
 # ==================================================================
 
+_channel_name_cache: dict[str, str] = {}
+
+
 def _is_authorized(event: dict) -> bool:
     """Check if the user and channel are authorized."""
-    channel_name = _get_channel_name(event.get("channel", ""))
     user_id = event.get("user", "")
+    if not user_id:
+        return False
+
+    channel_name = _get_channel_name(event.get("channel", ""))
 
     if channel_name != ALLOWED_CHANNEL:
         return False
@@ -85,10 +99,14 @@ def _is_authorized(event: dict) -> bool:
 
 
 def _get_channel_name(channel_id: str) -> str:
-    """Get channel name from channel ID."""
+    """Get channel name from channel ID (cached)."""
+    if channel_id in _channel_name_cache:
+        return _channel_name_cache[channel_id]
     try:
         result = app.client.conversations_info(channel=channel_id)
-        return result["channel"]["name"]
+        name = result["channel"]["name"]
+        _channel_name_cache[channel_id] = name
+        return name
     except Exception:
         return ""
 
@@ -105,19 +123,32 @@ def _get_sheets_url() -> str:
 # Pipeline runner
 # ==================================================================
 
+_current_label: str = ""
+_is_running: bool = False
+
+
 def _run_pipeline_sync(say, mode: str, label: str):
     """Run main.py and post progress to Slack."""
-    global _current_process
+    global _current_process, _current_label, _is_running
 
+    # Atomic check-and-set under lock to prevent race condition
     with _process_lock:
-        if _current_process and _current_process.poll() is None:
-            say("⚠️ 別のタスクが実行中です。`stop` で停止できます。")
+        if _is_running:
+            say(f"⚠️ *{_current_label}* が実行中です。`stop` で停止できます。")
             return
+        _is_running = True
+        _current_label = label
 
     cmd = [PYTHON, "main.py", f"--{mode}"]
     say(f"🚀 *{label}* 開始...")
     start = datetime.now()
 
+    # Log file for this run
+    log_dir = PROJECT_ROOT / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / f"{mode}.log"
+
+    proc = None
     try:
         proc = subprocess.Popen(
             cmd,
@@ -132,35 +163,76 @@ def _run_pipeline_sync(say, mode: str, label: str):
             _current_process = proc
 
         output_lines: list[str] = []
-        for line in proc.stdout:
-            line = line.rstrip()
-            if line:
+        last_phase = ""
+        with open(log_file, "w", encoding="utf-8") as f:
+            for line in proc.stdout:
+                line = line.rstrip()
+                if not line:
+                    continue
                 output_lines.append(line)
-                if any(k in line for k in [
-                    "フェーズ", "Phase", "完了", "エラー", "スコア",
-                    "承認待ち", "投稿完了", "件収集", "件生成",
-                ]):
-                    say(f"📋 {line[:200]}")
+                f.write(line + "\n")
+                f.flush()
+
+                # Phase notifications (clean format)
+                if "Phase 1" in line or "記事収集" in line:
+                    if last_phase != "collect":
+                        say("📡 *収集中*... arXiv / Reddit / RSS")
+                        last_phase = "collect"
+                elif "件収集" in line:
+                    msg = line.split("]")[-1].strip().rstrip("収集").strip()
+                    say(f"  → {msg}")
+                elif "Phase 2" in line or ("生成" in line and "スコア" in line):
+                    if last_phase != "generate":
+                        say("✍️ *記事生成中*... (Gemma3)")
+                        last_phase = "generate"
+                elif "Phase 3" in line or ("投稿" in line and "Phase" in line):
+                    if last_phase != "publish":
+                        say("📤 *投稿中*...")
+                        last_phase = "publish"
+                elif "トレンドスコア" in line:
+                    say("📊 *トレンド分析完了*")
+                elif "トップ" in line:
+                    parts = line.split("]")[-1].strip()
+                    say(f"  → {parts[:150]}")
+                elif "スコアリング合格" in line:
+                    count = line.split(":")[-1].strip()
+                    say(f"✅ スコアリング合格: *{count}*")
+                elif "承認待ち" in line:
+                    say("📝 承認待ちの記事をSheetsに登録しました")
+                elif "[ERROR]" in line or "失敗" in line:
+                    msg = line.split("]")[-1].strip()
+                    say(f"⚠️ {msg[:200]}")
 
         proc.wait()
-        elapsed = (datetime.now() - start).seconds
+        elapsed = int((datetime.now() - start).total_seconds())
 
         with _process_lock:
             _current_process = None
+            _current_label = ""
+            _is_running = False
 
         if proc.returncode == 0:
-            say(f"✅ *{label}* 完了（{elapsed}秒）")
+            m, s = divmod(elapsed, 60)
+            time_str = f"{m}分{s}秒" if m else f"{s}秒"
+            say(f"✅ *{label}* 完了 ({time_str})")
             _send_sheets_message(say, mode)
         else:
-            last_lines = "\n".join(output_lines[-5:])
+            last_lines = "\n".join(output_lines[-3:])
             say(
-                f"❌ *{label}* 失敗（コード: {proc.returncode}）\n"
-                f"```{last_lines[:500]}```"
+                f"❌ *{label}* 失敗\n"
+                f"```{last_lines[:300]}```\n"
+                f"詳細は `log` コマンドで確認できます"
             )
 
     except Exception as e:
+        # Ensure child process is killed on error
+        if proc and proc.poll() is None:
+            proc.terminate()
+            proc.wait(timeout=10)
         with _process_lock:
             _current_process = None
+            _current_label = ""
+            _is_running = False
         say(f"❌ 実行エラー: {e}")
 
 
@@ -201,17 +273,36 @@ def _send_sheets_message(say, mode: str):
 # Command handlers
 # ==================================================================
 
+_BOT_USER_ID: str = ""
+
+
+def _get_bot_user_id() -> str:
+    """Lazy-fetch and cache the bot's own user ID."""
+    global _BOT_USER_ID
+    if not _BOT_USER_ID:
+        try:
+            result = app.client.auth_test()
+            _BOT_USER_ID = result.get("user_id", "")
+        except Exception:
+            pass
+    return _BOT_USER_ID
+
+
 @app.event("message")
 def handle_message(event: dict, say):
     """Handle incoming messages as commands."""
-    # Ignore bot messages
-    if event.get("subtype") == "bot_message" or "bot_id" in event:
+    # Ignore bot messages (multiple checks for reliability)
+    if event.get("subtype") in ("bot_message", "message_changed", "message_deleted"):
+        return
+    if "bot_id" in event:
+        return
+    if event.get("user") == _get_bot_user_id():
         return
 
     if not _is_authorized(event):
         return
 
-    text = event.get("text", "").strip().lower()
+    text = event.get("text", "").strip().strip("`").strip().lower()
 
     if text == "help":
         _cmd_help(say)
@@ -229,6 +320,8 @@ def handle_message(event: dict, say):
         _cmd_status(say)
     elif text == "sheets":
         _cmd_sheets(say)
+    elif text.startswith("log"):
+        _cmd_log(say, text)
 
 
 def _cmd_help(say):
@@ -256,7 +349,9 @@ def _cmd_help(say):
                         "*🔧 管理*\n"
                         "`status` — 現在の状態確認\n"
                         "`stop` — 実行中のタスクを停止\n"
-                        "`sheets` — Sheetsのリンクを表示"
+                        "`sheets` — Sheetsのリンクを表示\n"
+                        "`log` — 直近の実行ログ表示\n"
+                        "`log collect` — 収集ログ表示"
                     ),
                 },
             },
@@ -304,33 +399,66 @@ def _cmd_dryrun(say):
     thread.start()
 
 
+_VALID_LOG_MODES = {"generate", "collect-only", "dry-run", "publish"}
+
+
+def _cmd_log(say, text: str):
+    """Show recent log entries."""
+    parts = text.split()
+    mode = parts[1] if len(parts) > 1 else "generate"
+
+    # Validate mode to prevent path traversal (Codex MEDIUM)
+    if mode not in _VALID_LOG_MODES:
+        say(f"📄 有効なログ: {', '.join(sorted(_VALID_LOG_MODES))}")
+        return
+
+    log_file = PROJECT_ROOT / "logs" / f"{mode}.log"
+
+    if not log_file.exists():
+        say(f"📄 `{mode}` のログはまだありません。")
+        return
+
+    lines = log_file.read_text(encoding="utf-8", errors="replace").splitlines()
+    tail = lines[-30:]
+    content = "\n".join(tail)
+    say(f"📄 *{mode}.log* (最新{len(tail)}行)\n```{content[:2500]}```")
+
+
 def _cmd_stop(say):
     """Stop running task."""
-    global _current_process
+    global _current_process, _current_label, _is_running
     with _process_lock:
-        if _current_process and _current_process.poll() is None:
-            _current_process.terminate()
+        proc = _current_process
+        if proc and hasattr(proc, "poll") and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
             _current_process = None
+            _current_label = ""
+            _is_running = False
             say("🛑 タスクを停止しました。")
         else:
+            _is_running = False
             say("ℹ️ 実行中のタスクはありません。")
 
 
 def _cmd_status(say):
     """Show system status."""
     with _process_lock:
-        running = (
-            _current_process is not None
-            and _current_process.poll() is None
-        )
+        running = _is_running
+        label = _current_label
 
-    status_emoji = "🔄 実行中" if running else "⏸️ アイドル"
+    status_emoji = f"🔄 実行中 ({label})" if running else "⏸️ アイドル"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Token budget
     token_info = ""
     try:
-        sys.path.insert(0, str(PROJECT_ROOT))
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
         from utils.token_manager import TokenManager
         tm = TokenManager()
         remaining = tm.get_remaining()
@@ -380,14 +508,12 @@ def main():
         )
         sys.exit(1)
 
-    print(f"✅ Slack Bot 起動中...")
-    print(f"   チャンネル: #{ALLOWED_CHANNEL}")
-    if ALLOWED_USER_IDS:
-        print(f"   許可ユーザー: {ALLOWED_USER_IDS}")
-    else:
-        print(f"   許可ユーザー: 全員（SLACK_ALLOWED_USERS未設定）")
+    print("Slack Bot starting...", flush=True)
+    print(f"  Channel: #{ALLOWED_CHANNEL}", flush=True)
+    print(f"  Allowed users: {ALLOWED_USER_IDS or 'all'}", flush=True)
 
     handler = SocketModeHandler(app, APP_TOKEN)
+    print("SocketModeHandler created, connecting...", flush=True)
     handler.start()
 
 

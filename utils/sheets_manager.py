@@ -251,7 +251,14 @@ class SheetsManager:
                 "Sheets not configured; returning empty list",
             )
             return []
-        records = self._sheet.get_all_records(expected_headers=HEADER_ROW)
+        try:
+            records = self._sheet.get_all_records(expected_headers=HEADER_ROW)
+        except IndexError:
+            self._logger.debug("No data rows in sheet; returning empty list")
+            return []
+        except Exception as e:
+            self._logger.warning("Failed to fetch sheet records: %s", e)
+            return []
         self._logger.debug("Fetched %d article records", len(records))
         return records
 
