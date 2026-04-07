@@ -6,4 +6,6 @@ Submodules:
     diagram_generator - Mermaid diagram extraction and rendering.
     evidence_manager  - Citation validation and forbidden-phrase checks.
     quality_evaluator - LLM-driven article quality scoring.
+    image_sourcer     - Copyright-safe image sourcing from stock APIs.
+    rich_formatter    - Rich text formatting enhancer for Zenn/note.
 """
