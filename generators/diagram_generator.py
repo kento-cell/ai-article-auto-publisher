@@ -40,7 +40,10 @@ class DiagramGenerator:
 
     def __init__(self) -> None:
         """Detect available rendering backends."""
-        self.use_cli: bool = shutil.which("mmdc") is not None
+        self.use_cli: bool = (
+            shutil.which("mmdc") is not None
+            or (platform.system() == "Windows" and shutil.which("mmdc.cmd") is not None)
+        )
         if self.use_cli:
             logger.info("Mermaid CLI (mmdc) detected; will use local rendering.")
         else:
@@ -127,7 +130,7 @@ class DiagramGenerator:
 
             try:
                 self.render_to_svg(block, png_path)
-                image_ref = f"![{base_name} {idx}]({png_path})"
+                image_ref = f"![{base_name} {idx}]({Path(png_path).as_posix()})"
             except RuntimeError:
                 logger.warning("Diagram %d: keeping Mermaid code block (no local renderer).", idx)
                 continue  # Don't replace, keep original
