@@ -32,11 +32,12 @@ _PAGE_LOAD_TIMEOUT: Final[int] = 30
 _ELEMENT_WAIT: Final[int] = 15
 
 # Price tiers: (min_score, price_yen)
+# Quality score is on a 70-point scale (7 axes x 10 points each).
 _PRICE_TIERS: Final[list[tuple[int, int]]] = [
-    (2000, 1980),
-    (1500, 980),
-    (1000, 500),
-    (700, 300),
+    (65, 1980),   # 93%+ -> 1,980 yen
+    (58, 980),    # 83%+ -> 980 yen
+    (50, 500),    # 71%+ -> 500 yen
+    (45, 300),    # 64%+ -> 300 yen
 ]
 
 
@@ -105,13 +106,14 @@ class NotePublisher:
     def determine_price(quality_score: float, word_count: int) -> int:
         """Calculate the article price tier from quality metrics.
 
+        Quality score is on a 70-point scale (7 axes x 10 points).
         Pricing tiers (by *quality_score*):
 
-        * < 700 : free (0)
-        * 700--999 : 300 yen
-        * 1000--1499 : 500 yen
-        * 1500--1999 : 980 yen
-        * 2000+ : 1,980 yen
+        * < 45 : free (0)
+        * 45--49 : 300 yen  (64%+)
+        * 50--57 : 500 yen  (71%+)
+        * 58--64 : 980 yen  (83%+)
+        * 65+    : 1,980 yen (93%+)
 
         Args:
             quality_score: Numeric quality score of the article.

@@ -54,7 +54,7 @@ DEFAULT_MIN_TOTAL = 45
 
 # Regex to extract a JSON object (possibly nested).
 JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
-JSON_OBJECT_RE = re.compile(r"\{[^{}]*\}", re.DOTALL)
+JSON_OBJECT_RE = re.compile(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", re.DOTALL)
 
 
 class QualityEvaluator:
@@ -237,16 +237,26 @@ class QualityEvaluator:
     def _extract_json(text: str) -> Optional[str]:
         """Find the first JSON object in *text*.
 
-        Checks Markdown code fences first, then bare JSON objects.
+        Checks Markdown code fences first, then uses brace-counting
+        to extract the outermost JSON object (handles arbitrary nesting).
         """
-        code_block = JSON_BLOCK_RE.search(text)
-        if code_block:
-            return code_block.group(1)
-
-        match = JSON_OBJECT_RE.search(text)
+        # Try code block first
+        match = JSON_BLOCK_RE.search(text)
         if match:
-            return match.group(0)
+            return match.group(1)
 
+        # Brace-counting fallback for nested JSON
+        start = text.find("{")
+        if start == -1:
+            return None
+        depth = 0
+        for i, ch in enumerate(text[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
         return None
 
     @staticmethod

@@ -26,7 +26,7 @@ from publishers.zenn_publisher import ZennPublisher
 from publishers.note_publisher import NotePublisher
 from publishers.slack_notifier import SlackNotifier
 from utils.sheets_manager import SheetsManager
-from utils.token_manager import TokenManager
+from utils.token_manager import TokenManager, estimate_tokens
 from utils.logger import setup_logger
 
 load_dotenv()
@@ -148,10 +148,10 @@ def generate_articles(
                 # 記事生成
                 if use_local:
                     content = local_llm.generate(prompt)
-                    token_manager.record_usage(len(prompt) + len(content))
+                    token_manager.record_usage(estimate_tokens(prompt) + estimate_tokens(content))
                 else:
                     content = claude.generate_article(template, article)
-                    token_manager.record_usage(len(prompt) + len(content))
+                    token_manager.record_usage(estimate_tokens(prompt) + estimate_tokens(content))
 
                 # エビデンス検証
                 forbidden = config.get("evidence", {}).get(
@@ -335,12 +335,14 @@ def run_pipeline(config: dict, prompts: dict):
 
     # 5. サマリー通知
     stats = {
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "collected": total,
-        "generated": gen_total,
-        "published_zenn": len(results.get("zenn", [])),
-        "published_note": len(results.get("note", [])),
-        "tokens_remaining": token_manager.get_remaining(),
+        "articles_generated": gen_total,
+        "articles_published": len(results.get("zenn", [])) + len(results.get("note", [])),
+        "platforms": {
+            "Zenn": len(results.get("zenn", [])),
+            "note": len(results.get("note", [])),
+        },
+        "avg_quality_score": 0.0,  # TODO: calculate from generated articles
+        "errors": 0,  # TODO: track error count
     }
     notifier.notify_daily_summary(stats)
 
@@ -348,7 +350,7 @@ def run_pipeline(config: dict, prompts: dict):
     logger.info("パイプライン完了")
     logger.info(
         "投稿: Zenn=%d, note=%d",
-        stats["published_zenn"], stats["published_note"]
+        stats["platforms"]["Zenn"], stats["platforms"]["note"]
     )
     logger.info("========================================")
 
