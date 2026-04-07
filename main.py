@@ -182,6 +182,9 @@ def _init_llm(token_manager: TokenManager):
 
     # Claude.ai Selenium is disabled (Cloudflare bot detection blocks it).
     # Use local LLM (Gemma3) for all generation.
+    if not local_llm.is_available():
+        logger.error("ローカルLLM (Ollama) 未起動。ollama serve を実行してください。")
+        return None, None, True
     logger.info("ローカルLLM (Gemma3) で記事生成します。")
     return None, local_llm, True
 
@@ -219,17 +222,22 @@ def _generate_single_article(
 
     # --- 図表処理 ---
     diagram_gen = DiagramGenerator()
-    content = diagram_gen.embed_diagrams(content, "docs/images")
+    content = diagram_gen.embed_diagrams(content, "docs/images", base_name=slug)
 
     # --- 客観スコア ---
     evidence_mgr = EvidenceManager()
     forbidden = config.get("evidence", {}).get("forbidden_phrases", [])
     sources = article.get("sources", [])
 
+    chain_blacklist = config.get("evidence", {}).get(
+        "gourmet_rules", {}
+    ).get("chain_blacklist", [])
+
     obj_scorer = ObjectiveScorer()
     obj_result = obj_scorer.score(content, {
         "sources": sources,
         "forbidden_phrases": forbidden,
+        "chain_blacklist": chain_blacklist,
     })
 
     if not obj_result["objective_pass"]:
@@ -383,7 +391,7 @@ def generate_and_score(
 def _post_rejected_to_slack(rejected: list[dict]) -> None:
     """Post rejected article content to Slack as file attachments."""
     bot_token = os.getenv("SLACK_BOT_TOKEN")
-    channel_id = "C0AR7E9AFJ9"
+    channel_id = os.getenv("SLACK_CHANNEL_ID", "C0AR7E9AFJ9")
     if not bot_token:
         logger.warning("SLACK_BOT_TOKEN not set; skipping rejected article Slack upload")
         return

@@ -217,9 +217,15 @@ class ObjectiveScorer:
             total, and reason.
         """
         # Find all blockquote citation blocks (consecutive > lines)
-        citation_blocks = re.findall(
+        # Exclude callout blocks (> **💡**, > **Note**, :::message etc.)
+        all_blocks = re.findall(
             r"((?:^>.*\n?)+)", article, re.MULTILINE
         )
+        citation_blocks = [
+            b for b in all_blocks
+            if not re.match(r">\s*\*\*[💡🔥⚠️📝ℹ️]", b)
+            and not re.match(r">\s*\*\*(Note|注意|ヒント|Tips)", b, re.IGNORECASE)
+        ]
 
         if not citation_blocks:
             return {
