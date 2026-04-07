@@ -227,21 +227,21 @@ class NoteContentConverter:
     @staticmethod
     def _markdown_table_to_html(table_md: str) -> str:
         """Convert a simple markdown table string to an HTML <table>."""
+        import html as _html
+
         lines = [
             line.strip()
             for line in table_md.strip().splitlines()
             if line.strip()
         ]
         if len(lines) < 2:
-            return f"<pre>{table_md}</pre>"
+            return f"<pre>{_html.escape(table_md)}</pre>"
 
         def parse_row(line: str) -> list[str]:
-            # Strip leading/trailing pipes, split by pipe
             stripped = line.strip().strip("|")
-            return [cell.strip() for cell in stripped.split("|")]
+            return [_html.escape(cell.strip()) for cell in stripped.split("|")]
 
         header_cells = parse_row(lines[0])
-        # lines[1] is the separator row — skip it
         body_rows = [parse_row(line) for line in lines[2:]]
 
         parts: list[str] = ["<table>", "<thead><tr>"]
