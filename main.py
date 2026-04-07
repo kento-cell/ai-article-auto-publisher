@@ -27,6 +27,7 @@ from generators.local_llm import LocalLLM
 from generators.diagram_generator import DiagramGenerator
 from generators.evidence_manager import EvidenceManager
 from generators.hashtag_generator import HashtagGenerator
+from generators.cover_generator import CoverGenerator
 from generators.objective_scorer import ObjectiveScorer
 from generators.subjective_evaluator import SubjectiveEvaluator
 from generators.score_aggregator import ScoreAggregator
@@ -261,6 +262,14 @@ def _generate_single_article(
         )
         return None
 
+    # --- カバー画像生成 ---
+    cover_gen = CoverGenerator()
+    cover_path = cover_gen.generate(
+        title=article["title"],
+        platform=platform,
+        slug=slug,
+    )
+
     logger.info(
         "[%s] 生成完了: %s (総合: %s, 証拠Lv: %s)",
         platform,
@@ -275,6 +284,7 @@ def _generate_single_article(
         "source": article,
         "platform": platform,
         "slug": slug,
+        "cover_image": cover_path,
         "scores": final,
         "generated_at": datetime.now().isoformat(),
     }
