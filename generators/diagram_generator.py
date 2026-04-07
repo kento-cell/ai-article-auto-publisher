@@ -1,14 +1,15 @@
 """Mermaid diagram extraction, rendering, and embedding.
 
-Extracts Mermaid code blocks from Markdown, renders them to SVG via the
-Mermaid CLI (``mmdc``) or an online renderer, and replaces the original
-code blocks with image references.
+Extracts Mermaid code blocks from Markdown, renders them to PNG via the
+Mermaid CLI (``mmdc``), and replaces the original code blocks with image
+references.  PNG is used for broad compatibility (note.com, etc.).
 
 Dependencies: requests (for online fallback), subprocess (for mmdc)
 """
 
 import logging
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -71,14 +72,17 @@ class DiagramGenerator:
         mermaid_code: str,
         output_path: str,
     ) -> str:
-        """Render a single Mermaid diagram to an SVG file.
+        """Render a single Mermaid diagram to an image file.
+
+        Despite the method name (kept for backwards compatibility), this
+        now renders to PNG by default for better note.com compatibility.
 
         Args:
             mermaid_code: The Mermaid source.
-            output_path: Destination file path (should end in ``.svg``).
+            output_path: Destination file path (``.png`` recommended).
 
         Returns:
-            The absolute path to the written SVG file.
+            The absolute path to the written image file.
 
         Raises:
             RuntimeError: If rendering fails via both backends.
@@ -100,12 +104,12 @@ class DiagramGenerator:
     ) -> str:
         """Replace Mermaid code blocks in *markdown* with image references.
 
-        Each block is rendered to SVG inside *output_dir* and replaced
+        Each block is rendered to PNG inside *output_dir* and replaced
         by a Markdown image link ``![diagram](path)``.
 
         Args:
             markdown: Original Markdown text.
-            output_dir: Directory to store generated SVG files.
+            output_dir: Directory to store generated image files.
             base_name: Filename prefix for the generated images.
 
         Returns:
@@ -118,12 +122,12 @@ class DiagramGenerator:
 
         result = markdown
         for idx, block in enumerate(blocks, start=1):
-            filename = f"{base_name}_{idx}.svg"
-            svg_path = os.path.join(output_dir, filename)
+            filename = f"{base_name}_{idx}.png"
+            png_path = os.path.join(output_dir, filename)
 
             try:
-                self.render_to_svg(block, svg_path)
-                image_ref = f"![{base_name} {idx}]({svg_path})"
+                self.render_to_svg(block, png_path)
+                image_ref = f"![{base_name} {idx}]({png_path})"
             except RuntimeError:
                 logger.warning("Diagram %d: keeping Mermaid code block (no local renderer).", idx)
                 continue  # Don't replace, keep original
@@ -138,8 +142,21 @@ class DiagramGenerator:
     # Internal rendering backends
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _find_mmdc() -> str:
+        """Locate the mmdc executable, preferring .cmd on Windows."""
+        if platform.system() == "Windows":
+            cmd_path = shutil.which("mmdc.cmd") or shutil.which("mmdc")
+        else:
+            cmd_path = shutil.which("mmdc")
+        if cmd_path is None:
+            raise RuntimeError("mmdc not found on PATH")
+        return cmd_path
+
     def _render_via_cli(self, mermaid_code: str, output_path: str) -> str:
         """Render using the local ``mmdc`` command."""
+        mmdc = self._find_mmdc()
+
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".mmd", delete=False
         ) as tmp:
@@ -148,7 +165,7 @@ class DiagramGenerator:
 
         try:
             result = subprocess.run(
-                ["mmdc", "-i", tmp_path, "-o", output_path, "-b", "transparent"],
+                [mmdc, "-i", tmp_path, "-o", output_path, "-b", "white"],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -156,7 +173,7 @@ class DiagramGenerator:
             if result.returncode != 0:
                 logger.error("mmdc stderr: %s", result.stderr)
                 raise RuntimeError(f"mmdc failed: {result.stderr}")
-            logger.debug("Rendered SVG via CLI -> %s", output_path)
+            logger.debug("Rendered PNG via CLI -> %s", output_path)
             return os.path.abspath(output_path)
         finally:
             os.unlink(tmp_path)
