@@ -24,9 +24,20 @@ CATEGORY_TAGS: dict[str, list[str]] = {
     "ktrend": ["韓国トレンド", "韓国最新情報", "韓国カルチャー"],
     "beauty": ["美容", "コスメ", "スキンケア", "メイク"],
     "fashion": ["ファッション", "韓国ファッション", "トレンド"],
+    # コーヒー・バリスタ
+    "coffee": ["コーヒー", "バリスタ", "カフェ", "コーヒー好き"],
+    "cafe": ["カフェ巡り", "おしゃれカフェ", "カフェ好き"],
+    # グルメ・デート
+    "gourmet": ["グルメ", "おすすめグルメ", "食べ歩き"],
+    "izakaya": ["居酒屋", "デート", "おすすめ居酒屋", "モテ"],
+    "date": ["デートスポット", "モテ", "大人デート", "おしゃれ"],
+    "restaurant": ["レストラン", "ディナー", "おすすめ"],
+    # ライフスタイル・自分磨き
+    "lifestyle": ["ライフスタイル", "暮らし", "ライフハック", "QOL"],
+    "selfcare": ["自分磨き", "美意識", "メンズ美容", "モテる"],
+    "mensfashion": ["メンズファッション", "メンズコーデ", "大人の男"],
     # 一般
     "business": ["ビジネス", "仕事術", "キャリア"],
-    "lifestyle": ["ライフスタイル", "暮らし", "ライフハック"],
     "trend": ["トレンド", "話題", "注目"],
 }
 
@@ -39,6 +50,18 @@ KEYWORD_CATEGORIES: dict[str, str] = {
     "react": "web", "typescript": "web", "javascript": "web",
     "python": "web", "rust": "web", "golang": "web",
     "aws": "cloud", "kubernetes": "cloud", "docker": "cloud",
+    # Coffee / Barista
+    "coffee": "coffee", "コーヒー": "coffee", "バリスタ": "coffee",
+    "エスプレッソ": "coffee", "ラテ": "coffee", "カフェ": "cafe",
+    "ドリップ": "coffee", "焙煎": "coffee", "珈琲": "coffee",
+    # Gourmet / Date
+    "居酒屋": "izakaya", "デート": "date", "モテ": "date",
+    "グルメ": "gourmet", "レストラン": "restaurant",
+    "ディナー": "restaurant", "新宿": "gourmet", "渋谷": "gourmet",
+    "恵比寿": "gourmet", "六本木": "gourmet", "銀座": "gourmet",
+    # Lifestyle / Self-improvement
+    "自分磨き": "selfcare", "美意識": "selfcare", "メンズ": "mensfashion",
+    "ファッション": "fashion", "fashion": "fashion",
     # Korean / Beauty
     "korea": "ktrend", "korean": "ktrend", "韓国": "ktrend",
     "kpop": "kpop", "k-pop": "kpop", "bts": "kpop", "アイドル": "kpop",
@@ -137,6 +160,12 @@ class HashtagGenerator:
             return ["美容", "コスメ", "おすすめ"]
         if any(k in source_lower for k in ["arxiv", "publickey"]):
             return ["テクノロジー", "エンジニア"]
+        if any(k in source_lower for k in ["coffee", "standart", "goodcoffee"]):
+            return ["コーヒー", "カフェ", "バリスタ"]
+        if any(k in source_lower for k in ["tabelog", "retty"]):
+            return ["グルメ", "おすすめ", "食べ歩き"]
+        if any(k in source_lower for k in ["fashionsnap", "roomie"]):
+            return ["ライフスタイル", "トレンド", "おしゃれ"]
         if "hatena" in source_lower:
             return ["話題", "注目"]
         return []
