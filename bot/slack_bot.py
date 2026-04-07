@@ -440,8 +440,12 @@ def _cmd_stop(say):
             _current_label = ""
             _is_running = False
             say("🛑 タスクを停止しました。")
-        else:
+        elif _is_running:
+            # Process not yet spawned but pipeline is starting
             _is_running = False
+            _current_label = ""
+            say("🛑 起動中のタスクを中止しました。")
+        else:
             say("ℹ️ 実行中のタスクはありません。")
 
 
