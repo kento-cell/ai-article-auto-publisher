@@ -20,6 +20,9 @@ python-markdown==3.5.1
 # LLM
 ollama>=0.3.0
 
+# Discord Bot（遠隔操作）
+discord.py>=2.3.0
+
 # Image quality assessment (v1.1 — uncomment when ready)
 # pyiqa>=0.1.10
 # open-clip-torch>=2.24.0
