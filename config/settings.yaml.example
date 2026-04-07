@@ -26,14 +26,14 @@ collection:
 # 生成設定
 generation:
   zenn:
-    articles_per_week: 3
+    articles_per_week: 1
     min_quality_score: 60  # 7軸70点満点中
     target_word_count:
       min: 2500
       max: 3500
 
   note:
-    articles_per_week: 2
+    articles_per_week: 1
     min_quality_score: 45  # 7軸70点満点中
     target_word_count:
       min: 2500
@@ -94,6 +94,13 @@ agents:
   require_human_approval: true     # 投稿前に人間承認必須
   min_source_credibility_tier: 2   # 核心主張に必要な最低ソースティア
   min_independent_sources: 3       # 主要主張あたりの独立ソース数
+  structure_rotation: true
+  available_structures:
+    - standard
+    - tutorial
+    - comparison
+    - deep_dive
+    - qa
 
 # エビデンス要件
 evidence:

@@ -24,18 +24,18 @@ class SlackNotifier:
         webhook_url: Slack incoming webhook URL.
             Falls back to the ``SLACK_WEBHOOK_URL`` environment variable.
 
-    Raises:
-        ValueError: If no webhook URL is available.
+    If no webhook URL is available, the notifier is inactive and all
+    notification calls silently return ``False``.
     """
 
     def __init__(self, webhook_url: str | None = None) -> None:
         resolved = webhook_url or os.environ.get("SLACK_WEBHOOK_URL")
         if not resolved:
-            raise ValueError(
-                "webhook_url must be supplied or SLACK_WEBHOOK_URL must be set"
-            )
-        self._webhook_url = resolved
-        logger.info("SlackNotifier initialised")
+            logger.warning("SLACK_WEBHOOK_URL not set; notifications will be silently skipped")
+            self._webhook_url = None
+        else:
+            self._webhook_url = resolved
+        logger.info("SlackNotifier initialised (active=%s)", self._webhook_url is not None)
 
     # ------------------------------------------------------------------
     # Public interface
@@ -162,6 +162,9 @@ class SlackNotifier:
         Returns:
             ``True`` if the request succeeded (HTTP 2xx).
         """
+        if self._webhook_url is None:
+            logger.debug("Slack notification skipped (no webhook configured)")
+            return False
         try:
             response = requests.post(
                 self._webhook_url,

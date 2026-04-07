@@ -33,17 +33,32 @@ load_dotenv()
 logger = setup_logger(__name__)
 
 
+def _default_config() -> dict:
+    """Return sensible defaults when settings.yaml is absent."""
+    return {
+        "collection": {
+            "zenn": {"sources": ["arxiv"], "max_articles": 10},
+            "note": {"sources": ["reddit"], "max_articles": 20},
+        },
+        "generation": {
+            "zenn": {"articles_per_week": 1, "min_quality_score": 60},
+            "note": {"articles_per_week": 1, "min_quality_score": 45},
+        },
+        "token_management": {"weekly_limit": 2000000},
+        "evidence": {"forbidden_phrases": []},
+    }
+
+
 def load_config(config_path: str = "config/settings.yaml") -> dict:
     """設定ファイルを読み込む。"""
     path = Path(config_path)
     if not path.exists():
-        example = Path(f"{config_path}.example")
-        if example.exists():
-            logger.warning(
-                "%s が見つかりません。%s をコピーして設定してください。",
-                config_path, example
-            )
-        sys.exit(1)
+        logger.warning(
+            "%s not found. Using default configuration. "
+            "Copy %s.example to %s for customization.",
+            config_path, config_path, config_path
+        )
+        return _default_config()
 
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -63,7 +78,7 @@ def collect_articles(config: dict) -> dict:
     # Zenn向け: arXiv
     try:
         arxiv = ArxivCollector(
-            max_results=config["collection"]["zenn"]["max_articles"]
+            max_results=config.get("collection", {}).get("zenn", {}).get("max_articles", 10)
         )
         articles = arxiv.collect()
         collected["zenn"].extend(articles)
@@ -74,7 +89,7 @@ def collect_articles(config: dict) -> dict:
     # note向け: Reddit
     try:
         reddit = RedditCollector(
-            max_results=config["collection"]["note"]["max_articles"]
+            max_results=config.get("collection", {}).get("note", {}).get("max_articles", 20)
         )
         articles = reddit.collect()
         collected["note"].extend(articles)
@@ -137,8 +152,8 @@ def generate_articles(
     for platform in ["zenn", "note"]:
         prompt_key = f"{platform}_article_prompt"
         template = prompts.get(prompt_key, "")
-        articles_per_week = config["generation"][platform]["articles_per_week"]
-        min_score = config["generation"][platform]["min_quality_score"]
+        articles_per_week = config.get("generation", {}).get(platform, {}).get("articles_per_week", 2)
+        min_score = config.get("generation", {}).get(platform, {}).get("min_quality_score", 45)
 
         for article in ranked.get(platform, [])[:articles_per_week]:
             try:

@@ -149,3 +149,57 @@ quality_evaluation_prompt: |
     "feedback": "具体的な改善点",
     "should_regenerate": true/false
   }
+
+# 構成パターンローテーション（提案D: テンプレ過学習防止）
+article_structures:
+  - name: standard
+    description: "標準構成: 導入→概要→詳細→まとめ"
+    outline: |
+      1. 導入（なぜ重要か）
+      2. 元記事概要
+      3. 技術詳細/本文
+      4. 実践への示唆
+      5. まとめ
+      6. 参考文献
+
+  - name: tutorial
+    description: "チュートリアル形式: ステップバイステップ"
+    outline: |
+      1. ゴール（何ができるようになるか）
+      2. 前提条件
+      3. Step 1: ...
+      4. Step 2: ...
+      5. Step 3: ...
+      6. トラブルシューティング
+      7. 次のステップ
+
+  - name: comparison
+    description: "比較レビュー形式: 選択肢の評価"
+    outline: |
+      1. 比較の背景と目的
+      2. 候補一覧
+      3. 評価軸の説明
+      4. 比較表
+      5. ユースケース別おすすめ
+      6. 結論
+
+  - name: deep_dive
+    description: "深掘り解説: 一つのトピックを徹底分析"
+    outline: |
+      1. なぜ今このトピックが重要か
+      2. 基礎知識（前提の確認）
+      3. 核心部分の詳細解説
+      4. 実装例/具体例
+      5. 知られていない落とし穴
+      6. 筆者の見解
+      7. 参考文献
+
+  - name: qa
+    description: "Q&A形式: 読者の疑問に答える"
+    outline: |
+      1. この記事で答える疑問
+      2. Q1: ...
+      3. Q2: ...
+      4. Q3: ...
+      5. まとめ: 全体像
+      6. さらに深く知りたい人へ
