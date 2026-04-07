@@ -73,6 +73,42 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "@cosme (コスメ・美容)",
         "target": "note",
     },
+    # --- note向け（コーヒー・グルメ・ライフスタイル） ---
+    "coffee_standart": {
+        "url": "https://standartmag.jp/feed",
+        "name": "Standart Japan (コーヒーカルチャー)",
+        "target": "note",
+    },
+    "coffee_goodcoffee": {
+        "url": "https://goodcoffeeme.com/feed",
+        "name": "Good Coffee (コーヒーショップ情報)",
+        "target": "note",
+    },
+    "tabelog_magazine": {
+        "url": "https://magazine.tabelog.com/feed",
+        "name": "食べログマガジン (グルメ)",
+        "target": "note",
+    },
+    "retty_gourmet": {
+        "url": "https://retty.news/feed/",
+        "name": "Retty (グルメニュース)",
+        "target": "note",
+    },
+    "fashionsnap": {
+        "url": "https://www.fashionsnap.com/feed/",
+        "name": "FASHIONSNAP (ファッション/カルチャー)",
+        "target": "note",
+    },
+    "roomie": {
+        "url": "https://www.roomie.jp/feed",
+        "name": "ROOMIE (ライフスタイル)",
+        "target": "note",
+    },
+    "getnavi": {
+        "url": "https://getnavi.jp/feed/",
+        "name": "GetNavi (トレンドガジェット/ライフスタイル)",
+        "target": "note",
+    },
     # --- Zenn向け（技術） ---
     "publickey": {
         "url": "https://www.publickey1.jp/atom.xml",
