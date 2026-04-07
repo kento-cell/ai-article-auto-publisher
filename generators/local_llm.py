@@ -18,7 +18,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "codellama"
+DEFAULT_MODEL = "gemma3:12b"
 DEFAULT_TIMEOUT = 300  # seconds -- local generation can be slow
 
 
@@ -114,10 +114,10 @@ class LocalLLM:
 
         try:
             resp = requests.post(url, json=payload, timeout=self.timeout)
-        except requests.ConnectionError as exc:
-            logger.error("Cannot reach Ollama at %s: %s", self.base_url, exc)
+        except requests.exceptions.RequestException as exc:
+            logger.error("Ollama request failed at %s: %s", self.base_url, exc)
             raise ConnectionError(
-                f"Ollama server unreachable at {self.base_url}"
+                f"Ollama request failed at {self.base_url}: {exc}"
             ) from exc
 
         if resp.status_code != 200:

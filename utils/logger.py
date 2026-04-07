@@ -44,8 +44,10 @@ def setup_logger(
     logger.setLevel(level)
     formatter = logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT)
 
-    # --- Console handler ---
-    console_handler = logging.StreamHandler(sys.stdout)
+    # --- Console handler (force UTF-8 on Windows) ---
+    # Use sys.stdout directly; encoding is handled by main.py / slack_bot.py
+    stream = sys.stdout
+    console_handler = logging.StreamHandler(stream)
     console_handler.setLevel(level)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)

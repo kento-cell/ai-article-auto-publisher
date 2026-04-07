@@ -11,9 +11,17 @@ AI記事自動生成・投稿システム メインスクリプト
 """
 
 import argparse
+import io
 import os
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
+
+# Fix Windows cp932 encoding for Unicode output
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 import yaml
 from dotenv import load_dotenv
@@ -84,7 +92,7 @@ def load_prompts(prompts_path: str = "config/prompts.yaml") -> dict:
         logger.warning("%s not found. Using empty prompts.", prompts_path)
         return {}
     with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 
 # =====================================================================
@@ -172,12 +180,10 @@ def _init_llm(token_manager: TokenManager):
             return None, None, True
         return None, local_llm, True
 
-    try:
-        claude = ClaudeAutomator()
-        return claude, local_llm, False
-    except Exception as e:
-        logger.warning("Claude.ai接続失敗: %s。ローカルLLMへ。", e)
-        return None, local_llm, True
+    # Claude.ai Selenium is disabled (Cloudflare bot detection blocks it).
+    # Use local LLM (Gemma3) for all generation.
+    logger.info("ローカルLLM (Gemma3) で記事生成します。")
+    return None, local_llm, True
 
 
 def _generate_single_article(
@@ -245,7 +251,8 @@ def _generate_single_article(
 
     # --- 集約判定 ---
     aggregator = ScoreAggregator()
-    slug = f"{platform}-{article.get('title', 'untitled')[:20]}"
+    _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
+    slug = f"{platform}-{_safe_title}"
     final = aggregator.aggregate(
         obj_result,
         subj_result,

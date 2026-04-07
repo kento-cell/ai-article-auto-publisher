@@ -147,6 +147,9 @@ class NotePublisher:
     def _create_driver(profile_path: str | None) -> webdriver.Chrome:
         """Build and return a configured Chrome WebDriver instance."""
         options = Options()
+        browser_binary = os.environ.get("BROWSER_BINARY_PATH")
+        if browser_binary:
+            options.binary_location = browser_binary
         if profile_path:
             options.add_argument(f"--user-data-dir={profile_path}")
         options.add_argument("--disable-gpu")

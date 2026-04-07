@@ -75,6 +75,9 @@ class ClaudeAutomator:
             )
 
         options = Options()
+        browser_binary = os.getenv("BROWSER_BINARY_PATH")
+        if browser_binary:
+            options.binary_location = browser_binary
         options.add_argument(f"--user-data-dir={profile_path}")
         if headless:
             options.add_argument("--headless=new")
