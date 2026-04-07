@@ -26,6 +26,7 @@ from generators.claude_automator import ClaudeAutomator
 from generators.local_llm import LocalLLM
 from generators.diagram_generator import DiagramGenerator
 from generators.evidence_manager import EvidenceManager
+from generators.hashtag_generator import HashtagGenerator
 from generators.objective_scorer import ObjectiveScorer
 from generators.subjective_evaluator import SubjectiveEvaluator
 from generators.score_aggregator import ScoreAggregator
@@ -447,15 +448,28 @@ def _publish_zenn(slug: str, title: str) -> str | None:
     return f"https://zenn.dev/articles/{slug}" if success else None
 
 
-def _publish_note(title: str, config: dict) -> str | None:
-    """note記事を投稿する。"""
+def _publish_note(
+    title: str, content: str, config: dict, source: str = ""
+) -> str | None:
+    """note記事を投稿する（ハッシュタグ自動生成付き）。"""
     note_pub = None
     try:
         note_pub = NotePublisher()
-        tags = ["AI", "テクノロジー", "トレンド"]
+
+        # ハッシュタグ自動生成
+        hashtag_gen = HashtagGenerator(max_tags=10)
+        tags = hashtag_gen.generate(
+            title=title,
+            content=content,
+            source=source,
+        )
+        if not tags:
+            tags = ["AI", "テクノロジー", "トレンド"]
+        logger.info("note ハッシュタグ: %s", tags)
+
         url = note_pub.publish_article(
             title=title,
-            content="",  # TODO: コンテンツの保存/取得の仕組みが必要
+            content=content,
             tags=tags,
             price=0,
         )
