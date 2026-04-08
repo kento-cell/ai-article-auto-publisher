@@ -1004,45 +1004,65 @@ def publish_approved(
 def _save_scrap_draft(
     slug: str, title: str, content: str, stored: dict
 ) -> str | None:
-    """Grade B記事をスクラップ下書きとして保存 + Slackに通知."""
+    """Grade B記事をZennスクラップとして自動投稿 + バックアップ保存.
+
+    Playwrightでzenn.devにログイン済みの場合は自動投稿。
+    失敗時は下書きファイル保存 + Slackに通知（手動投稿用）。
+    """
     scrap_dir = Path("data/scraps")
     scrap_dir.mkdir(parents=True, exist_ok=True)
-
     safe_slug = re.sub(r'[\\/:*?"<>|]', '_', slug)[:100]
     file_path = scrap_dir / f"{safe_slug}.md"
 
     grade = stored.get("scores", {}).get("overall_grade", "B")
-    header = (
-        f"# {title}\n\n"
-        f"> Grade: {grade} (スクラップ用 — Zenn Scrapsに手動投稿してください)\n"
-        f"> https://zenn.dev/kento_cell/scraps/new\n\n"
-        f"---\n\n"
-    )
-    file_path.write_text(header + content, encoding="utf-8")
+
+    # Always save a local backup
+    file_path.write_text(content, encoding="utf-8")
     logger.info("スクラップ下書き保存: %s", file_path)
 
-    # Post to Slack
+    # Try auto-publishing via Playwright
+    auto_url = None
+    try:
+        from publishers.zenn_scrap_publisher import ZennScrapPublisher
+        with ZennScrapPublisher(headless=True) as pub:
+            auto_url = pub.publish_scrap(title=title, content=content)
+        logger.info("Zennスクラップ自動投稿成功: %s", auto_url)
+    except Exception as e:
+        logger.warning("Zennスクラップ自動投稿失敗: %s", e)
+        auto_url = None
+
+    # Slack notification
     try:
         bot_token = os.getenv("SLACK_BOT_TOKEN")
         channel_id = os.getenv("SLACK_CHANNEL_ID", "C0AR7E9AFJ9")
         if bot_token:
             from slack_sdk import WebClient
             client = WebClient(token=bot_token)
-            client.files_upload_v2(
-                channel=channel_id,
-                content=header + content,
-                filename=f"{safe_slug}.md",
-                title=f"[スクラップ] {title[:80]}",
-                initial_comment=(
-                    f"📋 *スクラップ候補* (Grade {grade})\n"
-                    f"*タイトル*: {title}\n"
-                    f"https://zenn.dev/kento_cell/scraps/new にコピペして投稿してください"
-                ),
-            )
+            if auto_url:
+                client.chat_postMessage(
+                    channel=channel_id,
+                    text=(
+                        f"📋 *スクラップ自動投稿完了* (Grade {grade})\n"
+                        f"*タイトル*: {title}\n"
+                        f"*URL*: {auto_url}"
+                    ),
+                )
+            else:
+                client.files_upload_v2(
+                    channel=channel_id,
+                    content=content,
+                    filename=f"{safe_slug}.md",
+                    title=f"[スクラップ] {title[:80]}",
+                    initial_comment=(
+                        f"📋 *スクラップ候補* (Grade {grade}) - 自動投稿失敗\n"
+                        f"*タイトル*: {title}\n"
+                        f"https://zenn.dev/scraps/new にコピペしてください"
+                    ),
+                )
     except Exception as e:
-        logger.warning("Slack scrap upload failed: %s", e)
+        logger.warning("Slack scrap notify failed: %s", e)
 
-    return f"scrap-draft:{file_path}"
+    return auto_url or f"scrap-draft:{file_path}"
 
 
 def _publish_zenn(
