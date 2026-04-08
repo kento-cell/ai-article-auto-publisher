@@ -97,11 +97,13 @@ class NotePublisher:
             RuntimeError: On login/captcha or publish failures.
         """
         # Convert mermaid → ASCII flowchart (note doesn't render mermaid)
-        # Convert tables → keep as markdown (note renders tables natively)
         content = self._mermaid_to_ascii(content)
 
         # Strip any local image references
         content = self._strip_local_images(content)
+
+        # Convert markdown to plain text (note editor doesn't parse markdown)
+        content = self._markdown_to_plain(content)
 
         self._ensure_started()
         assert self._page is not None
@@ -919,6 +921,72 @@ class NotePublisher:
         except Exception as e:
             logger.exception("記事削除失敗: %s", url)
             return False
+
+    @staticmethod
+    def _markdown_to_plain(content: str) -> str:
+        """Convert markdown syntax to plain text for note editor.
+
+        note.com's ProseMirror editor does not parse markdown input, so
+        we need to strip markdown syntax. Headings become bare text with
+        blank-line spacing; bold/italic markers are removed; link syntax
+        is converted to "text (url)".
+        """
+        lines = content.split("\n")
+        result = []
+        for line in lines:
+            stripped = line.rstrip()
+
+            # Heading: "## Title" → "Title" (with blank line separator)
+            heading_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+            if heading_match:
+                title_text = heading_match.group(2).strip()
+                # Add blank line before heading if not already there
+                if result and result[-1].strip():
+                    result.append("")
+                result.append(title_text)
+                result.append("")
+                continue
+
+            # Unordered list: "- item" / "* item" → "・item"
+            list_match = re.match(r"^(\s*)[-*+]\s+(.+)$", stripped)
+            if list_match:
+                indent = list_match.group(1)
+                item = list_match.group(2).strip()
+                result.append(f"{indent}・{item}")
+                continue
+
+            # Ordered list: keep as is (1. 2. 3.)
+            result.append(stripped)
+
+        text = "\n".join(result)
+
+        # Bold/italic: **text** or __text__ → text
+        text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+        text = re.sub(r"__(.+?)__", r"\1", text)
+        text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text)
+        text = re.sub(r"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", r"\1", text)
+
+        # Code block: remove fences (do first before inline code!)
+        text = re.sub(r"```[^\n]*\n", "", text)
+        text = re.sub(r"\n```", "", text)
+        text = text.replace("```", "")
+
+        # Inline code: `code` → code
+        text = re.sub(r"`([^`]+?)`", r"\1", text)
+
+        # Blockquote: "> text" → "text"
+        text = re.sub(r"^>\s?", "", text, flags=re.MULTILINE)
+
+        # Horizontal rule: --- → blank
+        text = re.sub(r"^---+\s*$", "", text, flags=re.MULTILINE)
+
+        # Link: [text](url) → text (url)
+        text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", text)
+
+        # Collapse 3+ blank lines to 2
+        text = re.sub(r"\n{3,}", "\n\n", text)
+
+        return text.strip()
 
     @staticmethod
     def _strip_local_images(content: str) -> str:
