@@ -1469,7 +1469,36 @@ def main():
         "--setup-sheets", action="store_true",
         help="Sheetsのフォーマット設定（ドロップダウン、条件付き書式等）",
     )
+    parser.add_argument(
+        "--learn", action="store_true",
+        help="note人気記事をスクレイピングしてパターン学習",
+    )
     args = parser.parse_args()
+
+    if args.learn:
+        from scrapers.note_scraper import NoteScraper
+        from analyzers.pattern_extractor import PatternExtractor
+        from learners.prompt_updater import PromptUpdater
+
+        logger.info("=== Note学習モード開始 ===")
+        scraper = NoteScraper()
+        all_articles = []
+        for category in ["business", "tech", "ai", "money", "lifestyle"]:
+            logger.info("収集中: %s", category)
+            articles = scraper.fetch_popular_articles(category, limit=30)
+            logger.info("  → %d件取得", len(articles))
+            all_articles.extend(articles)
+
+        extractor = PatternExtractor()
+        patterns = extractor.extract_winning_patterns(all_articles)
+
+        updater = PromptUpdater()
+        kb_path = updater.update_knowledge_base(patterns)
+        sg_path = updater.suggest_prompt_improvements(patterns)
+        logger.info("ナレッジ更新: %s", kb_path)
+        logger.info("プロンプト改善案: %s", sg_path)
+        logger.info("=== 学習完了: %d件のサンプルから学習 ===", len(all_articles))
+        return
 
     config = load_config(args.config)
     prompts = load_prompts()
