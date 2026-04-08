@@ -819,6 +819,107 @@ class NotePublisher:
     # Private helpers — content preprocessing
     # ------------------------------------------------------------------
 
+    def delete_article(self, url: str) -> bool:
+        """Delete a published note article.
+
+        Args:
+            url: Full note article URL (https://note.com/xxx/n/yyyyy)
+
+        Returns:
+            True if deleted successfully
+        """
+        self._ensure_started()
+        assert self._page is not None
+        page = self._page
+
+        try:
+            self._assert_logged_in()
+            # Navigate to article edit page
+            # Convert public URL to edit URL
+            # https://note.com/user/n/xxx -> https://editor.note.com/notes/xxx/edit/
+            import re
+            m = re.search(r"/n/([a-zA-Z0-9]+)", url)
+            if not m:
+                logger.error("Invalid note URL: %s", url)
+                return False
+            note_id = m.group(1)
+            edit_url = f"https://editor.note.com/notes/{note_id}/edit/"
+            page.goto(edit_url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+            page.wait_for_timeout(3000)
+
+            # Open settings menu (usually via "..." or settings icon)
+            menu_selectors = [
+                "button[aria-label='その他']",
+                "button[aria-label='メニュー']",
+                "button[aria-label='設定']",
+                "button:has-text('⋯')",
+                "button:has-text('…')",
+            ]
+            menu_opened = False
+            for sel in menu_selectors:
+                try:
+                    btn = page.locator(sel).first
+                    if btn.is_visible(timeout=1500):
+                        btn.click(timeout=2000)
+                        page.wait_for_timeout(500)
+                        menu_opened = True
+                        break
+                except Exception:
+                    continue
+
+            # Click delete button
+            delete_selectors = [
+                "button:has-text('記事を削除')",
+                "button:has-text('削除')",
+                "[role='menuitem']:has-text('削除')",
+                "a:has-text('削除')",
+            ]
+            deleted_clicked = False
+            for sel in delete_selectors:
+                try:
+                    btn = page.locator(sel).first
+                    if btn.is_visible(timeout=1500):
+                        btn.click(timeout=2000)
+                        deleted_clicked = True
+                        break
+                except Exception:
+                    continue
+
+            if not deleted_clicked:
+                logger.error("削除ボタンが見つかりません")
+                try:
+                    page.screenshot(
+                        path=str(_REPO_ROOT / "logs" / "note_delete_failed.png"),
+                        full_page=True,
+                    )
+                except Exception:
+                    pass
+                return False
+
+            # Confirm deletion
+            page.wait_for_timeout(1000)
+            confirm_selectors = [
+                "button:has-text('削除する')",
+                "button:has-text('はい')",
+                "button:has-text('OK')",
+            ]
+            for sel in confirm_selectors:
+                try:
+                    btn = page.locator(sel).last
+                    if btn.is_visible(timeout=2000):
+                        btn.click(timeout=2000)
+                        break
+                except Exception:
+                    continue
+
+            page.wait_for_timeout(3000)
+            logger.info("Article deleted: %s", url)
+            return True
+
+        except Exception as e:
+            logger.exception("記事削除失敗: %s", url)
+            return False
+
     @staticmethod
     def _strip_local_images(content: str) -> str:
         """Remove local image references and clean up surrounding whitespace."""
