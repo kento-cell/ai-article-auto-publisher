@@ -600,8 +600,23 @@ def _post_rejected_to_slack(rejected: list[dict]) -> None:
         logger.warning("slack_sdk not installed; skipping rejected article Slack upload")
         return
 
+    # Load already-posted titles to avoid duplicate Slack messages
+    posted_path = Path("data/rejected_posted.json")
+    posted_titles: set[str] = set()
+    if posted_path.exists():
+        try:
+            import json as _json
+            posted_titles = set(_json.loads(posted_path.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
+    new_posted = []
     for article in rejected:
         title = article.get("title", "untitled")
+        if title in posted_titles:
+            logger.info("Slack送信スキップ（送信済み）: %s", title[:40])
+            continue
+
         platform = article.get("platform", "?")
         reasons = article.get("rejection_reasons", "unknown")
         content = article.get("content", "")
@@ -624,8 +639,20 @@ def _post_rejected_to_slack(rejected: list[dict]) -> None:
                 initial_comment=comment,
             )
             logger.info("Slack uploaded rejected article: %s", title[:40])
+            new_posted.append(title)
         except Exception as e:
             logger.error("Slack file upload failed for '%s': %s", title[:30], e)
+
+    # Save posted titles
+    if new_posted:
+        import json as _json
+        posted_titles.update(new_posted)
+        if len(posted_titles) > 200:
+            posted_titles = set(list(posted_titles)[-100:])
+        posted_path.parent.mkdir(parents=True, exist_ok=True)
+        posted_path.write_text(
+            _json.dumps(list(posted_titles), ensure_ascii=False), encoding="utf-8"
+        )
 
 
 def _save_rejected_articles(
