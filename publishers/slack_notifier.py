@@ -136,12 +136,11 @@ class SlackNotifier:
         )
         timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
         summary_text = (
-            f":bar_chart: *Daily Summary ({timestamp})*\n"
-            f"*Generated:* {generated}\n"
-            f"*Published:* {published}\n"
-            f"*Platforms:*\n{platform_lines}\n"
-            f"*Avg Quality Score:* {avg_score:.1f}\n"
-            f"*Errors:* {errors}"
+            f":bar_chart: *日次サマリー ({timestamp})*\n"
+            f"*生成数:* {generated}\n"
+            f"*合格数:* {published}\n"
+            f"*プラットフォーム:*\n{platform_lines}\n"
+            f"*不合格数:* {errors}"
         )
 
         payload = {

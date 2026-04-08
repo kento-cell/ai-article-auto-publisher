@@ -98,6 +98,43 @@ def _find_structure(structures: list[dict], name: str) -> dict | None:
 
 
 # =====================================================================
+# Japanese rejection reason translation
+# =====================================================================
+
+_REASON_MAP = {
+    "citation_count": "引用数",
+    "citation_format": "引用形式",
+    "visual_count": "視覚要素数",
+    "word_count": "文字数",
+    "evidence_level": "エビデンスレベル",
+    "heading_structure": "見出し構造",
+    "forbidden_phrases": "禁止フレーズ",
+    "chain_stores": "チェーン店検出",
+    "no citations found": "引用なし",
+    "no citation blocks or inline URLs found": "引用ブロックもURLもなし",
+    "no visual elements found": "視覚要素なし",
+    "citations found": "件の引用",
+    "visual elements found": "件の視覚要素",
+    "H2 headings": "個のH2見出し",
+    "minimum 2 required": "最低2個必要",
+    "minimum 3 required": "最低3個必要",
+    "H1 should only be the title": "H1はタイトルのみ",
+    "H1 heading(s) in body": "個のH1が本文中に存在",
+    "only": "",
+    "found": "",
+    "range": "範囲",
+}
+
+
+def _translate_reasons(reasons_str: str) -> str:
+    """Translate English rejection reasons to Japanese."""
+    result = reasons_str
+    for en, ja in _REASON_MAP.items():
+        result = result.replace(en, ja)
+    return result
+
+
+# =====================================================================
 # Markdown post-processing
 # =====================================================================
 
@@ -370,8 +407,8 @@ def _generate_single_article(
             "title": article["title"],
             "platform": platform,
             "content": content,
-            "rejection_reasons": "; ".join(obj_result["blocking_issues"]),
-            "rejection_stage": "objective_score",
+            "rejection_reasons": _translate_reasons("; ".join(obj_result["blocking_issues"])),
+            "rejection_stage": "客観スコア",
         }
 
     # --- 主観スコア ---
@@ -407,8 +444,8 @@ def _generate_single_article(
             "title": article["title"],
             "platform": platform,
             "content": content,
-            "rejection_reasons": final.get("summary", "aggregate reject"),
-            "rejection_stage": "aggregate_score",
+            "rejection_reasons": _translate_reasons(final.get("summary", "総合評価で却下")),
+            "rejection_stage": "総合評価",
         }
 
     # --- カバー画像生成 ---
@@ -1039,12 +1076,19 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
             )
 
         # 日次サマリー
+        zenn_count = sum(1 for a in approved if a.get("platform") == "zenn")
+        note_count = sum(1 for a in approved if a.get("platform") == "note")
+        avg_score = 0.0
+        if approved:
+            scores = [a.get("scores", {}).get("objective_detail", {}).get(
+                "citation_count", {}).get("count", 0) for a in approved]
+            avg_score = sum(scores) / len(scores) if scores else 0.0
         stats = {
-            "articles_generated": len(approved),
-            "articles_published": 0,
-            "platforms": {"Zenn": 0, "note": 0},
-            "avg_quality_score": 0.0,
-            "errors": 0,
+            "articles_generated": len(approved) + len(rejected),
+            "articles_published": len(approved),
+            "platforms": {"Zenn": zenn_count, "note": note_count},
+            "avg_quality_score": avg_score,
+            "errors": len(rejected),
         }
         slack.notify_daily_summary(stats)
         gmail.notify_daily_summary(stats)
