@@ -59,7 +59,9 @@ class NotePublisher:
             Set to ``False`` to observe the browser for debugging.
     """
 
-    def __init__(self, headless: bool = True) -> None:
+    def __init__(self, headless: bool = False) -> None:
+        # NOTE: note.com's SPA does NOT render in headless mode as of 2026-04.
+        # Default to headful; override only if you've verified it works.
         self._profile_dir: Path = _PROFILE_DIR
         self._headless: bool = headless
         self._playwright = None
@@ -251,21 +253,59 @@ class NotePublisher:
         """Open the new-article editor and wait for it to be ready."""
         assert self._page is not None
         page = self._page
-        if not page.url.startswith(_NOTE_EDITOR_URL):
-            page.goto(_NOTE_EDITOR_URL, wait_until="domcontentloaded")
 
-        if "captcha" in page.url.lower():
+        # note editor moved to editor.note.com/new (as of 2026)
+        target_urls = [
+            "https://editor.note.com/new",
+            "https://note.com/notes/new",
+        ]
+
+        loaded = False
+        last_error = None
+        for target in target_urls:
+            try:
+                page.goto(target, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+                page.wait_for_timeout(3000)  # Give SPA time to render
+
+                if "login" in page.url or "enter" in page.url:
+                    raise RuntimeError(
+                        "noteログインが必要です。scripts/note_login.py を実行してください"
+                    )
+
+                if "captcha" in page.url.lower():
+                    raise RuntimeError("note.comでCAPTCHAが表示されました")
+
+                # Try to find editor elements with longer wait
+                try:
+                    page.wait_for_selector(
+                        "input[placeholder*='タイトル'], "
+                        "textarea[placeholder*='タイトル'], "
+                        ".ProseMirror, [contenteditable='true']",
+                        timeout=15_000,
+                    )
+                    loaded = True
+                    break
+                except PlaywrightTimeoutError:
+                    last_error = f"Editor not ready at {target}"
+                    continue
+            except PlaywrightError as e:
+                last_error = str(e)
+                continue
+
+        if not loaded:
+            # Save debug screenshot
+            try:
+                (_REPO_ROOT / "logs").mkdir(exist_ok=True)
+                page.screenshot(
+                    path=str(_REPO_ROOT / "logs" / "note_nav_failed.png"),
+                    full_page=True,
+                )
+            except Exception:
+                pass
             raise RuntimeError(
-                "note.comでCAPTCHAが表示されました。"
-                "headless=Falseで手動対応してください"
+                f"noteエディタを開けませんでした: {last_error}. "
+                f"URL: {page.url}"
             )
-
-        # Wait for either the title input or the ProseMirror body.
-        page.wait_for_selector(
-            "input[placeholder*='タイトル'], textarea[placeholder*='タイトル'], "
-            ".ProseMirror, [contenteditable='true']",
-            timeout=_NAV_TIMEOUT_MS,
-        )
 
     # ------------------------------------------------------------------
     # Private helpers — editor input
