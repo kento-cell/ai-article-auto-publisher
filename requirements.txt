@@ -1,29 +1,28 @@
 # Core
-PyYAML==6.0.1
-python-dotenv==1.0.0
-requests==2.31.0
-Pillow==10.1.0
+PyYAML==6.0.3
+python-dotenv==1.2.2
+requests==2.33.1
+Pillow==12.2.0
 
 # Web scraping / automation
-selenium==4.16.0
-beautifulsoup4==4.12.2
-feedparser==6.0.10
+selenium==4.41.0
+beautifulsoup4==4.14.3
+feedparser==6.0.12
 
 # Google APIs (Sheets + Gmail)
-gspread==5.12.0
-google-auth==2.27.0
-google-api-python-client==2.114.0
+gspread==6.2.1
+google-auth==2.49.1
+google-api-python-client==2.193.0
 
 # Markdown
-markdown==3.5.1
+markdown==3.10.2
 
 # LLM
-ollama>=0.3.0
+ollama>=0.6.0
 
 # Slack Bot（遠隔操作）
-slack-bolt>=1.18.0
-slack-sdk>=3.27.0
+slack-bolt>=1.28.0
+slack-sdk>=3.41.0
 
-# Image quality assessment (v1.1 — uncomment when ready)
-# pyiqa>=0.1.10
-# open-clip-torch>=2.24.0
+# Content conversion (note.com)
+playwright>=1.58.0
