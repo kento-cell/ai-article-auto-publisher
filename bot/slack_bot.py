@@ -324,7 +324,14 @@ def handle_message(event: dict, say):
     if not _is_authorized(event):
         return
 
-    text = event.get("text", "").strip().strip("`").strip().lower()
+    raw_text = event.get("text", "").strip().strip("`").strip()
+    text = raw_text.lower()
+
+    # Handle delete command with URL argument
+    if text.startswith("delete "):
+        url = raw_text[len("delete "):].strip()
+        _cmd_delete(say, url)
+        return
 
     if text == "help":
         _cmd_help(say)
@@ -377,6 +384,7 @@ def _cmd_help(say):
                         "`status` — 現在の状態確認\n"
                         "`stop` — 実行中のタスクを停止\n"
                         "`sheets` — Sheetsのリンクを表示\n"
+                        "`delete <URL>` — note記事を削除\n"
                         "`log` — 直近の実行ログ表示\n"
                         "`log collect` — 収集ログ表示"
                     ),
@@ -433,6 +441,30 @@ def _cmd_learn(say):
         args=(say, "learn", "Note学習"),
         daemon=True,
     )
+    thread.start()
+
+
+def _cmd_delete(say, url: str):
+    """Delete a note article by URL."""
+    if not url or "note.com" not in url:
+        say("❌ note.comのURLを指定してください\n例: `delete https://note.com/user/n/xxxxx`")
+        return
+
+    def _do_delete():
+        try:
+            say(f"🗑 削除中: {url}")
+            from publishers.note_publisher import NotePublisher
+            pub = NotePublisher(headless=False)
+            success = pub.delete_article(url)
+            pub.close()
+            if success:
+                say(f"✅ 削除完了: {url}")
+            else:
+                say(f"❌ 削除失敗: {url}\nログ確認してください")
+        except Exception as e:
+            say(f"❌ エラー: {e}")
+
+    thread = threading.Thread(target=_do_delete, daemon=True)
     thread.start()
 
 
