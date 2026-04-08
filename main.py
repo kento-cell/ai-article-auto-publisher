@@ -148,19 +148,13 @@ def _fix_markdown_structure(content: str) -> str:
     lines = content.split("\n")
     result = []
     h2_count = 0
-    first_h1_seen = False
 
     for line in lines:
-        # Convert H1 in body to H2 (first H1 is title, rest become H2)
+        # Convert ALL H1 in body to H2 (H1 is reserved for article title only)
         stripped = line.lstrip()
         if stripped.startswith("# ") and not stripped.startswith("## "):
-            if not first_h1_seen:
-                first_h1_seen = True
-                result.append(line)
-            else:
-                # Replace first "# " with "## "
-                result.append(line.replace("# ", "## ", 1))
-                h2_count += 1
+            result.append(line.replace("# ", "## ", 1))
+            h2_count += 1
         elif line.startswith("## "):
             h2_count += 1
             result.append(line)
