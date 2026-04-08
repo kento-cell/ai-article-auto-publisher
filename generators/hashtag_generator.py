@@ -13,8 +13,11 @@ logger = logging.getLogger(__name__)
 # Category → hashtag mappings (Japanese)
 CATEGORY_TAGS: dict[str, list[str]] = {
     # テクノロジー
-    "ai": ["AI", "人工知能", "機械学習", "テクノロジー"],
-    "llm": ["LLM", "大規模言語モデル", "ChatGPT", "生成AI"],
+    "ai": ["AI", "人工知能", "機械学習", "テクノロジー", "AI活用"],
+    "llm": ["LLM", "大規模言語モデル", "ChatGPT", "生成AI", "Claude"],
+    "ai_money": ["AI副業", "AIマネタイズ", "AI収益化", "副業", "稼ぐ"],
+    "ai_tools": ["AIツール", "ClaudeCode", "Cursor", "プログラミング"],
+    "ai_agents": ["AIエージェント", "自動化", "AI開発", "ノーコード"],
     "web": ["Web開発", "フロントエンド", "バックエンド", "プログラミング"],
     "cloud": ["クラウド", "AWS", "GCP", "Azure", "インフラ"],
     "security": ["セキュリティ", "サイバーセキュリティ", "情報セキュリティ"],
@@ -47,6 +50,12 @@ KEYWORD_CATEGORIES: dict[str, str] = {
     "machine learning": "ai", "deep learning": "ai", "neural": "ai",
     "gpt": "llm", "claude": "llm", "llm": "llm", "transformer": "llm",
     "chatgpt": "llm", "openai": "llm", "anthropic": "llm",
+    "claude code": "ai_tools", "cursor": "ai_tools", "copilot": "ai_tools",
+    "v0": "ai_tools", "bolt": "ai_tools", "devin": "ai_agents",
+    "マネタイズ": "ai_money", "副業": "ai_money", "収益": "ai_money",
+    "saas": "ai_money", "個人開発": "ai_money",
+    "エージェント": "ai_agents", "agent": "ai_agents", "自動化": "ai_agents",
+    "rag": "ai", "ファインチューニング": "ai",
     "react": "web", "typescript": "web", "javascript": "web",
     "python": "web", "rust": "web", "golang": "web",
     "aws": "cloud", "kubernetes": "cloud", "docker": "cloud",
