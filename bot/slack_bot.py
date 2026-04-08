@@ -25,6 +25,7 @@ Required pip: slack-bolt
 import io
 import logging
 import os
+import re
 import subprocess
 import sys
 
@@ -199,6 +200,20 @@ def _run_pipeline_sync(say, mode: str, label: str):
                     say(f"✅ スコアリング合格: *{count}*")
                 elif "承認待ち" in line:
                     say("📝 承認待ちの記事をSheetsに登録しました")
+                elif "再生成開始" in line:
+                    parts = line.split("]")[-1].strip()
+                    say(f"🔄 {parts[:200]}")
+                elif "再生成完了" in line:
+                    parts = line.split("]")[-1].strip()
+                    say(f"✅ {parts[:200]}")
+                elif "再生成後も不合格" in line:
+                    parts = line.split("]")[-1].strip()
+                    say(f"❌ {parts[:200]}")
+                elif "[Researcher]" in line or "[Strategist]" in line or "[Writer]" in line or "[Critic]" in line or "[Coordinator]" in line:
+                    parts = line.split("]")[-1].strip()
+                    agent = re.search(r'\[(Researcher|Strategist|Writer|Critic|Coordinator)\]', line)
+                    if agent and "Response" not in line:
+                        say(f"  🤖 {agent.group(1)}: {parts[:150]}")
                 elif "[ERROR]" in line or "失敗" in line:
                     msg = line.split("]")[-1].strip()
                     say(f"⚠️ {msg[:200]}")
@@ -265,6 +280,11 @@ def _send_sheets_message(say, mode: str):
                 },
             ]
         )
+    elif mode == "regenerate":
+        say(
+            f"🔄 *再生成結果をSheetsで確認してください*\n"
+            f"<{url}|Google Sheetsを開く>"
+        )
     elif mode == "publish":
         say(f"📤 投稿結果の詳細: <{url}|Google Sheetsで確認>")
 
@@ -314,6 +334,8 @@ def handle_message(event: dict, say):
         _cmd_collect(say)
     elif text == "dryrun":
         _cmd_dryrun(say)
+    elif text == "regenerate":
+        _cmd_regenerate(say)
     elif text == "stop":
         _cmd_stop(say)
     elif text == "status":
@@ -342,6 +364,7 @@ def _cmd_help(say):
                     "text": (
                         "*📝 記事生成*\n"
                         "`generate` — 収集→生成→スコアリング→Sheets登録\n"
+                        "`regenerate` — 🔄再生成リクエストをマルチエージェントで処理\n"
                         "`collect` — 収集+ランク付けのみ（トークン消費なし）\n"
                         "`dryrun` — 生成+スコアまで（投稿なし）\n\n"
                         "*📤 投稿*\n"
@@ -389,6 +412,16 @@ def _cmd_collect(say):
     thread.start()
 
 
+def _cmd_regenerate(say):
+    """Process regeneration requests from Sheets."""
+    thread = threading.Thread(
+        target=_run_pipeline_sync,
+        args=(say, "regenerate", "記事再生成"),
+        daemon=True,
+    )
+    thread.start()
+
+
 def _cmd_dryrun(say):
     """Dry run: generate + score without publishing."""
     thread = threading.Thread(
@@ -399,7 +432,7 @@ def _cmd_dryrun(say):
     thread.start()
 
 
-_VALID_LOG_MODES = {"generate", "collect-only", "dry-run", "publish"}
+_VALID_LOG_MODES = {"generate", "collect-only", "dry-run", "publish", "regenerate"}
 
 
 def _cmd_log(say, text: str):
