@@ -48,9 +48,9 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "target": "note",
     },
     # --- note向け（韓国トレンド・美容・カルチャー） ---
-    "korea_danmee": {
-        "url": "https://danmee.jp/feed/",
-        "name": "Danmee (K-POP/韓国カルチャー)",
+    "korea_wowkorea": {
+        "url": "https://wowkorea.jp/rss/news.xml",
+        "name": "WoW!Korea (韓国総合ニュース)",
         "target": "note",
     },
     "korea_soompi": {
@@ -73,9 +73,9 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "美的 (コスメ・美容)",
         "target": "note",
     },
-    "mery_beauty": {
-        "url": "https://mery.jp/feed",
-        "name": "MERY (美容・ライフスタイル)",
+    "wwdjapan": {
+        "url": "https://www.wwdjapan.com/feed",
+        "name": "WWD JAPAN (ファッション・ビューティ)",
         "target": "note",
     },
     # --- note向け（コーヒー・グルメ・ライフスタイル） ---
