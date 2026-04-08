@@ -107,13 +107,22 @@ class PollinationsImageGenerator:
                 style_parts.append(theme)
 
         if not style_parts:
-            style_parts.append("modern tech illustration")
+            style_parts.append("character scene")
 
-        # Build final prompt
-        visual_style = (
-            "cinematic lighting, professional photography, "
-            "high quality, 8k, detailed, vibrant colors, "
-            "blog cover image, wide aspect ratio"
+        # Studio Ghibli style with cute girl/handsome boy characters
+        character = (
+            "cute anime girl with big eyes and handsome anime boy, "
+            "expressive faces, studio ghibli character design, "
+            "spirited away style, howl's moving castle style"
         )
-        prompt = f"{cleaned}, {', '.join(style_parts)}, {visual_style}"
+        visual_style = (
+            "studio ghibli anime style, hayao miyazaki masterpiece, "
+            "soft watercolor painting, warm pastel colors, "
+            "magical atmosphere, golden hour sunlight, "
+            "detailed background scenery, hand-drawn animation, "
+            "whimsical and dreamy mood, "
+            "wide aspect ratio cover image, "
+            "no text, no letters, no logo"
+        )
+        prompt = f"{character}, {cleaned}, {', '.join(style_parts)}, {visual_style}"
         return prompt[:500]  # URL length safety
