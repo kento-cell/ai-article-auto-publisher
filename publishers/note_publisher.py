@@ -822,7 +822,14 @@ class NotePublisher:
     # ------------------------------------------------------------------
 
     def delete_article(self, url: str) -> bool:
-        """Delete a published note article.
+        """Delete a published note article via dashboard.
+
+        Flow (verified 2026-04):
+        1. Navigate to https://note.com/notes (dashboard)
+        2. Find the article's card by matching note ID in its link
+        3. Click the その他 button inside that specific card
+        4. Click 削除 in the popup menu
+        5. Confirm deletion
 
         Args:
             url: Full note article URL (https://note.com/xxx/n/yyyyy)
@@ -836,54 +843,66 @@ class NotePublisher:
 
         try:
             self._assert_logged_in()
-            # Navigate to article edit page
-            # Convert public URL to edit URL
-            # https://note.com/user/n/xxx -> https://editor.note.com/notes/xxx/edit/
-            import re
-            m = re.search(r"/n/([a-zA-Z0-9]+)", url)
+
+            import re as _re
+            m = _re.search(r"/n/([a-zA-Z0-9]+)", url)
             if not m:
                 logger.error("Invalid note URL: %s", url)
                 return False
             note_id = m.group(1)
-            edit_url = f"https://editor.note.com/notes/{note_id}/edit/"
-            page.goto(edit_url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
-            page.wait_for_timeout(3000)
 
-            # Open settings menu (usually via "..." or settings icon)
-            menu_selectors = [
-                "button[aria-label='その他']",
-                "button[aria-label='メニュー']",
-                "button[aria-label='設定']",
-                "button:has-text('⋯')",
-                "button:has-text('…')",
-            ]
-            menu_opened = False
-            for sel in menu_selectors:
+            # Navigate to dashboard
+            page.goto("https://note.com/notes", wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+            page.wait_for_timeout(5000)
+
+            # Find the card's "その他" button by looking up the DOM tree
+            # from the link containing the note ID
+            result = page.evaluate(
+                """(noteId) => {
+                    const links = Array.from(document.querySelectorAll('a[href*="' + noteId + '"]'));
+                    if (!links.length) return 'NO_LINK';
+                    let el = links[0];
+                    while (el && el.parentElement) {
+                        const btn = el.parentElement.querySelector('button[aria-label*="その他"]');
+                        if (btn) {
+                            btn.setAttribute('data-target-delete', '1');
+                            return 'FOUND';
+                        }
+                        el = el.parentElement;
+                    }
+                    return 'NOT_FOUND';
+                }""",
+                note_id,
+            )
+
+            if result != "FOUND":
+                logger.error("記事カードが見つかりません (id=%s, result=%s)", note_id, result)
                 try:
-                    btn = page.locator(sel).first
-                    if btn.is_visible(timeout=1500):
-                        btn.click(timeout=2000)
-                        page.wait_for_timeout(500)
-                        menu_opened = True
-                        break
+                    page.screenshot(
+                        path=str(_REPO_ROOT / "logs" / "note_delete_failed.png"),
+                        full_page=True,
+                    )
                 except Exception:
-                    continue
+                    pass
+                return False
 
-            # Click delete button
-            delete_selectors = [
-                "button:has-text('記事を削除')",
-                "button:has-text('削除')",
-                "[role='menuitem']:has-text('削除')",
-                "a:has-text('削除')",
-            ]
+            # Click the card's その他 button
+            menu_btn = page.locator("button[data-target-delete='1']").first
+            menu_btn.click(timeout=3000)
+            page.wait_for_timeout(1000)
+
+            # Click 削除 button
             deleted_clicked = False
-            for sel in delete_selectors:
+            delete_btns = page.locator("button:has-text('削除')").all()
+            for btn in delete_btns:
                 try:
-                    btn = page.locator(sel).first
-                    if btn.is_visible(timeout=1500):
-                        btn.click(timeout=2000)
-                        deleted_clicked = True
-                        break
+                    if btn.is_visible(timeout=500):
+                        text = btn.evaluate("el => el.textContent.trim()")
+                        if text == "削除":
+                            btn.click(timeout=2000)
+                            deleted_clicked = True
+                            logger.info("削除ボタンクリック成功")
+                            break
                 except Exception:
                     continue
 
