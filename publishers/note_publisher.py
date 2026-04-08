@@ -98,8 +98,10 @@ class NotePublisher:
         converter = NoteContentConverter()
         content = converter.convert(content, slug)
 
-        # Extract local image paths for upload (don't strip yet)
-        image_paths = self._extract_local_images(content)
+        # NOTE: inline image upload is complex due to note's custom editor
+        # + CropModal. For now, strip image references to ensure reliable
+        # publishing. Images appear as "[画像: filename]" text placeholders.
+        content = self._strip_local_images(content)
 
         self._ensure_started()
         assert self._page is not None
@@ -108,7 +110,7 @@ class NotePublisher:
             self._assert_logged_in()
             self._navigate_to_editor()
             self._input_title(title)
-            self._input_content_with_images(content, image_paths)
+            self._input_content(content)
             self._open_publish_settings()
             self._input_tags(tags)
             if price > 0:
@@ -384,8 +386,6 @@ class NotePublisher:
         assert self._page is not None
         page = self._page
 
-        # note editor typically has a "+" button to insert media
-        # or a toolbar image button
         image_button_selectors = [
             "button[aria-label*='画像']",
             "button[aria-label*='image']",
@@ -393,7 +393,7 @@ class NotePublisher:
             "button:has-text('画像')",
         ]
 
-        # Try clicking an insert-image button that triggers file chooser
+        uploaded = False
         for selector in image_button_selectors:
             btn = page.locator(selector).first
             try:
@@ -405,20 +405,66 @@ class NotePublisher:
                     btn.click()
                 chooser = fc_info.value
                 chooser.set_files(file_path)
-                # Wait for upload to complete
-                page.wait_for_timeout(2_000)
-                return
+                uploaded = True
+                break
             except PlaywrightTimeoutError:
                 continue
 
-        # Fallback: try direct file input
-        file_input = page.locator("input[type='file']").first
+        if not uploaded:
+            # Fallback: direct file input
+            try:
+                file_input = page.locator("input[type='file']").first
+                file_input.set_input_files(file_path)
+                uploaded = True
+            except PlaywrightError as e:
+                raise RuntimeError(f"画像アップロードボタンが見つかりません: {e}") from e
+
+        # Wait for upload, then handle crop modal if it appears
+        page.wait_for_timeout(2_000)
+        self._dismiss_crop_modal()
+        page.wait_for_timeout(1_000)
+
+    def _dismiss_crop_modal(self) -> None:
+        """Close the image crop modal by clicking 保存/完了/適用."""
+        assert self._page is not None
+        page = self._page
+
+        # Check if crop modal is visible
+        crop_modal = page.locator(".CropModal__overlay, [class*='CropModal']").first
         try:
-            file_input.set_input_files(file_path)
-            page.wait_for_timeout(2_000)
+            if not crop_modal.is_visible(timeout=500):
+                return
+        except Exception:
             return
-        except PlaywrightError as e:
-            raise RuntimeError(f"画像アップロードボタンが見つかりません: {e}") from e
+
+        logger.info("Crop modal detected, dismissing...")
+
+        confirm_selectors = [
+            "button:has-text('保存')",
+            "button:has-text('完了')",
+            "button:has-text('適用')",
+            "button:has-text('OK')",
+            "button:has-text('決定')",
+            "[class*='CropModal'] button[type='submit']",
+            "[class*='CropModal'] button:last-child",
+        ]
+
+        for selector in confirm_selectors:
+            try:
+                btn = page.locator(selector).first
+                if btn.is_visible(timeout=500):
+                    btn.click(timeout=3000)
+                    page.wait_for_timeout(1500)
+                    # Verify modal closed
+                    if not crop_modal.is_visible(timeout=500):
+                        logger.info("Crop modal closed via: %s", selector)
+                        return
+            except Exception:
+                continue
+
+        logger.warning("Could not dismiss crop modal; pressing Escape")
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(1000)
 
     def _open_publish_settings(self) -> None:
         """Click the 公開設定 button to open the publishing sidebar."""
@@ -498,36 +544,60 @@ class NotePublisher:
         assert self._page is not None
         page = self._page
 
+        # On the publish settings page, look for the final publish button
+        page.wait_for_timeout(1500)
+
         publish_selectors = [
             "button:has-text('投稿する')",
+            "button:has-text('投稿')",
             "button:has-text('公開する')",
+            "button:has-text('公開')",
             "button:has-text('有料販売する')",
             "[data-testid='publish-button']",
+            "button[class*='publish']",
         ]
+
+        # Try clicking the first visible publish button
         clicked = False
         for selector in publish_selectors:
-            loc = page.locator(selector).first
             try:
-                loc.wait_for(state="visible", timeout=5_000)
-            except PlaywrightTimeoutError:
+                locs = page.locator(selector).all()
+                for loc in locs:
+                    try:
+                        if loc.is_visible(timeout=500):
+                            loc.scroll_into_view_if_needed(timeout=2000)
+                            loc.click(timeout=3000)
+                            clicked = True
+                            logger.info("Publish clicked via: %s", selector)
+                            break
+                    except Exception:
+                        continue
+                if clicked:
+                    break
+            except Exception:
                 continue
-            loc.click()
-            clicked = True
-            break
+
         if not clicked:
+            # Last resort: screenshot for debugging
+            try:
+                page.screenshot(path="logs/publish_failed.png", full_page=True)
+                logger.error("Screenshot saved to logs/publish_failed.png")
+            except Exception:
+                pass
             raise RuntimeError("投稿ボタンが見つかりません")
 
-        # Some flows show a confirmation dialog with another 投稿する button.
-        try:
-            confirm = page.locator(
-                "button:has-text('投稿する'), button:has-text('公開する')"
-            ).last
-            confirm.wait_for(state="visible", timeout=3_000)
-            confirm.click()
-        except PlaywrightTimeoutError:
-            pass
-        except PlaywrightError:
-            pass
+        # Wait briefly and handle confirmation dialog
+        page.wait_for_timeout(2000)
+        for _ in range(2):
+            try:
+                confirm_btn = page.locator(
+                    "button:has-text('投稿する'), button:has-text('公開する'), button:has-text('確認')"
+                ).last
+                if confirm_btn.is_visible(timeout=1500):
+                    confirm_btn.click(timeout=3000)
+                    page.wait_for_timeout(1500)
+            except Exception:
+                break
 
         # Wait for navigation to the published article page (URL contains /n/).
         try:
