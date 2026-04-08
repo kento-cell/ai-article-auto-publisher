@@ -4,8 +4,10 @@ Collects articles from Japanese RSS feeds (Hatena Bookmark, Yahoo! News,
 ITmedia, Publickey, Gigazine, Togetter, etc.) for note and Zenn content.
 """
 
+import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import feedparser
@@ -13,6 +15,9 @@ import feedparser
 from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+# File that tracks already-collected article URLs to prevent duplicates.
+_SEEN_URLS_PATH = Path(__file__).resolve().parent.parent / "data" / "seen_urls.json"
 
 # Pre-configured Japanese RSS sources
 DEFAULT_FEEDS: dict[str, dict[str, str]] = {
@@ -43,9 +48,9 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "target": "note",
     },
     # --- note向け（韓国トレンド・美容・カルチャー） ---
-    "korea_allkpop": {
-        "url": "https://www.allkpop.com/feed",
-        "name": "allkpop (K-POP/韓国カルチャー)",
+    "korea_danmee": {
+        "url": "https://danmee.jp/feed/",
+        "name": "Danmee (K-POP/韓国カルチャー)",
         "target": "note",
     },
     "korea_soompi": {
@@ -63,25 +68,25 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "Korea Herald (韓国ニュース/ライフスタイル)",
         "target": "note",
     },
-    "beautynesia": {
-        "url": "https://www.beautynesia.id/feed",
-        "name": "Beautynesia (アジア美容)",
+    "biteki": {
+        "url": "https://www.biteki.com/feed",
+        "name": "美的 (コスメ・美容)",
         "target": "note",
     },
-    "cosme_ranking": {
-        "url": "https://www.cosme.net/rss/pickup.xml",
-        "name": "@cosme (コスメ・美容)",
+    "mery_beauty": {
+        "url": "https://mery.jp/feed",
+        "name": "MERY (美容・ライフスタイル)",
         "target": "note",
     },
     # --- note向け（コーヒー・グルメ・ライフスタイル） ---
-    "coffee_standart": {
-        "url": "https://standartmag.jp/feed",
-        "name": "Standart Japan (コーヒーカルチャー)",
+    "coffee_barista_mag": {
+        "url": "https://www.baristamagazine.com/feed/",
+        "name": "Barista Magazine (コーヒーカルチャー)",
         "target": "note",
     },
-    "coffee_goodcoffee": {
-        "url": "https://goodcoffeeme.com/feed",
-        "name": "Good Coffee (コーヒーショップ情報)",
+    "coffee_sprudge": {
+        "url": "https://sprudge.com/feed",
+        "name": "Sprudge (コーヒーニュース)",
         "target": "note",
     },
     "tabelog_magazine": {
@@ -94,9 +99,9 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "Retty (グルメニュース)",
         "target": "note",
     },
-    "fashionsnap": {
-        "url": "https://www.fashionsnap.com/feed/",
-        "name": "FASHIONSNAP (ファッション/カルチャー)",
+    "ainow": {
+        "url": "https://ainow.ai/feed/",
+        "name": "AINOW (AI/テクノロジー)",
         "target": "note",
     },
     "roomie": {
@@ -115,9 +120,9 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "OpenAI Blog",
         "target": "zenn",
     },
-    "anthropic_news": {
-        "url": "https://www.anthropic.com/feed",
-        "name": "Anthropic News",
+    "the_decoder": {
+        "url": "https://the-decoder.com/feed/",
+        "name": "The Decoder (AI News)",
         "target": "zenn",
     },
     "huggingface_blog": {
@@ -125,14 +130,14 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "Hugging Face Blog",
         "target": "zenn",
     },
-    "theresanaiforthat": {
-        "url": "https://theresanaiforthat.com/rss/",
-        "name": "There's An AI For That (新AIツール)",
+    "producthunt": {
+        "url": "https://www.producthunt.com/feed",
+        "name": "Product Hunt (新ツール/プロダクト)",
         "target": "note",
     },
     "hn_ai": {
-        "url": "https://hnrss.org/newest?q=AI+agent+OR+Claude+OR+LLM&points=50",
-        "name": "Hacker News AI (50+ポイント)",
+        "url": "https://hnrss.org/newest?q=AI+OR+LLM&points=30",
+        "name": "Hacker News AI (30+ポイント)",
         "target": "zenn",
     },
     # --- Zenn向け（技術） ---
@@ -187,12 +192,44 @@ class RssCollector(BaseCollector):
             self.feeds = all_feeds
         self.max_results = max_results
 
+    # ------------------------------------------------------------------
+    # Duplicate detection helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load_seen_urls() -> set[str]:
+        """Load the set of previously collected article URLs."""
+        if _SEEN_URLS_PATH.exists():
+            try:
+                data = json.loads(_SEEN_URLS_PATH.read_text(encoding="utf-8"))
+                return set(data)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("seen_urls.json is corrupted; starting fresh")
+        return set()
+
+    @staticmethod
+    def _save_seen_urls(urls: set[str]) -> None:
+        """Persist the set of seen URLs to disk."""
+        _SEEN_URLS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _SEEN_URLS_PATH.write_text(
+            json.dumps(sorted(urls), ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+    # ------------------------------------------------------------------
+    # Main collection entry point
+    # ------------------------------------------------------------------
+
     def collect(self) -> list[dict[str, Any]]:
         """Fetch and parse all configured RSS feeds.
+
+        Applies URL-based duplicate detection so the same article is
+        never returned twice across runs.
 
         Returns:
             List of article dicts sorted by published date (newest first).
         """
+        seen_urls = self._load_seen_urls()
         articles: list[dict[str, Any]] = []
 
         for feed_id, feed_config in self.feeds.items():
@@ -210,13 +247,32 @@ class RssCollector(BaseCollector):
                     "%s 取得エラー: %s", feed_config["name"], e
                 )
 
-        articles.sort(
+        # Deduplicate: drop articles whose URL was already collected
+        new_articles = []
+        for article in articles:
+            url = article.get("url", "")
+            if url and url not in seen_urls:
+                new_articles.append(article)
+                seen_urls.add(url)
+            elif url:
+                logger.debug("Duplicate skipped: %s", url)
+
+        dupes_removed = len(articles) - len(new_articles)
+        if dupes_removed:
+            logger.info("重複記事スキップ: %d件", dupes_removed)
+
+        # Persist updated seen-URL set (cap at 10,000 to avoid unbounded growth)
+        if len(seen_urls) > 10_000:
+            seen_urls = set(sorted(seen_urls)[-5_000:])
+        self._save_seen_urls(seen_urls)
+
+        new_articles.sort(
             key=lambda a: a.get("published_date", datetime.min.replace(
                 tzinfo=timezone.utc
             )),
             reverse=True,
         )
-        return articles[:self.max_results]
+        return new_articles[:self.max_results]
 
     def _fetch_feed(
         self, url: str, source_name: str
