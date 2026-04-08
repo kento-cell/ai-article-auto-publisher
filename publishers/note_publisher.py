@@ -516,6 +516,50 @@ class NotePublisher:
         self._dismiss_crop_modal()
         page.wait_for_timeout(1500)
 
+    def _dismiss_personal_info_modal(self) -> None:
+        """Close the 本人情報の登録 modal if it appears (paid article requirement)."""
+        assert self._page is not None
+        page = self._page
+
+        # Look for the personal info modal
+        modal_texts = ["本人情報の入力", "本人情報の登録"]
+        modal_found = False
+        for text in modal_texts:
+            try:
+                if page.locator(f":text('{text}')").first.is_visible(timeout=800):
+                    modal_found = True
+                    logger.info("Personal info modal detected")
+                    break
+            except Exception:
+                continue
+
+        if not modal_found:
+            return
+
+        # Close via X button, or キャンセル, or click outside
+        close_selectors = [
+            "button:has-text('キャンセル')",
+            "button[aria-label='閉じる']",
+            "button[aria-label='Close']",
+            "button:has-text('×')",
+            "[role='dialog'] button:first-child",
+        ]
+        for sel in close_selectors:
+            try:
+                btn = page.locator(sel).first
+                if btn.is_visible(timeout=500):
+                    btn.click(timeout=2000)
+                    page.wait_for_timeout(800)
+                    logger.info("Closed personal info modal via: %s", sel)
+                    return
+            except Exception:
+                continue
+
+        # Last resort: press Escape
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(800)
+        logger.warning("Used Escape to dismiss personal info modal")
+
     def _dismiss_crop_modal(self) -> None:
         """Close the image crop modal by clicking 保存/完了/適用."""
         assert self._page is not None
@@ -635,6 +679,9 @@ class NotePublisher:
         """Click the publish button and return the resulting article URL."""
         assert self._page is not None
         page = self._page
+
+        # Dismiss "本人情報の登録" modal if present (only required for paid articles)
+        self._dismiss_personal_info_modal()
 
         # On the publish settings page, look for the final publish button
         page.wait_for_timeout(1500)
