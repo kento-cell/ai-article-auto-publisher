@@ -149,11 +149,31 @@ def _extract_japanese_title(content: str) -> str:
 
 
 def _is_mostly_ascii(text: str) -> bool:
-    """Return True if more than 70% of the text is ASCII (English)."""
+    """Return True if the text has no Japanese characters (CJK/hiragana/katakana).
+
+    Previous version counted numbers/symbols as ASCII, rejecting mixed
+    titles like '2026年版 AI Agents 完全ガイド'. Now we check for the
+    presence of any Japanese characters.
+    """
     if not text:
         return True
-    ascii_count = sum(1 for c in text if ord(c) < 128)
-    return ascii_count / len(text) > 0.7
+    # Check for Japanese characters: hiragana, katakana, CJK ideographs
+    for c in text:
+        code = ord(c)
+        # Hiragana: U+3040-U+309F
+        # Katakana: U+30A0-U+30FF
+        # CJK Unified Ideographs: U+4E00-U+9FFF
+        # Katakana Phonetic Extensions: U+31F0-U+31FF
+        # Half-width Katakana: U+FF65-U+FF9F
+        if (
+            0x3040 <= code <= 0x309F
+            or 0x30A0 <= code <= 0x30FF
+            or 0x4E00 <= code <= 0x9FFF
+            or 0x31F0 <= code <= 0x31FF
+            or 0xFF65 <= code <= 0xFF9F
+        ):
+            return False
+    return True
 
 
 def _translate_reasons(reasons_str: str) -> str:
