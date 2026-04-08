@@ -488,6 +488,31 @@ def _generate_single_article(
     }
 
 
+def _load_generated_sources() -> set[str]:
+    """Load URLs of sources already used for article generation."""
+    path = Path("data/generated_sources.json")
+    if path.exists():
+        try:
+            import json
+            return set(json.loads(path.read_text(encoding="utf-8")))
+        except Exception:
+            return set()
+    return set()
+
+
+def _save_generated_source(url: str) -> None:
+    """Record a source URL as used for generation."""
+    path = Path("data/generated_sources.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    import json
+    existing = _load_generated_sources()
+    existing.add(url)
+    # Cap at 500 entries
+    if len(existing) > 500:
+        existing = set(list(existing)[-250:])
+    path.write_text(json.dumps(list(existing), ensure_ascii=False), encoding="utf-8")
+
+
 def generate_and_score(
     ranked: dict,
     config: dict,
@@ -505,6 +530,7 @@ def generate_and_score(
     if local_llm is None and claude is None:
         return [], []
 
+    generated_sources = _load_generated_sources()
     approved = []
     rejected = []
 
@@ -514,15 +540,28 @@ def generate_and_score(
             platform, {}
         ).get("articles_per_week", 1)
 
-        for article in ranked.get(platform, [])[:articles_per_week]:
+        # Filter out already-used sources, then take top N
+        candidates = [
+            a for a in ranked.get(platform, [])
+            if a.get("url", "") not in generated_sources
+        ]
+        if len(candidates) < len(ranked.get(platform, [])):
+            skipped = len(ranked.get(platform, [])) - len(candidates)
+            logger.info("[%s] 生成済みソースをスキップ: %d件", platform, skipped)
+
+        for article in candidates[:articles_per_week]:
             try:
                 result = _generate_single_article(
                     article, platform, template,
                     claude, local_llm, use_local,
                     token_manager, config, prompts,
                 )
+                # Record source as used regardless of result
+                source_url = article.get("url", "")
+                if source_url:
+                    _save_generated_source(source_url)
+
                 if result is None:
-                    # Generation failure (template error, etc.)
                     pass
                 elif result.get("rejected"):
                     rejected.append(result)
