@@ -266,25 +266,12 @@ def _fetch_cached_images(sourcer, query: str, count: int) -> list[dict]:
 
 
 def _build_stock_image_block(image: dict, local_path: Path, alt: str) -> str:
-    """Build a Markdown image block with attribution caption."""
+    """Build a Markdown image block (no attribution caption)."""
     rel = local_path.as_posix()
-    # Force the path under data/images/ so NoteContentConverter regex matches.
     if "data/images/" not in rel:
         rel = f"data/images/stock/{local_path.name}"
-
-    photographer = image.get("photographer", "Unknown")
-    photographer_url = image.get("photographer_url", "")
-    platform = image.get("platform", "Stock")
-    platform_url = image.get("platform_url", "")
-
-    photo_link = (
-        f"[{photographer}]({photographer_url})" if photographer_url else photographer
-    )
-    plat_link = f"[{platform}]({platform_url})" if platform_url else platform
-
-    caption = f"*Photo by {photo_link} on {plat_link}*"
     safe_alt = alt.replace("[", "(").replace("]", ")")
-    return f"![{safe_alt}]({rel})\n{caption}\n"
+    return f"![{safe_alt}]({rel})\n"
 
 
 def _insert_stock_images(
