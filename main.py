@@ -187,6 +187,198 @@ def _fix_markdown_structure(content: str) -> str:
 
 
 # =====================================================================
+# Stock image insertion (Unsplash / Pexels)
+# =====================================================================
+
+# Cache results across calls within a single process to avoid repeat API hits.
+_STOCK_IMAGE_CACHE: dict[str, list[dict]] = {}
+
+# Japanese particles / stop tokens to strip when extracting keywords.
+_JP_STOPWORDS = frozenset({
+    "の", "が", "を", "は", "に", "へ", "と", "で", "や", "も", "から",
+    "まで", "より", "こと", "もの", "これ", "それ", "あれ", "する",
+    "した", "して", "いる", "ある", "なる", "という", "ため", "ように",
+    "とは", "とき", "なら", "ば", "ね", "よ", "か",
+})
+
+
+def _extract_image_query(title: str) -> str:
+    """Extract a short English-friendly search query from a Japanese title.
+
+    Strategy: drop bracketed/punctuation noise, remove particles, keep the
+    longest meaningful tokens. Falls back to the raw title.
+    """
+    if not title:
+        return "technology"
+
+    # Strip brackets and punctuation noise
+    cleaned = re.sub(r"[\[\]【】「」『』（）()<>《》\"'!?！？、。:：;；・…\-—_/\\|]", " ", title)
+    # Split by whitespace and Japanese particles
+    tokens = [t for t in cleaned.split() if t]
+
+    # Filter stopwords and short fragments
+    keywords: list[str] = []
+    for tok in tokens:
+        if tok in _JP_STOPWORDS:
+            continue
+        if len(tok) < 2:
+            continue
+        keywords.append(tok)
+
+    if not keywords:
+        return title.strip() or "technology"
+
+    # Use top 3 tokens joined with space (Unsplash/Pexels handle multi-word)
+    return " ".join(keywords[:3])
+
+
+def _download_image(url: str, dest: Path) -> Path | None:
+    """Download an image from a URL to a local destination.
+
+    Returns the destination path on success, ``None`` on failure.
+    """
+    if not url:
+        return None
+    try:
+        import requests as _requests
+        resp = _requests.get(url, timeout=30)
+        resp.raise_for_status()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(resp.content)
+        return dest
+    except Exception as exc:
+        logger.warning("Image download failed (%s): %s", url, exc)
+        return None
+
+
+def _fetch_cached_images(sourcer, query: str, count: int) -> list[dict]:
+    """Fetch images from ImageSourcer with per-process caching."""
+    cache_key = f"{query}::{count}"
+    if cache_key in _STOCK_IMAGE_CACHE:
+        return _STOCK_IMAGE_CACHE[cache_key]
+    try:
+        results = sourcer.find_images(query, count=count)
+    except Exception as exc:
+        logger.warning("ImageSourcer.find_images failed: %s", exc)
+        results = []
+    _STOCK_IMAGE_CACHE[cache_key] = results
+    return results
+
+
+def _build_stock_image_block(image: dict, local_path: Path, alt: str) -> str:
+    """Build a Markdown image block with attribution caption."""
+    rel = local_path.as_posix()
+    # Force the path under data/images/ so NoteContentConverter regex matches.
+    if "data/images/" not in rel:
+        rel = f"data/images/stock/{local_path.name}"
+
+    photographer = image.get("photographer", "Unknown")
+    photographer_url = image.get("photographer_url", "")
+    platform = image.get("platform", "Stock")
+    platform_url = image.get("platform_url", "")
+
+    photo_link = (
+        f"[{photographer}]({photographer_url})" if photographer_url else photographer
+    )
+    plat_link = f"[{platform}]({platform_url})" if platform_url else platform
+
+    caption = f"*Photo by {photo_link} on {plat_link}*"
+    safe_alt = alt.replace("[", "(").replace("]", ")")
+    return f"![{safe_alt}]({rel})\n{caption}\n"
+
+
+def _insert_stock_images(
+    content: str,
+    title: str,
+    sourcer,
+    slug: str,
+    section_count: int = 2,
+) -> str:
+    """Fetch stock photos and insert them into the article markdown.
+
+    Hero image: inserted right after the first H2 (or at top if no H2).
+    Section images: inserted before every 2nd subsequent H2.
+
+    Failures are swallowed; the original content is returned unchanged.
+    """
+    if not content or not title:
+        return content
+
+    query = _extract_image_query(title)
+    total_needed = 1 + section_count
+    images = _fetch_cached_images(sourcer, query, total_needed)
+
+    # Filter out placeholder/empty results
+    usable = [img for img in images if img.get("url") and img.get("platform") != "Placeholder"]
+    if not usable:
+        logger.info("[image] No usable stock images for query '%s' — skipping.", query)
+        return content
+
+    stock_dir = Path("data/images/stock")
+    stock_dir.mkdir(parents=True, exist_ok=True)
+
+    # Download images locally
+    downloaded: list[tuple[dict, Path]] = []
+    for idx, img in enumerate(usable):
+        ext = ".jpg"
+        # Hash query+source for stable filenames (cache reuse)
+        safe_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", slug)[:40]
+        filename = f"{safe_slug}_{idx}{ext}"
+        dest = stock_dir / filename
+        if dest.exists() and dest.stat().st_size > 0:
+            downloaded.append((img, dest))
+            continue
+        url = img.get("url") or img.get("download_url", "")
+        local = _download_image(url, dest)
+        if local is not None:
+            downloaded.append((img, local))
+
+    if not downloaded:
+        return content
+
+    # Build hero image block
+    hero_img, hero_path = downloaded[0]
+    hero_alt = hero_img.get("alt_text") or title
+    hero_block = _build_stock_image_block(hero_img, hero_path, hero_alt)
+
+    section_blocks = [
+        _build_stock_image_block(img, path, img.get("alt_text") or title)
+        for img, path in downloaded[1:]
+    ]
+
+    # Insert into markdown
+    lines = content.split("\n")
+    out: list[str] = []
+    h2_seen = 0
+    hero_inserted = False
+    section_idx = 0
+
+    for line in lines:
+        is_h2 = line.startswith("## ")
+        if is_h2:
+            h2_seen += 1
+            # Insert section image BEFORE every 2nd H2 (but not the first)
+            if h2_seen >= 3 and (h2_seen % 2) == 1 and section_idx < len(section_blocks):
+                out.append("")
+                out.append(section_blocks[section_idx])
+                section_idx += 1
+            out.append(line)
+            # Insert hero image AFTER first H2
+            if not hero_inserted and h2_seen == 1:
+                out.append("")
+                out.append(hero_block)
+                hero_inserted = True
+        else:
+            out.append(line)
+
+    # If no H2 found at all, prepend hero at the top
+    if not hero_inserted:
+        out = [hero_block, ""] + out
+
+    return "\n".join(out)
+
+
+# =====================================================================
 # Config
 # =====================================================================
 
@@ -378,6 +570,19 @@ def _generate_single_article(
     # --- slug生成（図表処理・スコアリングで使用） ---
     _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
     slug = f"{platform}-{_safe_title}"
+
+    # --- ストック画像挿入（Unsplash / Pexels） ---
+    # noteは特に画像が無いと見栄えが悪いので両プラットフォームで挿入。
+    try:
+        from generators.image_sourcer import ImageSourcer
+        _sourcer = ImageSourcer()
+        # noteは多めに、zennは控えめに
+        _sec = 3 if platform == "note" else 1
+        content = _insert_stock_images(
+            content, article.get("title", ""), _sourcer, slug, section_count=_sec
+        )
+    except Exception as exc:
+        logger.warning("画像挿入失敗: %s", exc)
 
     # --- 図表処理 ---
     diagram_gen = DiagramGenerator()
