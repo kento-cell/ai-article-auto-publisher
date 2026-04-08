@@ -65,12 +65,12 @@ class AffiliateInjector:
         if not links:
             return content
 
-        # Build the affiliate section
+        # Build the affiliate section (minimal gray-zone disclosure)
         disclosure = self._config.get("disclosure", "").strip()
         sections = [
             content.rstrip(),
             "",
-            "## 関連リンク（PR）",
+            "## 関連リンク",
             "",
         ]
         for link in links:
