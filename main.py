@@ -54,6 +54,49 @@ logger = setup_logger(__name__)
 
 
 # =====================================================================
+# Structure rotation
+# =====================================================================
+
+def _select_structure(
+    title: str, source: str, platform: str, prompts: dict
+) -> dict | None:
+    """Select an article structure pattern based on content and platform.
+
+    Returns:
+        Structure dict with name, description, outline. Or None for default.
+    """
+    structures = prompts.get("article_structures", [])
+    selection_rules = prompts.get("structure_selection", {})
+    platform_rules = selection_rules.get(platform, {}).get("rules", [])
+
+    if not structures or not platform_rules:
+        return None
+
+    text = f"{title} {source}".lower()
+
+    # Check rules in order
+    for rule in platform_rules:
+        if "keyword" in rule:
+            if any(kw.lower() in text for kw in rule["keyword"]):
+                return _find_structure(structures, rule["structure"])
+        if "source_category" in rule:
+            if any(cat.lower() in text for cat in rule["source_category"]):
+                return _find_structure(structures, rule["structure"])
+        if "default" in rule:
+            return _find_structure(structures, rule["default"])
+
+    return None
+
+
+def _find_structure(structures: list[dict], name: str) -> dict | None:
+    """Find a structure by name."""
+    for s in structures:
+        if s.get("name") == name:
+            return s
+    return None
+
+
+# =====================================================================
 # Config
 # =====================================================================
 
@@ -198,6 +241,7 @@ def _generate_single_article(
     use_local: bool,
     token_manager: TokenManager,
     config: dict,
+    prompts: dict | None = None,
 ) -> dict | None:
     """1記事を生成し、2層スコアリングを行う。
 
@@ -205,9 +249,27 @@ def _generate_single_article(
         スコアリング済み記事dict (with "rejected" key if failed),
         or None on generation failure.
     """
+    # --- 構成パターン選択 ---
+    structure = _select_structure(
+        article.get("title", ""),
+        article.get("source", ""),
+        platform,
+        prompts,
+    )
+    structure_name = "standard"
+    structure_instruction = ""
+    if structure:
+        structure_name = structure.get("name", "standard")
+        structure_instruction = (
+            f"\n\n【構成パターン: {structure.get('description', '')}】\n"
+            f"以下の構成に従って記事を書いてください:\n"
+            f"{structure.get('outline', '')}"
+        )
+        logger.info("[%s] 構成パターン: %s", platform, structure_name)
+
     # --- 生成 ---
     try:
-        prompt = template.format(**article)
+        prompt = template.format(**article) + structure_instruction
     except KeyError as e:
         logger.warning("プロンプトテンプレートのキー不足: %s", e)
         return None
@@ -327,6 +389,7 @@ def _generate_single_article(
         "platform": platform,
         "slug": slug,
         "cover_image": cover_path,
+        "structure_type": structure_name,
         "scores": final,
         "generated_at": datetime.now().isoformat(),
     }
@@ -363,7 +426,7 @@ def generate_and_score(
                 result = _generate_single_article(
                     article, platform, template,
                     claude, local_llm, use_local,
-                    token_manager, config,
+                    token_manager, config, prompts,
                 )
                 if result is None:
                     # Generation failure (template error, etc.)
