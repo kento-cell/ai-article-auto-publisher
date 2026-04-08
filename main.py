@@ -98,6 +98,56 @@ def _find_structure(structures: list[dict], name: str) -> dict | None:
 
 
 # =====================================================================
+# Markdown post-processing
+# =====================================================================
+
+def _fix_markdown_structure(content: str) -> str:
+    """Fix common Markdown structure issues from LLM output.
+
+    - Convert lone H1 in body to H2
+    - If fewer than 2 H2 headings, split long paragraphs with H2 headings
+    - Ensure no H1 in body (only title)
+    """
+    lines = content.split("\n")
+    result = []
+    h2_count = 0
+    first_h1_seen = False
+
+    for line in lines:
+        # Convert H1 in body to H2 (first H1 is title, rest become H2)
+        if line.startswith("# ") and not line.startswith("## "):
+            if not first_h1_seen:
+                first_h1_seen = True
+                result.append(line)
+            else:
+                result.append("#" + line)  # # Title -> ## Title
+                h2_count += 1
+        elif line.startswith("## "):
+            h2_count += 1
+            result.append(line)
+        else:
+            result.append(line)
+
+    # If still fewer than 2 H2, inject section headings at paragraph breaks
+    if h2_count < 2:
+        section_names = ["概要", "詳細分析", "実践への示唆", "まとめ"]
+        injected = []
+        char_count = 0
+        section_idx = 0
+        for line in result:
+            injected.append(line)
+            char_count += len(line)
+            # Insert H2 after ~600 chars at paragraph break
+            if char_count > 600 and line.strip() == "" and section_idx < len(section_names):
+                injected.append(f"\n## {section_names[section_idx]}\n")
+                section_idx += 1
+                char_count = 0
+        result = injected
+
+    return "\n".join(result)
+
+
+# =====================================================================
 # Config
 # =====================================================================
 
@@ -282,6 +332,9 @@ def _generate_single_article(
     token_manager.record_usage(
         estimate_tokens(prompt) + estimate_tokens(content)
     )
+
+    # --- Markdown構造補正（Gemma3が見出しを省略する問題の対策） ---
+    content = _fix_markdown_structure(content)
 
     # --- slug生成（図表処理・スコアリングで使用） ---
     _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
