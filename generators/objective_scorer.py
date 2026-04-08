@@ -228,13 +228,24 @@ class ObjectiveScorer:
         ]
 
         if not citation_blocks:
+            # Fallback: check if article has inline URLs (common in LLM output)
+            inline_urls = len(re.findall(r"https?://\S+", article))
+            if inline_urls >= 2:
+                return {
+                    "grade": "B",
+                    "compliance_rate": 0.0,
+                    "with_url": inline_urls,
+                    "with_date": 0,
+                    "total": inline_urls,
+                    "reason": f"no blockquote citations but {inline_urls} inline URLs found",
+                }
             return {
                 "grade": "C",
                 "compliance_rate": 0.0,
                 "with_url": 0,
                 "with_date": 0,
                 "total": 0,
-                "reason": "no citation blocks found",
+                "reason": "no citation blocks or inline URLs found",
             }
 
         with_url = 0
