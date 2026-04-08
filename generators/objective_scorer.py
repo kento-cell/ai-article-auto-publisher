@@ -194,12 +194,12 @@ class ObjectiveScorer:
         if count >= 5:
             grade = "A"
             reason = f"{count} citations found (>= 5)"
-        elif count >= 2:
+        elif count >= 1:
             grade = "B"
-            reason = f"{count} citations found (2-4 range)"
+            reason = f"{count} citations found (1-4 range)"
         else:
             grade = "C"
-            reason = f"only {count} citations found (< 2)"
+            reason = f"no citations found"
 
         logger.debug("Citation count: %s (%d)", grade, count)
         return {"grade": grade, "count": count, "reason": reason}
@@ -327,12 +327,12 @@ class ObjectiveScorer:
         if total >= 5:
             grade = "A"
             reason = f"{total} visual elements found (>= 5)"
-        elif total >= 2:
+        elif total >= 1:
             grade = "B"
-            reason = f"{total} visual elements found (2-4 range)"
+            reason = f"{total} visual elements found (1-4 range)"
         else:
             grade = "C"
-            reason = f"only {total} visual elements found (< 2)"
+            reason = f"no visual elements found"
 
         logger.debug("Visual count: %s (%d total)", grade, total)
         return {
