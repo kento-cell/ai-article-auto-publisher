@@ -94,13 +94,11 @@ class NotePublisher:
         Raises:
             RuntimeError: On login/captcha or publish failures.
         """
-        # Convert mermaid/tables to images
-        converter = NoteContentConverter()
-        content = converter.convert(content, slug)
+        # Convert mermaid → ASCII flowchart (note doesn't render mermaid)
+        # Convert tables → keep as markdown (note renders tables natively)
+        content = self._mermaid_to_ascii(content)
 
-        # NOTE: inline image upload is complex due to note's custom editor
-        # + CropModal. For now, strip image references to ensure reliable
-        # publishing. Images appear as "[画像: filename]" text placeholders.
+        # Strip any local image references
         content = self._strip_local_images(content)
 
         self._ensure_started()
@@ -316,6 +314,54 @@ class NotePublisher:
         raise RuntimeError("本文エディタが見つかりません")
 
     @staticmethod
+    def _mermaid_to_ascii(content: str) -> str:
+        """Convert mermaid code blocks to plain-text arrow flow diagrams.
+
+        note.com doesn't render mermaid, and inline images are unreliable.
+        Convert to simple `A → B → C` arrow notation inside code blocks
+        (which note renders as monospace, preserving alignment).
+        """
+        mermaid_re = re.compile(r"```mermaid\s*\n(.*?)```", re.DOTALL)
+
+        def replace(match):
+            mermaid_src = match.group(1).strip()
+            lines = []
+            # Extract simple node names from common mermaid patterns
+            # Matches: A[Label] --> B[Label]  or  A --> B
+            edge_re = re.compile(
+                r"(\w+)(?:\[([^\]]+)\])?\s*-->\s*(\w+)(?:\[([^\]]+)\])?"
+            )
+            edges = edge_re.findall(mermaid_src)
+            if not edges:
+                return "```\n" + mermaid_src + "\n```"
+
+            # Build a sequence: node → node → node
+            seen_nodes = []
+            for src, src_label, dst, dst_label in edges:
+                src_name = src_label or src
+                dst_name = dst_label or dst
+                if not seen_nodes:
+                    seen_nodes.append(src_name)
+                seen_nodes.append(dst_name)
+
+            # Format as a clean monospace arrow chain
+            # Wrap long chains: max 40 chars per line
+            chain = " → ".join(seen_nodes)
+            if len(chain) <= 60:
+                return "```\n" + chain + "\n```"
+
+            # Multi-line vertical flow
+            lines = []
+            for i, node in enumerate(seen_nodes):
+                lines.append(f"  [{node}]")
+                if i < len(seen_nodes) - 1:
+                    lines.append("    │")
+                    lines.append("    ▼")
+            return "```\n" + "\n".join(lines) + "\n```"
+
+        return mermaid_re.sub(replace, content)
+
+    @staticmethod
     def _extract_local_images(content: str) -> list[tuple[str, str]]:
         """Extract (match_str, file_path) tuples for local images."""
         results = []
@@ -382,47 +428,53 @@ class NotePublisher:
             page.keyboard.type(remaining, delay=1)
 
     def _upload_image(self, file_path: str) -> None:
-        """Upload an image to note.com editor via file chooser."""
+        """Upload an image to note.com editor via paste from clipboard.
+
+        Uses ProseMirror's native paste image handling — bypasses note's
+        custom add-block menu and CropModal entirely.
+        """
         assert self._page is not None
         page = self._page
 
-        image_button_selectors = [
-            "button[aria-label*='画像']",
-            "button[aria-label*='image']",
-            "[data-testid='insert-image']",
-            "button:has-text('画像')",
-        ]
+        # Read image as base64
+        import base64
+        from pathlib import Path as _P
+        img_bytes = _P(file_path).read_bytes()
+        b64 = base64.b64encode(img_bytes).decode()
+        mime = "image/png" if file_path.endswith(".png") else "image/jpeg"
 
-        uploaded = False
-        for selector in image_button_selectors:
-            btn = page.locator(selector).first
-            try:
-                btn.wait_for(state="visible", timeout=2_000)
-            except PlaywrightTimeoutError:
-                continue
-            try:
-                with page.expect_file_chooser(timeout=5_000) as fc_info:
-                    btn.click()
-                chooser = fc_info.value
-                chooser.set_files(file_path)
-                uploaded = True
-                break
-            except PlaywrightTimeoutError:
-                continue
+        # Inject image into clipboard via DataTransfer + dispatch paste event
+        page.evaluate(
+            """({b64, mime}) => {
+                const byteString = atob(b64);
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], {type: mime});
+                const file = new File([blob], 'image.png', {type: mime});
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                const editor = document.querySelector('.ProseMirror, [contenteditable="true"]');
+                if (editor) {
+                    editor.focus();
+                    const event = new ClipboardEvent('paste', {
+                        clipboardData: dt,
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    Object.defineProperty(event, 'clipboardData', {value: dt});
+                    editor.dispatchEvent(event);
+                }
+            }""",
+            {"b64": b64, "mime": mime},
+        )
 
-        if not uploaded:
-            # Fallback: direct file input
-            try:
-                file_input = page.locator("input[type='file']").first
-                file_input.set_input_files(file_path)
-                uploaded = True
-            except PlaywrightError as e:
-                raise RuntimeError(f"画像アップロードボタンが見つかりません: {e}") from e
-
-        # Wait for upload, then handle crop modal if it appears
-        page.wait_for_timeout(2_000)
+        # Wait for upload to complete and any modal to appear/disappear
+        page.wait_for_timeout(3000)
         self._dismiss_crop_modal()
-        page.wait_for_timeout(1_000)
+        page.wait_for_timeout(1500)
 
     def _dismiss_crop_modal(self) -> None:
         """Close the image crop modal by clicking 保存/完了/適用."""
@@ -586,30 +638,57 @@ class NotePublisher:
                 pass
             raise RuntimeError("投稿ボタンが見つかりません")
 
-        # Wait briefly and handle confirmation dialog
-        page.wait_for_timeout(2000)
-        for _ in range(2):
-            try:
-                confirm_btn = page.locator(
-                    "button:has-text('投稿する'), button:has-text('公開する'), button:has-text('確認')"
-                ).last
-                if confirm_btn.is_visible(timeout=1500):
-                    confirm_btn.click(timeout=3000)
-                    page.wait_for_timeout(1500)
-            except Exception:
-                break
+        # Wait for /publish/ page to load
+        page.wait_for_timeout(3000)
 
-        # Wait for navigation to the published article page (URL contains /n/).
+        # On /publish/ page, click the FINAL publish button
+        # This is usually a different button - look for ones in the publish settings sidebar
+        logger.info("On /publish/ page, looking for final publish button...")
+        final_publish_clicked = False
+        final_selectors = [
+            "button:has-text('公開する'):not(:has-text('予約'))",
+            "button:has-text('投稿する'):not(:has-text('予約'))",
+            "button[type='submit']:has-text('公開')",
+            "button[type='submit']:has-text('投稿')",
+        ]
+        for selector in final_selectors:
+            try:
+                btns = page.locator(selector).all()
+                # Pick the last visible one (usually the actual submit button)
+                for btn in reversed(btns):
+                    try:
+                        if btn.is_visible(timeout=500):
+                            btn.scroll_into_view_if_needed(timeout=2000)
+                            btn.click(timeout=3000)
+                            final_publish_clicked = True
+                            logger.info("Final publish clicked: %s", selector)
+                            break
+                    except Exception:
+                        continue
+                if final_publish_clicked:
+                    break
+            except Exception:
+                continue
+
+        # Wait for navigation to the published article page (URL contains /n/)
+        # OR for a popup to appear
         try:
-            page.wait_for_url("**/n/**", timeout=_PUBLISH_TIMEOUT_MS)
+            page.wait_for_url("**/n/**", timeout=30_000)
+            logger.info("Article published, URL: %s", page.url)
+        except PlaywrightTimeoutError:
+            logger.info("No URL change yet, checking for post-publish popup")
+
+        # Close any post-publish popup (continuous-posting warning, etc.)
+        self._dismiss_popups()
+
+        # Wait once more for URL change after popup dismissal
+        try:
+            if "/n/" not in page.url:
+                page.wait_for_url("**/n/**", timeout=15_000)
         except PlaywrightTimeoutError:
             logger.warning(
-                "公開後のリダイレクトを検出できませんでした。現在のURLを返します"
+                "公開後のリダイレクトを検出できませんでした。現在のURL: %s", page.url
             )
-
-        # Close any post-publish popup (e.g. continuous-posting warning,
-        # share prompt, feedback modal)
-        self._dismiss_popups()
 
         return page.url
 
@@ -622,12 +701,18 @@ class NotePublisher:
         dismiss_selectors = [
             "button[aria-label='閉じる']",
             "button[aria-label='Close']",
+            "button[aria-label='close']",
+            "[role='dialog'] button[aria-label*='close' i]",
+            "[role='dialog'] button[aria-label*='閉じる']",
+            "button:has-text('×')",
+            "button:has-text('✕')",
             "button:has-text('閉じる')",
             "button:has-text('あとで')",
             "button:has-text('キャンセル')",
             "button:has-text('OK')",
             "[data-testid='modal-close']",
-            "[role='dialog'] button:has-text('×')",
+            # Top-right X button in modal (usually first button in dialog)
+            "[role='dialog'] button:first-child",
         ]
         for _ in range(3):  # Multiple popups may stack
             closed_any = False
