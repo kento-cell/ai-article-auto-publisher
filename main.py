@@ -767,7 +767,13 @@ def publish_approved(
 
         try:
             if platform == "zenn":
-                url = _publish_zenn(article_id, title, content, stored)
+                # Grade A → full article, Grade B → scrap draft
+                overall_grade = stored.get("scores", {}).get("overall_grade", "C")
+                if overall_grade == "A":
+                    url = _publish_zenn(article_id, title, content, stored)
+                else:
+                    # Save as scrap draft for manual posting
+                    url = _save_scrap_draft(article_id, title, content, stored)
             elif platform == "note":
                 overall_grade = stored.get("scores", {}).get("overall_grade", "C")
                 evidence_level = stored.get("scores", {}).get("evidence_level", "C")
@@ -799,6 +805,50 @@ def publish_approved(
             gmail.notify_error(str(e), f"{platform}: {title[:30]}")
 
     return results
+
+
+def _save_scrap_draft(
+    slug: str, title: str, content: str, stored: dict
+) -> str | None:
+    """Grade B記事をスクラップ下書きとして保存 + Slackに通知."""
+    scrap_dir = Path("data/scraps")
+    scrap_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_slug = re.sub(r'[\\/:*?"<>|]', '_', slug)[:100]
+    file_path = scrap_dir / f"{safe_slug}.md"
+
+    grade = stored.get("scores", {}).get("overall_grade", "B")
+    header = (
+        f"# {title}\n\n"
+        f"> Grade: {grade} (スクラップ用 — Zenn Scrapsに手動投稿してください)\n"
+        f"> https://zenn.dev/zenn-user/scraps/new\n\n"
+        f"---\n\n"
+    )
+    file_path.write_text(header + content, encoding="utf-8")
+    logger.info("スクラップ下書き保存: %s", file_path)
+
+    # Post to Slack
+    try:
+        bot_token = os.getenv("SLACK_BOT_TOKEN")
+        channel_id = os.getenv("SLACK_CHANNEL_ID", "C0AR7E9AFJ9")
+        if bot_token:
+            from slack_sdk import WebClient
+            client = WebClient(token=bot_token)
+            client.files_upload_v2(
+                channel=channel_id,
+                content=header + content,
+                filename=f"{safe_slug}.md",
+                title=f"[スクラップ] {title[:80]}",
+                initial_comment=(
+                    f"📋 *スクラップ候補* (Grade {grade})\n"
+                    f"*タイトル*: {title}\n"
+                    f"https://zenn.dev/zenn-user/scraps/new にコピペして投稿してください"
+                ),
+            )
+    except Exception as e:
+        logger.warning("Slack scrap upload failed: %s", e)
+
+    return f"scrap-draft:{file_path}"
 
 
 def _publish_zenn(
