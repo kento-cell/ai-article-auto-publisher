@@ -821,12 +821,7 @@ class NotePublisher:
 
     @staticmethod
     def _strip_local_images(content: str) -> str:
-        """Remove local image references that cannot be uploaded inline.
-
-        note.com requires images to be uploaded via its own picker. Rather
-        than crash on missing uploads, we drop ``![](data/images/...)``
-        references and log a warning.
-        """
+        """Remove local image references and clean up surrounding whitespace."""
         removed: list[str] = []
 
         def _replace(match: re.Match[str]) -> str:
@@ -834,6 +829,12 @@ class NotePublisher:
             return ""
 
         new_content = _LOCAL_IMAGE_RE.sub(_replace, content)
+
+        # Collapse 3+ blank lines into just 2 (paragraph break)
+        new_content = re.sub(r"\n{3,}", "\n\n", new_content)
+        # Strip trailing whitespace from each line
+        new_content = "\n".join(line.rstrip() for line in new_content.split("\n"))
+
         if removed:
             logger.warning(
                 "ローカル画像 %d 件を本文から除外しました: %s",

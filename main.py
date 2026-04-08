@@ -161,21 +161,10 @@ def _fix_markdown_structure(content: str) -> str:
         else:
             result.append(line)
 
-    # If still fewer than 2 H2, inject section headings at paragraph breaks
-    if h2_count < 2:
-        section_names = ["概要", "詳細分析", "実践への示唆", "まとめ"]
-        injected = []
-        char_count = 0
-        section_idx = 0
-        for line in result:
-            injected.append(line)
-            char_count += len(line)
-            # Insert H2 after ~600 chars at paragraph break
-            if char_count > 600 and line.strip() == "" and section_idx < len(section_names):
-                injected.append(f"\n## {section_names[section_idx]}\n")
-                section_idx += 1
-                char_count = 0
-        result = injected
+    # NOTE: Do NOT auto-inject H2 headings.
+    # Gemma3 sometimes generates H3 headings with numbers (### 1. XXX).
+    # Injecting "## 概要" etc at arbitrary positions breaks the flow.
+    # Better to rely on prompt enforcement + H1→H2 conversion only.
 
     return "\n".join(result)
 
