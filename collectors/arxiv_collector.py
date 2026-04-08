@@ -15,7 +15,16 @@ from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CATEGORIES: list[str] = ["cs.AI", "cs.CL", "cs.LG", "cs.CV"]
+# AI/ML core + agents + code generation + reasoning
+DEFAULT_CATEGORIES: list[str] = [
+    "cs.AI",   # Artificial Intelligence
+    "cs.CL",   # Computation and Language (NLP/LLM)
+    "cs.LG",   # Machine Learning
+    "cs.CV",   # Computer Vision
+    "cs.MA",   # Multiagent Systems (AI agents)
+    "cs.SE",   # Software Engineering (code generation)
+    "cs.CR",   # Cryptography and Security (AI security)
+]
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
 

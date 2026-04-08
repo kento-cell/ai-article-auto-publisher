@@ -109,6 +109,32 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "GetNavi (トレンドガジェット/ライフスタイル)",
         "target": "note",
     },
+    # --- 有料記事向け（AI最先端・マネタイズ） ---
+    "openai_blog": {
+        "url": "https://openai.com/blog/rss.xml",
+        "name": "OpenAI Blog",
+        "target": "zenn",
+    },
+    "anthropic_news": {
+        "url": "https://www.anthropic.com/feed",
+        "name": "Anthropic News",
+        "target": "zenn",
+    },
+    "huggingface_blog": {
+        "url": "https://huggingface.co/blog/feed.xml",
+        "name": "Hugging Face Blog",
+        "target": "zenn",
+    },
+    "theresanaiforthat": {
+        "url": "https://theresanaiforthat.com/rss/",
+        "name": "There's An AI For That (新AIツール)",
+        "target": "note",
+    },
+    "hn_ai": {
+        "url": "https://hnrss.org/newest?q=AI+agent+OR+Claude+OR+LLM&points=50",
+        "name": "Hacker News AI (50+ポイント)",
+        "target": "zenn",
+    },
     # --- Zenn向け（技術） ---
     "publickey": {
         "url": "https://www.publickey1.jp/atom.xml",
