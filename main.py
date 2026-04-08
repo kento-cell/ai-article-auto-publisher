@@ -126,6 +126,36 @@ _REASON_MAP = {
 }
 
 
+def _extract_japanese_title(content: str) -> str:
+    """Extract the first H1 or H2 heading from markdown content as title.
+
+    Gemma3 generates a Japanese title as the first heading even when the
+    source article is English. Use this instead of the English source title.
+    """
+    if not content:
+        return ""
+    # Prefer H1 (# ), fall back to H2 (## )
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("# ") and not stripped.startswith("## "):
+            title = stripped[2:].strip()
+            if title and not _is_mostly_ascii(title):
+                return title[:100]
+        if stripped.startswith("## "):
+            title = stripped[3:].strip()
+            if title and not _is_mostly_ascii(title):
+                return title[:100]
+    return ""
+
+
+def _is_mostly_ascii(text: str) -> bool:
+    """Return True if more than 70% of the text is ASCII (English)."""
+    if not text:
+        return True
+    ascii_count = sum(1 for c in text if ord(c) < 128)
+    return ascii_count / len(text) > 0.7
+
+
 def _translate_reasons(reasons_str: str) -> str:
     """Translate English rejection reasons to Japanese."""
     result = reasons_str
@@ -948,18 +978,21 @@ def publish_approved(
         content = stored.get("content", "")
         source = stored.get("source", "")
 
+        # Extract Japanese title from content H1/H2 if original is English
+        jp_title = _extract_japanese_title(content) or title
+        if jp_title != title:
+            logger.info("日本語タイトル抽出: %s", jp_title[:50])
+            title = jp_title
+
         try:
             if platform == "zenn":
-                # Grade A → full article, Grade B → scrap draft
                 overall_grade = stored.get("scores", {}).get("overall_grade", "C")
                 if overall_grade == "A":
                     url = _publish_zenn(article_id, title, content, stored)
                 else:
-                    # Save as scrap draft for manual posting
                     url = _save_scrap_draft(article_id, title, content, stored)
             elif platform == "note":
                 # 本人情報登録を回避するため当面は全記事無料公開
-                # 本人情報登録後、price=NotePublisher.determine_price(...)に戻す
                 url = _publish_note(title, content, config, source=str(source), price=0)
             else:
                 logger.warning("不明なplatform: %s", platform)
