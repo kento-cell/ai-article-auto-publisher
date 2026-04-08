@@ -338,6 +338,8 @@ def handle_message(event: dict, say):
         _cmd_dryrun(say)
     elif text == "regenerate":
         _cmd_regenerate(say)
+    elif text == "learn":
+        _cmd_learn(say)
     elif text == "stop":
         _cmd_stop(say)
     elif text == "status":
@@ -419,6 +421,16 @@ def _cmd_regenerate(say):
     thread = threading.Thread(
         target=_run_pipeline_sync,
         args=(say, "regenerate", "記事再生成"),
+        daemon=True,
+    )
+    thread.start()
+
+
+def _cmd_learn(say):
+    """Run note learning pipeline."""
+    thread = threading.Thread(
+        target=_run_pipeline_sync,
+        args=(say, "learn", "Note学習"),
         daemon=True,
     )
     thread.start()
