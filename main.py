@@ -283,6 +283,10 @@ def _generate_single_article(
         estimate_tokens(prompt) + estimate_tokens(content)
     )
 
+    # --- slug生成（図表処理・スコアリングで使用） ---
+    _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
+    slug = f"{platform}-{_safe_title}"
+
     # --- 図表処理 ---
     diagram_gen = DiagramGenerator()
     content = diagram_gen.embed_diagrams(content, "docs/images", base_name=slug)
@@ -330,8 +334,6 @@ def _generate_single_article(
 
     # --- 集約判定 ---
     aggregator = ScoreAggregator()
-    _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
-    slug = f"{platform}-{_safe_title}"
     final = aggregator.aggregate(
         obj_result,
         subj_result,

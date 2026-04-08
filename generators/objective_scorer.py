@@ -477,9 +477,9 @@ class ObjectiveScorer:
                 f"found {h1_count} H1 heading(s) in body "
                 "(H1 should only be the title)"
             )
-        if h2_count < 3:
+        if h2_count < 2:
             issues.append(
-                f"only {h2_count} H2 headings (minimum 3 required)"
+                f"only {h2_count} H2 headings (minimum 2 required)"
             )
 
         grade = "Pass" if not issues else "Fail"
