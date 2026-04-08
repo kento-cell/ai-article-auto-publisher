@@ -2,60 +2,101 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — v1.0 コード実装完了、自宅PCテスト待ち
+ai-article-auto-publisher — v1.0 コード実装完了、自宅PCで自走テスト開始
 
 ## Current Status
 
-- **Phase**: v1.0 コード実装完了
-- **Pipeline**: 未実行（自宅PCでのセットアップ・テスト待ち）
+- **Phase**: v1.0 コード完了 → 自宅PCでデグレ確認+E2Eテスト
+- **Pipeline**: Zenn投稿確認済み（デスクトップで動作確認OK）
 
-## Completed (v1.0)
+## Next Resume Actions（自走で実行すること）
 
-- リポジトリ構築 + GitHub (https://github.com/kento-cell/ai-article-auto-publisher)
-- 全Pythonモジュール実装（35+ファイル）
-- マルチエージェント設計（ディスカッション型、5役スキル定義）
-- 2層スコアリング（ObjectiveScorer + SubjectiveEvaluator + ScoreAggregator）
-- Sheets 14列ダッシュボード（ドロップダウン、条件付き書式、モバイル最適化）
-- Gmail通知（承認待ち、投稿完了、エラー、日次サマリー）
-- Slack Bot 遠隔操作（generate/publish/stop/status）
-- 記事コンテンツ保存（ArticleStore: data/articles/*.json）
-- カバー画像自動生成（テーマ別グラデーション + テキストオーバーレイ）
-- ハッシュタグ自動生成（カテゴリ検出 + LLM補完）
-- 日本語ソース（はてブ、Yahoo!、ITmedia等）+ 韓国ソース（allkpop、Soompi等）
-- コーヒー/グルメ/ライフスタイルソース
-- チェーン店ブラックリスト（ObjectiveScorerで自動検出・却下）
-- Codexレビュー対応（9バグ修正済み）
-- マネタイズ戦略リサーチ + Codex判断反映
-- CLAUDE.md（Claude Codeオンボーディング）
-- setup.bat（Windowsセットアップ）
+### 1. デグレチェック（最優先）
 
-## Active Blockers
+```bash
+git pull
+python -c "import main"
+python -c "from generators.objective_scorer import ObjectiveScorer"
+python -c "from generators.subjective_evaluator import SubjectiveEvaluator"
+python -c "from generators.score_aggregator import ScoreAggregator"
+python -c "from generators.cover_generator import CoverGenerator"
+python -c "from generators.hashtag_generator import HashtagGenerator"
+python -c "from collectors.rss_collector import RssCollector"
+python -c "from utils.article_store import ArticleStore"
+```
 
-- 自宅PCでのセットアップ未実施
-  - venv + 依存パッケージインストール
-  - .env 設定（Google API認証、Slack、Gmail等）
-  - Ollama + CodeLlama インストール
-  - Sheets初期設定（--setup-sheets）
-- E2Eテスト未実施
+インポートエラーがあれば修正。
 
-## v1.1 Scope (次フェーズ)
+### 2. 収集テスト
 
-- ディスカッションエンジン全面実装（main.pyリファクタ）
-- 画像Visionパイプライン（CLIP + Qwen2.5-VL）
-- Zenn Book パイプライン
-- 読者フィードバック自動収集・分析
-- note AI学習収益シェア
-- Google Docsプレビュー連携
+```bash
+python main.py --collect-only
+```
+
+arXiv + Reddit + 日本語RSS + 韓国RSS が全て動くか確認。
+エラーのあるRSSフィードは除外するかURLを修正。
+
+### 3. ドライラン
+
+```bash
+python main.py --dry-run
+```
+
+記事生成 + 構成パターン選択 + 客観/主観スコアリング + カバー画像生成が通るか確認。
+Ollama (Gemma3) が起動していること。
+
+### 4. 生成→Sheets登録テスト
+
+```bash
+python main.py --generate
+```
+
+Sheetsに記事が「⏳承認待ち」で登録されるか確認。
+Gmail通知が届くか確認。
+
+### 5. Slack Bot 動作確認
+
+```bash
+python bot/slack_bot.py
+```
+
+Slackの #ai-publisher で `status` `help` `collect` が動くか確認。
+
+### 6. 問題があれば修正して再テスト
+
+エラーが出たら:
+1. エラーメッセージを読んで原因特定
+2. 修正
+3. デグレチェックを再実行
+4. 修正をコミット・プッシュ
+
+## 今日の会社PCでの変更（未テスト）
+
+以下は会社PCでコード作成したが、自宅PCでの実行テストが未了:
+
+- **構成パターンローテーション接続** — main.pyが記事内容に応じて8パターンから自動選択
+- **架空店名対策（ハルシネーション防止）** — プロンプトで「元ソースにある情報のみ使用」を強制
+- **コンテンツ理念の反映** — 攻めタイトル + 濃密な中身（タイトル負け禁止）
+- **プレミアムコンテンツソース追加** — OpenAI Blog, Anthropic, HuggingFace, HN AI, There's An AI For That
+- **韓国+グルメ+コーヒーソースのRSS** — allkpop, Soompi, @cosme, 食べログ, Retty, Standart Japan等
+- **有名人匂わせタイトルのルール** — 伏字OK、実名はTier1-2ソース必須
+- **Criticのタイトル-本文一致チェック強化**
+- **arXivカテゴリ拡張** — cs.MA(マルチエージェント), cs.SE(コード生成), cs.CR(セキュリティ)追加
 
 ## Key Documents
 
-- CLAUDE.md — セットアップ手順、日常運用コマンド
-- AGENTS.md — エージェント設計、ディスカッション・プロトコル
-- docs/requirements.md — 要件定義 v1.1
-- docs/sessions/20260407_codex_consultation.md — Codex相談+回答
-- docs/sessions/20260407_monetization_research.md — マネタイズリサーチ
-- docs/sessions/20260407_image_vision_design.md — 画像Vision設計
+| ファイル | 内容 |
+|---------|------|
+| CLAUDE.md | セットアップ手順、デグレチェック手順、日常運用 |
+| AGENTS.md | ディスカッション型アーキテクチャ、スコアリング基準 |
+| docs/requirements.md | 要件定義 v1.1 |
+| docs/sessions/20260407_codex_consultation.md | Codex設計合意（5件の相談+回答） |
+| docs/sessions/20260407_monetization_research.md | マネタイズ戦略リサーチ |
+| docs/sessions/20260407_image_vision_design.md | 画像Vision設計（v1.1） |
+| docs/sessions/20260407_codex_review_response.md | バグ修正レポート + 反省点 |
+| config/prompts.yaml | プロンプト（理念、構成パターン、バズるタイトル型） |
+| config/settings.yaml.example | チェーン店ブラックリスト、構成ローテーション設定等 |
 
 ## Updated At
 
-2026-04-07 18:00 JST
+2026-04-08 JST
