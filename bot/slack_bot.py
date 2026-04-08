@@ -230,7 +230,9 @@ def _run_pipeline_sync(say, mode: str, label: str):
             m, s = divmod(elapsed, 60)
             time_str = f"{m}分{s}秒" if m else f"{s}秒"
             say(f"✅ *{label}* 完了 ({time_str})")
-            _send_sheets_message(say, mode)
+            # Check if any articles were registered for approval
+            has_pending = any("承認待ち" in l and "記事なし" not in l for l in output_lines)
+            _send_sheets_message(say, mode, has_pending=has_pending)
         else:
             last_lines = "\n".join(output_lines[-3:])
             say(
@@ -251,13 +253,13 @@ def _run_pipeline_sync(say, mode: str, label: str):
         say(f"❌ 実行エラー: {e}")
 
 
-def _send_sheets_message(say, mode: str):
+def _send_sheets_message(say, mode: str, has_pending: bool = False):
     """Send Sheets link with context message."""
     url = _get_sheets_url()
     if not url:
         return
 
-    if mode == "generate":
+    if mode == "generate" and has_pending:
         say(
             blocks=[
                 {
