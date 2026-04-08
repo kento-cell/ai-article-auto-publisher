@@ -1178,6 +1178,13 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
         pub_total = sum(len(v) for v in results.values())
         logger.info("投稿完了: %d件", pub_total)
 
+    # クリーンアップ（ゴミ溜まり防止）
+    try:
+        from utils.cleanup import cleanup_all
+        cleanup_all()
+    except Exception as e:
+        logger.warning("Cleanup failed: %s", e)
+
     logger.info("=" * 50)
     logger.info("パイプライン完了 (mode=%s)", mode)
     logger.info("=" * 50)
