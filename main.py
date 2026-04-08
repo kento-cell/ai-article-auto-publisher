@@ -548,6 +548,14 @@ def _generate_single_article(
     # --- Markdown構造補正（Gemma3が見出しを省略する問題の対策） ---
     content = _fix_markdown_structure(content)
 
+    # --- アフィリエイトリンク自動挿入 ---
+    try:
+        from generators.affiliate_injector import AffiliateInjector
+        _aff = AffiliateInjector()
+        content = _aff.inject(content, title=article.get("title", ""), platform=platform)
+    except Exception as exc:
+        logger.warning("アフィリエイト挿入失敗: %s", exc)
+
     # --- slug生成（図表処理・スコアリングで使用） ---
     _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
     slug = f"{platform}-{_safe_title}"
