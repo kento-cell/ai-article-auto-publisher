@@ -116,13 +116,19 @@ note_article_prompt: |
     - 「韓国で今話題の〇〇、日本でも使える？」（速報 × 実用）
     - 「非モテを脱出する〇〇術」（変身願望）
 
-  【絶対ルール】
+  【絶対ルール — 違反は即不合格】
   1. 引用は必ず出典明記（URL+取得日）
   2. 「月○万円稼いだ」等の誇大表現は禁止
   3. チェーン店（スタバ、鳥貴族、サイゼリヤ等）は絶対に紹介しない
-  4. 紹介する店・商品は実在するものだけ（架空の店名禁止）
-  5. 検証系は証拠前提で記述
-  6. 主観は「筆者の感想です」と明記
+  4. **元ソースに記載されている店舗・商品のみ紹介すること**
+     - 元記事に載っていない店名を自分で追加・創作してはいけない
+     - 「〇〇という店が話題です」と書く場合、元ソースのURLで裏付けできること
+     - 元ソースの情報が不足している場合は、具体的な店名を出さずに
+       「このエリアには〇〇な特徴の個人店が増えている」等の一般論で書く
+  5. 架空の店名・住所・メニュー名は絶対に書かない
+     - 実在確認できない固有名詞は使用禁止
+  6. 検証系は証拠前提で記述
+  7. 主観は「筆者の感想です」と明記
 
   【作成条件】
   1. 構成
@@ -254,3 +260,64 @@ article_structures:
       4. Q3: ...
       5. まとめ: 全体像
       6. さらに深く知りたい人へ
+
+  - name: listicle
+    description: "リスト記事: 〇〇選！△△編（note向け、バズりやすい）"
+    outline: |
+      1. なぜこのリストを作ったか（導入）
+      2. 選定基準（何を基準に選んだか）
+      3. No.1: 〇〇（特徴、おすすめポイント、アクセス）
+      4. No.2: 〇〇
+      5. No.3: 〇〇
+      6. 番外編（惜しくも選外だけど注目）
+      7. まとめ + 読者への提案
+
+  - name: trend_report
+    description: "トレンドレポート: 韓国/海外の最新情報を速報的に伝える"
+    outline: |
+      1. 速報: 何が起きているか
+      2. 背景: なぜ今話題なのか
+      3. 現地の反応・データ
+      4. 日本への影響・使い方
+      5. 入手方法・体験方法
+      6. 今後の予測
+      7. 参考リンク
+
+  - name: howto
+    description: "How-to: プロが教える〇〇の方法（コーヒー、美容等）"
+    outline: |
+      1. この記事で身につくこと
+      2. 必要なもの（道具・材料）
+      3. 手順1: ...
+      4. 手順2: ...
+      5. 手順3: ...
+      6. よくある失敗と対処法
+      7. プロのコツ（ワンランク上のテクニック）
+
+# 構成パターン選定ルール
+structure_selection:
+  zenn:
+    # 技術記事の構成は記事内容で判定
+    rules:
+      - keyword: ["入門", "始め方", "チュートリアル", "getting started"]
+        structure: tutorial
+      - keyword: ["比較", "vs", "選び方", "おすすめ"]
+        structure: comparison
+      - keyword: ["仕組み", "内部", "原理", "アーキテクチャ"]
+        structure: deep_dive
+      - keyword: ["FAQ", "質問", "疑問"]
+        structure: qa
+      - default: standard
+
+  note:
+    # note記事の構成はソースカテゴリで判定
+    rules:
+      - source_category: ["gourmet", "coffee", "izakaya"]
+        structure: listicle
+      - source_category: ["korean", "kbeauty", "ktrend"]
+        structure: trend_report
+      - source_category: ["beauty", "selfcare", "coffee"]
+        structure: howto
+      - source_category: ["tech", "ai", "llm"]
+        structure: standard
+      - default: standard
