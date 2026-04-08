@@ -536,7 +536,42 @@ class NotePublisher:
             logger.warning(
                 "公開後のリダイレクトを検出できませんでした。現在のURLを返します"
             )
+
+        # Close any post-publish popup (e.g. continuous-posting warning,
+        # share prompt, feedback modal)
+        self._dismiss_popups()
+
         return page.url
+
+    def _dismiss_popups(self) -> None:
+        """Close post-publish popups / modals that note shows."""
+        assert self._page is not None
+        page = self._page
+        page.wait_for_timeout(1500)
+
+        dismiss_selectors = [
+            "button[aria-label='閉じる']",
+            "button[aria-label='Close']",
+            "button:has-text('閉じる')",
+            "button:has-text('あとで')",
+            "button:has-text('キャンセル')",
+            "button:has-text('OK')",
+            "[data-testid='modal-close']",
+            "[role='dialog'] button:has-text('×')",
+        ]
+        for _ in range(3):  # Multiple popups may stack
+            closed_any = False
+            for selector in dismiss_selectors:
+                try:
+                    loc = page.locator(selector).first
+                    if loc.is_visible(timeout=500):
+                        loc.click(timeout=2000)
+                        page.wait_for_timeout(500)
+                        closed_any = True
+                except Exception:
+                    continue
+            if not closed_any:
+                break
 
     # ------------------------------------------------------------------
     # Private helpers — content preprocessing
