@@ -969,10 +969,9 @@ def publish_approved(
                     # Save as scrap draft for manual posting
                     url = _save_scrap_draft(article_id, title, content, stored)
             elif platform == "note":
-                overall_grade = stored.get("scores", {}).get("overall_grade", "C")
-                evidence_level = stored.get("scores", {}).get("evidence_level", "C")
-                price = NotePublisher.determine_price(overall_grade, evidence_level)
-                url = _publish_note(title, content, config, source=str(source), price=price)
+                # 本人情報登録を回避するため当面は全記事無料公開
+                # 本人情報登録後、price=NotePublisher.determine_price(...)に戻す
+                url = _publish_note(title, content, config, source=str(source), price=0)
             else:
                 logger.warning("不明なplatform: %s", platform)
                 continue
