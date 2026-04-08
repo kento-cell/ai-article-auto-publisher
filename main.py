@@ -32,6 +32,7 @@ from collectors.rss_collector import RssCollector
 from collectors.trend_detector import TrendDetector
 from generators.claude_automator import ClaudeAutomator
 from generators.local_llm import LocalLLM
+from generators.regenerator import Regenerator
 from generators.diagram_generator import DiagramGenerator
 from generators.evidence_manager import EvidenceManager
 from generators.hashtag_generator import HashtagGenerator
@@ -706,6 +707,235 @@ def _publish_note(
 
 
 # =====================================================================
+# Regeneration pipeline
+# =====================================================================
+
+def _process_regeneration_requests(
+    regen_requests: list[dict],
+    sheets: SheetsManager,
+    slack: SlackNotifier,
+    gmail: GmailNotifier,
+    config: dict,
+    token_manager: TokenManager,
+) -> None:
+    """Process regeneration requests using multi-agent pipeline.
+
+    For each request:
+    1. Load stored article from ArticleStore
+    2. Run Regenerator.regenerate()
+    3. Run objective + subjective scoring
+    4. If pass, register for approval; if fail, save to rejected
+    5. Post progress to Slack
+    """
+    _, local_llm, use_local = _init_llm(token_manager)
+    if local_llm is None:
+        logger.error("LLM not available for regeneration.")
+        return
+
+    regenerator = Regenerator(local_llm)
+    store = ArticleStore()
+    obj_scorer = ObjectiveScorer()
+
+    for req in regen_requests:
+        article_id = req.get("article_id", "")
+        title = req.get("title", "?")
+        platform = req.get("platform", "")
+        logger.info("再生成開始: %s (article_id=%s)", title[:40], article_id)
+
+        # Note: keep status as 🔄再生成 during processing (it's an allowed dropdown value)
+
+        # Load stored article
+        stored = store.load(article_id)
+        if not stored:
+            logger.error("記事が見つかりません: %s", article_id)
+            try:
+                sheets.update_status(article_id, "❌却下")
+            except Exception:
+                pass
+            continue
+
+        # Run regeneration pipeline
+        try:
+            regen_result = regenerator.regenerate(stored)
+        except Exception as e:
+            logger.error("再生成エラー (%s): %s", title[:30], e)
+            try:
+                sheets.update_status(article_id, "🔄再生成")
+            except Exception:
+                pass
+            slack.notify_error(
+                str(e), f"再生成失敗: {title[:30]}",
+            )
+            continue
+
+        if regen_result.get("error"):
+            logger.error(
+                "再生成失敗 (%s): %s", title[:30], regen_result["error"],
+            )
+            try:
+                sheets.update_status(article_id, "🔄再生成")
+            except Exception:
+                pass
+            slack.notify_error(
+                regen_result["error"], f"再生成失敗: {title[:30]}",
+            )
+            continue
+
+        content = regen_result.get("content", "")
+        if not content:
+            logger.error("再生成結果が空: %s", title[:30])
+            try:
+                sheets.update_status(article_id, "🔄再生成")
+            except Exception:
+                pass
+            continue
+
+        # Run objective scoring on regenerated content
+        forbidden = config.get("evidence", {}).get("forbidden_phrases", [])
+        sources = stored.get("source", {})
+        if isinstance(sources, dict):
+            sources = sources.get("sources", [])
+        else:
+            sources = []
+
+        chain_blacklist = config.get("evidence", {}).get(
+            "gourmet_rules", {},
+        ).get("chain_blacklist", [])
+
+        obj_result = obj_scorer.score(content, {
+            "sources": sources,
+            "forbidden_phrases": forbidden,
+            "chain_blacklist": chain_blacklist,
+        })
+
+        # Run subjective scoring
+        eval_fn = local_llm.generate
+        subj_evaluator = SubjectiveEvaluator()
+        subj_result = subj_evaluator.score(content, eval_fn, {
+            "research_brief": "",
+        })
+        token_manager.record_usage(estimate_tokens(content) * 2)
+
+        # Aggregate scores
+        aggregator = ScoreAggregator()
+        regen_title = regen_result.get("title", title)
+        slug = article_id  # Keep the same article_id/slug
+        final = aggregator.aggregate(
+            obj_result,
+            subj_result,
+            context={
+                "slug": slug,
+                "title": regen_title,
+                "platform": platform,
+            },
+        )
+
+        # Post discussion summary to Slack
+        discussion_summary = regenerator.get_discussion_summary(1500)
+        _post_regen_progress_to_slack(
+            slack, regen_title, platform, final, discussion_summary,
+        )
+
+        if final["decision"] == "reject":
+            logger.info(
+                "再生成後も不合格: %s — %s", regen_title[:30], final["summary"],
+            )
+            _save_rejected_articles(
+                [{
+                    "title": regen_title,
+                    "platform": platform,
+                    "content": content,
+                    "rejection_reasons": final.get("summary", "再生成後も不合格"),
+                    "rejection_stage": "regeneration_score",
+                }],
+                sheets,
+            )
+            try:
+                sheets.update_status(article_id, "❌却下")
+            except Exception:
+                pass
+        else:
+            # Save regenerated content to store
+            store.save(slug, {
+                "title": regen_title,
+                "content": content,
+                "platform": platform,
+                "source": stored.get("source", {}),
+                "cover_image": stored.get("cover_image", ""),
+                "scores": final,
+                "regenerated": True,
+                "agent_discussion": regen_result.get("agent_discussion", []),
+            })
+
+            # Update Sheets row with new scores
+            sheets_data = final.get("for_sheets", {})
+            if sheets_data:
+                sheets_data["status"] = "⏳承認待ち"
+                sheets_data["article_id"] = slug
+                sheets_data["title"] = regen_title
+            try:
+                sheets.update_status(article_id, "⏳承認待ち")
+            except Exception as e:
+                logger.warning("Sheets status update failed: %s", e)
+
+            logger.info(
+                "再生成完了: %s (総合: %s)", regen_title[:30], final["overall_grade"],
+            )
+
+            # Notify via Gmail
+            gmail_articles = [{
+                "title": regen_title,
+                "overall_grade": final.get("overall_grade", "-"),
+                "evidence_level": final.get("evidence_level", "-"),
+                "tier12_ratio": 0,
+            }]
+            sheets_url = os.getenv("GOOGLE_SHEET_URL", "")
+            gmail.notify_pending_approval(gmail_articles, sheets_url)
+
+
+def _post_regen_progress_to_slack(
+    slack: SlackNotifier,
+    title: str,
+    platform: str,
+    scores: dict,
+    discussion_summary: str,
+) -> None:
+    """Post regeneration progress and discussion summary to Slack."""
+    bot_token = os.getenv("SLACK_BOT_TOKEN")
+    channel_id = os.getenv("SLACK_CHANNEL_ID", "C0AR7E9AFJ9")
+    if not bot_token:
+        return
+
+    try:
+        from slack_sdk import WebClient
+        client = WebClient(token=bot_token)
+    except ImportError:
+        return
+
+    grade = scores.get("overall_grade", "?")
+    decision = scores.get("decision", "?")
+    emoji = "✅" if decision == "approve" else "❌"
+
+    message = (
+        f"{emoji} *再生成完了*: {title[:60]}\n"
+        f"*プラットフォーム*: {platform}\n"
+        f"*総合グレード*: {grade}\n"
+        f"*判定*: {decision}\n"
+        f"*サマリー*: {scores.get('summary', '')}\n\n"
+        f"--- エージェント議論 ---\n"
+        f"{discussion_summary[:1500]}"
+    )
+
+    try:
+        client.chat_postMessage(
+            channel=channel_id,
+            text=message[:3000],
+        )
+    except Exception as e:
+        logger.error("Slack regeneration notification failed: %s", e)
+
+
+# =====================================================================
 # メインパイプライン
 # =====================================================================
 
@@ -745,18 +975,13 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
         register_for_approval(approved, sheets, gmail)
         _save_rejected_articles(rejected, sheets)
 
-        # 再生成リクエストの確認
+        # 再生成リクエストの処理
         regen_requests = sheets.get_regeneration_requests()
         if regen_requests:
             logger.info("再生成リクエスト: %d件", len(regen_requests))
-            # TODO: Re-generate articles from stored source data.
-            # For now, log the requests. Full pipeline integration is planned.
-            for req in regen_requests:
-                logger.info(
-                    "  再生成対象: %s (article_id=%s)",
-                    req.get("title", "?")[:40],
-                    req.get("article_id", "?"),
-                )
+            _process_regeneration_requests(
+                regen_requests, sheets, slack, gmail, config, token_manager,
+            )
 
         # 日次サマリー
         stats = {
@@ -768,6 +993,17 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
         }
         slack.notify_daily_summary(stats)
         gmail.notify_daily_summary(stats)
+
+    elif mode == "regenerate":
+        # 再生成リクエストのみ処理
+        regen_requests = sheets.get_regeneration_requests()
+        if regen_requests:
+            logger.info("再生成リクエスト: %d件", len(regen_requests))
+            _process_regeneration_requests(
+                regen_requests, sheets, slack, gmail, config, token_manager,
+            )
+        else:
+            logger.info("再生成リクエストなし。")
 
     elif mode == "publish":
         # Sheetsから承認済み記事を取得して投稿
@@ -808,6 +1044,10 @@ def main():
     parser.add_argument(
         "--publish", action="store_true",
         help="Sheetsで承認済みの記事を投稿",
+    )
+    parser.add_argument(
+        "--regenerate", action="store_true",
+        help="🔄再生成リクエストのみ処理（収集・新規生成はスキップ）",
     )
     parser.add_argument(
         "--setup-sheets", action="store_true",
@@ -858,6 +1098,11 @@ def main():
             print("Sheetsフォーマット設定完了。")
         else:
             print("GOOGLE_SHEET_ID が未設定です。")
+        return
+
+    # --- regenerate ---
+    if args.regenerate:
+        run_pipeline(config, prompts, mode="regenerate")
         return
 
     # --- publish ---
