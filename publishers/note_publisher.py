@@ -919,6 +919,7 @@ class NotePublisher:
 
             # Confirm deletion
             page.wait_for_timeout(1000)
+            confirm_clicked = False
             confirm_selectors = [
                 "button:has-text('削除する')",
                 "button:has-text('はい')",
@@ -929,13 +930,40 @@ class NotePublisher:
                     btn = page.locator(sel).last
                     if btn.is_visible(timeout=2000):
                         btn.click(timeout=2000)
+                        confirm_clicked = True
                         break
                 except Exception:
                     continue
 
+            if not confirm_clicked:
+                logger.error("削除確認ダイアログが押せませんでした")
+                try:
+                    page.screenshot(
+                        path=str(_REPO_ROOT / "logs" / "note_delete_confirm_failed.png"),
+                        full_page=True,
+                    )
+                except Exception:
+                    pass
+                return False
+
             page.wait_for_timeout(3000)
-            logger.info("Article deleted: %s", url)
-            return True
+
+            # Verify: article URL should now return 404
+            import requests as _requests
+            try:
+                resp = _requests.head(url, allow_redirects=True, timeout=10)
+                if resp.status_code == 404:
+                    logger.info("Article deleted and verified (404): %s", url)
+                    return True
+                logger.warning(
+                    "Delete confirmed but URL still returns %d: %s",
+                    resp.status_code, url,
+                )
+                return False
+            except Exception as e:
+                # Can't verify — assume success based on click
+                logger.warning("Delete verification failed: %s", e)
+                return True
 
         except Exception as e:
             logger.exception("記事削除失敗: %s", url)
@@ -979,19 +1007,30 @@ class NotePublisher:
 
         text = "\n".join(result)
 
-        # Bold/italic: **text** or __text__ → text
+        # Step 1: Extract code blocks (```...```) to placeholders to protect them
+        code_blocks: list[str] = []
+        def _save_code_block(m: re.Match[str]) -> str:
+            code_blocks.append(m.group(1))
+            return f"\x00CODEBLOCK{len(code_blocks)-1}\x00"
+
+        text = re.sub(r"```[^\n]*\n(.*?)\n```", _save_code_block, text, flags=re.DOTALL)
+        text = text.replace("```", "")  # orphan fences
+
+        # Step 2: Extract inline code (`...`) similarly
+        inline_codes: list[str] = []
+        def _save_inline(m: re.Match[str]) -> str:
+            inline_codes.append(m.group(1))
+            return f"\x00INLINE{len(inline_codes)-1}\x00"
+
+        text = re.sub(r"`([^`\n]+?)`", _save_inline, text)
+
+        # Step 3: Now safe to remove markdown emphasis
+        # Bold: **text** / __text__
         text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
         text = re.sub(r"__(.+?)__", r"\1", text)
-        text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text)
-        text = re.sub(r"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", r"\1", text)
-
-        # Code block: remove fences (do first before inline code!)
-        text = re.sub(r"```[^\n]*\n", "", text)
-        text = re.sub(r"\n```", "", text)
-        text = text.replace("```", "")
-
-        # Inline code: `code` → code
-        text = re.sub(r"`([^`]+?)`", r"\1", text)
+        # Italic: *text* / _text_ (only when surrounded by whitespace or punctuation)
+        text = re.sub(r"(?<![*\w])\*([^*\n]+?)\*(?![*\w])", r"\1", text)
+        text = re.sub(r"(?<![_\w])_([^_\n]+?)_(?![_\w])", r"\1", text)
 
         # Blockquote: "> text" → "text"
         text = re.sub(r"^>\s?", "", text, flags=re.MULTILINE)
@@ -999,8 +1038,21 @@ class NotePublisher:
         # Horizontal rule: --- → blank
         text = re.sub(r"^---+\s*$", "", text, flags=re.MULTILINE)
 
-        # Link: [text](url) → text (url)
-        text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", text)
+        # Link: [text](url) → text (url) — handles nested parens in URLs
+        def _replace_link(m: re.Match[str]) -> str:
+            return f"{m.group(1)} ({m.group(2)})"
+        # Match balanced parens in URL (up to 1 nested pair)
+        text = re.sub(
+            r"\[([^\]]+)\]\(((?:[^()]|\([^)]*\))+)\)",
+            _replace_link,
+            text,
+        )
+
+        # Step 4: Restore inline code and code blocks
+        for i, code in enumerate(inline_codes):
+            text = text.replace(f"\x00INLINE{i}\x00", code)
+        for i, block in enumerate(code_blocks):
+            text = text.replace(f"\x00CODEBLOCK{i}\x00", block)
 
         # Collapse 3+ blank lines to 2
         text = re.sub(r"\n{3,}", "\n\n", text)
