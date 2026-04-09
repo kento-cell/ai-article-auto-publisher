@@ -36,11 +36,17 @@ genres:
 
   # 副業・マネー・投資系
   money:
-    keywords: ["副業", "稼ぐ", "投資", "NISA", "FIRE", "節約", "マネー", "収入", "株", "クレカ", "FX", "仮想通貨"]
+    keywords: ["副業", "稼ぐ", "投資", "NISA", "FIRE", "節約", "マネー", "収入", "株", "クレカ", "FX", "仮想通貨", "資産運用", "配当"]
     links:
-      - name: "マネー関連案件"
+      - name: "株歴50年超のプロによる推奨銘柄"
         url: "${A8_MONEY_LINK}"
-        description: "金融サービスをチェック"
+        description: "投資のプロが厳選した推奨銘柄情報"
+      - name: "ココナラ - 得意を生かして副業"
+        url: "${A8_COCONALA_LINK}"
+        description: "登録無料でスキル販売"
+      - name: "アイリサーチ - アンケート収入"
+        url: "${A8_SURVEY_LINK}"
+        description: "簡単1分からのアンケート副業"
       - name: "投資・マネー本"
         url: "https://www.amazon.co.jp/s?k=投資+入門+NISA&tag=${AMAZON_TAG}"
         description: "マネーリテラシー向上"
@@ -86,8 +92,11 @@ genres:
 
   # 学習・スキル系
   learning:
-    keywords: ["英語", "学習", "資格", "スキル", "勉強", "読書", "教育", "TOEIC"]
+    keywords: ["英語", "学習", "資格", "スキル", "勉強", "読書", "教育", "TOEIC", "独学"]
     links:
+      - name: "ココナラ - スキル販売"
+        url: "${A8_COCONALA_LINK}"
+        description: "得意を生かして収入化"
       - name: "Udemy 学習コース"
         url: "${UDEMY_LEARNING_LINK}"
         description: "オンライン講座"
