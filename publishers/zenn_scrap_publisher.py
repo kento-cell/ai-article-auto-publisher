@@ -40,6 +40,46 @@ class ZennScrapPublisher:
         self._context: BrowserContext | None = None
         self._page: Page | None = None
 
+    @staticmethod
+    def _sanitize_mermaid(content: str) -> str:
+        """Convert mermaid code blocks to ASCII arrow flows.
+
+        Gemma3 often generates invalid mermaid syntax like
+        `D[出力 (3D/4D)]` (parens inside brackets) which causes
+        Zenn mermaid rendering to fail. Convert to simple ASCII.
+        """
+        import re as _re
+        mermaid_re = _re.compile(r"```mermaid\s*\n(.*?)```", _re.DOTALL)
+
+        def _replace(m: _re.Match[str]) -> str:
+            src = m.group(1).strip()
+            # Parse edges: A[Label] --> B[Label] or A --> B
+            edge_re = _re.compile(
+                r"(\w+)(?:\[([^\]]+)\])?\s*-->\s*(\w+)(?:\[([^\]]+)\])?"
+            )
+            edges = edge_re.findall(src)
+            if not edges:
+                return "```\n" + src + "\n```"
+            nodes = []
+            for s, sl, d, dl in edges:
+                src_name = sl or s
+                dst_name = dl or d
+                if not nodes:
+                    nodes.append(src_name)
+                nodes.append(dst_name)
+            if len(" → ".join(nodes)) <= 60:
+                return "```\n" + " → ".join(nodes) + "\n```"
+            # Vertical flow
+            lines = []
+            for i, n in enumerate(nodes):
+                lines.append(f"  [{n}]")
+                if i < len(nodes) - 1:
+                    lines.append("    │")
+                    lines.append("    ▼")
+            return "```\n" + "\n".join(lines) + "\n```"
+
+        return mermaid_re.sub(_replace, content)
+
     def __enter__(self) -> "ZennScrapPublisher":
         return self
 
@@ -100,6 +140,10 @@ class ZennScrapPublisher:
         Returns:
             URL of the created scrap, or empty string on failure
         """
+        # Convert mermaid to ASCII (Gemma3 often generates invalid mermaid
+        # with special chars in node labels causing syntax errors)
+        content = self._sanitize_mermaid(content)
+
         self._ensure_started()
         assert self._page is not None
         page = self._page
