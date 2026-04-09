@@ -44,7 +44,8 @@ _PUBLISH_TIMEOUT_MS: Final[int] = 60_000
 # Matches local image paths such as ![](data/images/xxx.png) or
 # ![alt](./data/images/xxx.png)
 _LOCAL_IMAGE_RE: Final[re.Pattern[str]] = re.compile(
-    r"!\[[^\]]*\]\(\s*\.?/?(data/images/[^)\s]+)\s*\)"
+    r"!\[[^\]]*\]\(\s*\.?/?((?:data|docs)/images/[^)]+?\.(?:png|jpg|jpeg|gif|svg))\s*\)",
+    re.IGNORECASE,
 )
 
 
@@ -821,6 +822,164 @@ class NotePublisher:
     # Private helpers — content preprocessing
     # ------------------------------------------------------------------
 
+    def edit_article(
+        self,
+        url: str,
+        new_title: str | None = None,
+        new_content: str | None = None,
+    ) -> bool:
+        """Edit an existing note article (preserves URL and impressions).
+
+        Args:
+            url: Full note URL (https://note.com/user/n/xxxxx)
+            new_title: New title (None = keep existing)
+            new_content: New body content (None = keep existing)
+
+        Returns:
+            True on success
+        """
+        self._ensure_started()
+        assert self._page is not None
+        page = self._page
+
+        try:
+            self._assert_logged_in()
+
+            import re as _re
+            m = _re.search(r"/n/([a-zA-Z0-9]+)", url)
+            if not m:
+                logger.error("Invalid note URL: %s", url)
+                return False
+            note_id = m.group(1)
+
+            # Navigate to edit page
+            edit_url = f"https://editor.note.com/notes/{note_id}/edit/"
+            page.goto(edit_url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+            page.wait_for_timeout(5000)
+
+            if "login" in page.url or "enter" in page.url:
+                raise RuntimeError("note.comログインが必要です")
+
+            # Wait for editor
+            try:
+                page.wait_for_selector(".ProseMirror", timeout=20000)
+            except PlaywrightTimeoutError:
+                logger.error("エディタ読み込みタイムアウト")
+                return False
+
+            # Update title if provided
+            if new_title:
+                title_selectors = [
+                    "textarea[placeholder*='タイトル']",
+                    "input[placeholder*='タイトル']",
+                    "[data-testid='editor-title']",
+                ]
+                title_updated = False
+                for sel in title_selectors:
+                    try:
+                        loc = page.locator(sel).first
+                        if loc.is_visible(timeout=2000):
+                            loc.click()
+                            # Select all and delete
+                            page.keyboard.press("Control+a")
+                            page.wait_for_timeout(200)
+                            page.keyboard.press("Delete")
+                            page.wait_for_timeout(200)
+                            loc.type(new_title, delay=10)
+                            title_updated = True
+                            logger.info("Title updated via %s", sel)
+                            break
+                    except Exception:
+                        continue
+                if not title_updated:
+                    logger.warning("タイトル更新スキップ")
+
+            # Update body if provided
+            if new_content:
+                # Process content like on publish (mermaid→ascii, strip images, md→plain)
+                new_content = self._mermaid_to_ascii(new_content)
+                new_content = self._strip_local_images(new_content)
+                new_content = self._markdown_to_plain(new_content)
+
+                body = page.locator(".ProseMirror").first
+                body.click()
+                page.wait_for_timeout(500)
+                # Clear existing
+                page.keyboard.press("Control+a")
+                page.wait_for_timeout(300)
+                page.keyboard.press("Delete")
+                page.wait_for_timeout(500)
+                # Type new content
+                page.keyboard.type(new_content, delay=2)
+                page.wait_for_timeout(1000)
+                logger.info("Body updated")
+
+            # Click 公開に進む / 更新する button
+            page.wait_for_timeout(1500)
+            proceed_selectors = [
+                "button:has-text('公開に進む')",
+                "button:has-text('更新')",
+                "button:has-text('公開設定')",
+            ]
+            for sel in proceed_selectors:
+                try:
+                    btn = page.locator(sel).first
+                    if btn.is_visible(timeout=2000):
+                        btn.click(timeout=3000)
+                        page.wait_for_timeout(2000)
+                        break
+                except Exception:
+                    continue
+
+            # Dismiss personal info modal if any
+            self._dismiss_personal_info_modal()
+            page.wait_for_timeout(1500)
+
+            # Click final update button
+            update_selectors = [
+                "button:has-text('更新する')",
+                "button:has-text('公開する'):not(:has-text('予約'))",
+                "button:has-text('投稿する'):not(:has-text('予約'))",
+            ]
+            updated = False
+            for sel in update_selectors:
+                try:
+                    btns = page.locator(sel).all()
+                    for btn in reversed(btns):
+                        try:
+                            if btn.is_visible(timeout=500):
+                                btn.scroll_into_view_if_needed(timeout=2000)
+                                btn.click(timeout=3000)
+                                updated = True
+                                logger.info("Update clicked: %s", sel)
+                                break
+                        except Exception:
+                            continue
+                    if updated:
+                        break
+                except Exception:
+                    continue
+
+            if not updated:
+                logger.error("更新ボタンが見つかりません")
+                try:
+                    page.screenshot(
+                        path=str(_REPO_ROOT / "logs" / "note_edit_failed.png"),
+                        full_page=True,
+                    )
+                except Exception:
+                    pass
+                return False
+
+            page.wait_for_timeout(3000)
+            self._dismiss_popups()
+            logger.info("Article edited: %s", url)
+            return True
+
+        except Exception as e:
+            logger.exception("記事編集失敗: %s", url)
+            return False
+
     def delete_article(self, url: str) -> bool:
         """Delete a published note article via dashboard.
 
@@ -983,14 +1142,22 @@ class NotePublisher:
         for line in lines:
             stripped = line.rstrip()
 
-            # Heading: "## Title" → "Title" (with blank line separator)
+            # Heading: "## Title" → "■ Title" (visual bullet for plain text editor)
             heading_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
             if heading_match:
+                level = len(heading_match.group(1))
                 title_text = heading_match.group(2).strip()
                 # Add blank line before heading if not already there
                 if result and result[-1].strip():
                     result.append("")
-                result.append(title_text)
+                # Use different markers for hierarchy
+                if level <= 2:
+                    marker = "■ "
+                elif level == 3:
+                    marker = "▶ "
+                else:
+                    marker = "・ "
+                result.append(f"{marker}{title_text}")
                 result.append("")
                 continue
 
@@ -1006,6 +1173,14 @@ class NotePublisher:
             result.append(stripped)
 
         text = "\n".join(result)
+
+        # Step 0: Convert **bold** to visually bold using full-width or emphasis chars
+        # Note's ProseMirror doesn't render markdown, so we use Unicode fullwidth
+        # for bold words and add 「」quotes for emphasis
+        def _emphasize_bold(m: re.Match[str]) -> str:
+            inner = m.group(1)
+            return f"【{inner}】"
+        # Run bold conversion BEFORE removing markdown (before step 1)
 
         # Step 1: Extract code blocks (```...```) to placeholders to protect them
         code_blocks: list[str] = []
@@ -1024,11 +1199,11 @@ class NotePublisher:
 
         text = re.sub(r"`([^`\n]+?)`", _save_inline, text)
 
-        # Step 3: Now safe to remove markdown emphasis
-        # Bold: **text** / __text__
-        text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
-        text = re.sub(r"__(.+?)__", r"\1", text)
-        # Italic: *text* / _text_ (only when surrounded by whitespace or punctuation)
+        # Step 3: Convert markdown emphasis to Unicode visual emphasis
+        # note's ProseMirror doesn't parse markdown, so we use 【】 for bold visibility
+        text = re.sub(r"\*\*(.+?)\*\*", r"【\1】", text)
+        text = re.sub(r"__(.+?)__", r"【\1】", text)
+        # Italic: just strip markers (italic not as important)
         text = re.sub(r"(?<![*\w])\*([^*\n]+?)\*(?![*\w])", r"\1", text)
         text = re.sub(r"(?<![_\w])_([^_\n]+?)_(?![_\w])", r"\1", text)
 
