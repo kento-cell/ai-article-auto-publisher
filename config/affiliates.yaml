@@ -19,7 +19,7 @@ genres:
         url: "https://www.udemy.com/?ranMID=39197"  # TODO: 実ASPリンクに置き換え
         description: "プログラミングやAI関連の講座が充実"
       - name: "技術書 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=Python+入門&tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/s?k=Python+入門&tag=satoarata-22"  # TODO
         description: "Amazonで技術書をチェック"
 
   # AI・自動化系
@@ -30,7 +30,7 @@ genres:
         url: "https://claude.ai"
         description: "高性能AIアシスタント"
       - name: "AI本 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=ChatGPT&tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/s?k=ChatGPT&tag=satoarata-22"  # TODO
         description: "AI関連書籍"
 
   # 副業・マネー系
@@ -41,7 +41,7 @@ genres:
         url: "https://www.rakuten-sec.co.jp/"  # TODO: もしもアフィリエイト等のリンクに
         description: "NISA口座開設で投資デビュー"
       - name: "マネー本 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=投資+入門&tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/s?k=投資+入門&tag=satoarata-22"  # TODO
         description: "投資・マネー関連書籍"
 
   # ライフスタイル系
@@ -49,7 +49,7 @@ genres:
     keywords: ["ライフハック", "健康", "ダイエット", "美容", "ファッション", "料理"]
     links:
       - name: "Amazon おすすめ"
-        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=satoarata-22"  # TODO
         description: "日用品・生活グッズ"
       - name: "楽天市場"
         url: "https://www.rakuten.co.jp/"  # TODO: 楽天アフィリエイトリンクに
@@ -63,7 +63,7 @@ genres:
         url: "https://www.udemy.com/?ranMID=39197"  # TODO
         description: "英語やスキル講座"
       - name: "Kindle Unlimited"
-        url: "https://www.amazon.co.jp/kindle-dbs/hz/subscribe/ku?tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/kindle-dbs/hz/subscribe/ku?tag=satoarata-22"  # TODO
         description: "月額読み放題で学習コスト削減"
 
   # コーヒー・グルメ系
@@ -71,7 +71,7 @@ genres:
     keywords: ["コーヒー", "グルメ", "カフェ", "料理", "レシピ"]
     links:
       - name: "コーヒー豆 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=スペシャルティコーヒー&tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/s?k=スペシャルティコーヒー&tag=satoarata-22"  # TODO
         description: "厳選コーヒー豆"
       - name: "調理道具 (楽天)"
         url: "https://www.rakuten.co.jp/"  # TODO
@@ -82,5 +82,5 @@ genres:
     keywords: []
     links:
       - name: "Amazon"
-        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=YOURTAG-22"  # TODO
+        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=satoarata-22"  # TODO
         description: "関連商品をチェック"
