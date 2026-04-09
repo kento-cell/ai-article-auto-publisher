@@ -59,6 +59,17 @@ genres:
         url: "${VCM_LIFESTYLE_LINK}"
         description: "お買い得アイテム"
 
+  # 通信・インターネット・スマホ系
+  telecom:
+    keywords: ["通信", "インターネット", "光回線", "Wi-Fi", "スマホ", "格安SIM", "auひかり", "在宅ワーク", "リモート", "5G", "ネット環境"]
+    links:
+      - name: "【auひかり】最大131,000円キャッシュバック"
+        url: "${A8_TELECOM_LINK}"
+        description: "auスマホとのセットで毎月最大2,200円割引"
+      - name: "通信機器 (Amazon)"
+        url: "https://www.amazon.co.jp/s?k=Wi-Fi+ルーター&tag=${AMAZON_TAG}"
+        description: "人気の通信機器"
+
   # 美容・健康・ダイエット系
   beauty:
     keywords: ["美容", "コスメ", "スキンケア", "ダイエット", "健康", "サプリ", "エステ"]
