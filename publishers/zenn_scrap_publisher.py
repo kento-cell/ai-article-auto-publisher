@@ -124,47 +124,13 @@ class ZennScrapPublisher:
             except Exception as e:
                 raise RuntimeError(f"スクラップタイトル入力欄が見つかりません: {e}") from e
 
-            page.wait_for_timeout(500)
-
-            # Body editor — Zenn uses a CodeMirror-based markdown editor.
-            # Find the textarea that's NOT the title, or use CodeMirror's content area
-            try:
-                # Try CodeMirror first
-                cm_selectors = [
-                    ".cm-content",
-                    ".cm-editor .cm-content",
-                    ".CodeMirror",
-                    "textarea:not(#scrap-new-title)",
-                ]
-                body_filled = False
-                for sel in cm_selectors:
-                    try:
-                        body = page.locator(sel).first
-                        if body.is_visible(timeout=1500):
-                            body.click()
-                            page.wait_for_timeout(300)
-                            page.keyboard.type(content, delay=2)
-                            body_filled = True
-                            logger.info("Scrap body filled via %s", sel)
-                            break
-                    except Exception:
-                        continue
-                if not body_filled:
-                    # Last resort: just type after title
-                    page.keyboard.press("Tab")
-                    page.keyboard.type(content, delay=2)
-            except Exception as e:
-                logger.warning("本文入力に問題: %s", e)
-
-            # Wait longer for long content + validation
-            page.wait_for_timeout(3000)
-
-            # Submit — try multiple button texts
+            # Step 1: Click "スクラップを作成" to create scrap with title only
+            # Zenn scrap creation is 2-step: title → create → add first post
+            page.wait_for_timeout(1000)
             submit_selectors = [
                 "button:has-text('スクラップを作成')",
                 "button:has-text('作成する')",
                 "button:has-text('作成')",
-                "button:has-text('投稿する')",
                 "button[type='submit']",
             ]
             submitted = False
@@ -177,7 +143,7 @@ class ZennScrapPublisher:
                                 btn.scroll_into_view_if_needed(timeout=2000)
                                 btn.click(timeout=3000)
                                 submitted = True
-                                logger.info("Scrap submit via: %s", sel)
+                                logger.info("Scrap create via: %s", sel)
                                 break
                         except Exception:
                             continue
@@ -185,7 +151,6 @@ class ZennScrapPublisher:
                         break
                 except Exception:
                     continue
-
             if not submitted:
                 try:
                     page.screenshot(
@@ -196,15 +161,109 @@ class ZennScrapPublisher:
                     pass
                 raise RuntimeError("スクラップ作成ボタンが見つかりません")
 
-            # Sometimes a confirmation 投稿する appears
-            page.wait_for_timeout(1500)
+            # Step 2: Wait for redirect to scrap page, then add first post
             try:
-                post_btn = page.locator("button:has-text('投稿する')").first
-                if post_btn.is_visible(timeout=2000):
-                    post_btn.click(timeout=3000)
-                    logger.info("投稿する clicked")
-            except Exception:
-                pass
+                page.wait_for_url("**/scraps/**", timeout=30_000)
+                # Make sure it's not still /scraps/new
+                if page.url.endswith("/scraps/new"):
+                    page.wait_for_url(lambda u: "/scraps/" in u and not u.endswith("/new"), timeout=15_000)
+            except PlaywrightTimeoutError:
+                logger.warning("Scrap page navigation timeout: %s", page.url)
+
+            scrap_url = page.url
+            logger.info("Scrap created: %s", scrap_url)
+            page.wait_for_timeout(3000)
+
+            # Step 3: Fill first post via CodeMirror 6 editor
+            # CM6 accepts page.keyboard.insert_text (NOT type or paste)
+            try:
+                editor = page.locator(".cm-content").first
+                editor.wait_for(state="visible", timeout=10000)
+                editor.click()
+                page.wait_for_timeout(500)
+
+                # Clear any autosaved draft first
+                page.keyboard.press("Control+a")
+                page.wait_for_timeout(200)
+                page.keyboard.press("Delete")
+                page.wait_for_timeout(300)
+
+                # Insert content line by line to preserve newlines
+                # (insert_text doesn't handle \n automatically in CM6)
+                lines = content.split("\n")
+                for i, line in enumerate(lines):
+                    if line:
+                        page.keyboard.insert_text(line)
+                    if i < len(lines) - 1:
+                        page.keyboard.press("Enter")
+                    page.wait_for_timeout(30)
+
+                logger.info("Post body inserted (%d chars)", len(content))
+                page.wait_for_timeout(1500)
+
+                # Verify
+                inserted = page.evaluate(
+                    "() => document.querySelector('.cm-content')?.textContent || ''"
+                )
+                if not inserted.strip():
+                    logger.warning("Body still empty after insert_text")
+
+                # Click the primary "投稿する" submit button
+                # Use the specific class — NOT the AddNewMenu button
+                post_submitted = False
+                primary_selectors = [
+                    "button.Button_primary__VcoA9:has-text('投稿する')",
+                    "button[class*='Button_primary']:has-text('投稿する')",
+                ]
+                for sel in primary_selectors:
+                    try:
+                        btn = page.locator(sel).first
+                        if btn.is_visible(timeout=2000):
+                            disabled = btn.evaluate("el => el.disabled")
+                            if not disabled:
+                                btn.scroll_into_view_if_needed(timeout=2000)
+                                btn.click(timeout=3000)
+                                post_submitted = True
+                                logger.info("Primary 投稿する clicked: %s", sel)
+                                page.wait_for_timeout(3000)
+                                break
+                    except Exception:
+                        continue
+
+                # Fallback: pick the LAST 投稿する button (primary is usually last)
+                if not post_submitted:
+                    btns = page.locator("button:has-text('投稿する')").all()
+                    if btns:
+                        btn = btns[-1]
+                        try:
+                            btn.scroll_into_view_if_needed(timeout=2000)
+                            btn.click(timeout=3000)
+                            post_submitted = True
+                            logger.info("Last 投稿する clicked (fallback)")
+                            page.wait_for_timeout(3000)
+                        except Exception as e:
+                            logger.warning("Fallback click failed: %s", e)
+
+                if not post_submitted:
+                    logger.warning("投稿する button not clickable")
+                    try:
+                        page.screenshot(
+                            path=str(_REPO_ROOT / "logs" / "scrap_post_failed.png"),
+                            full_page=True,
+                        )
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning("First post creation failed: %s", e)
+                try:
+                    page.screenshot(
+                        path=str(_REPO_ROOT / "logs" / "scrap_post_failed.png"),
+                        full_page=True,
+                    )
+                except Exception:
+                    pass
+
+            return scrap_url
 
             # Wait for redirect to the new scrap URL
             try:
