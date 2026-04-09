@@ -49,12 +49,15 @@ genres:
   lifestyle:
     keywords: ["ライフハック", "ファッション", "料理", "レシピ", "インテリア", "ガジェット"]
     links:
-      - name: "Yahoo!ショッピング"
-        url: "${VCM_LIFESTYLE_LINK}"
-        description: "お買い得アイテム"
       - name: "Amazon おすすめ"
         url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=${AMAZON_TAG}"
         description: "日用品・生活グッズ"
+      - name: "楽天市場 ランキング"
+        url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Fwww.rakuten.co.jp%2F"
+        description: "楽天市場でチェック"
+      - name: "Yahoo!ショッピング"
+        url: "${VCM_LIFESTYLE_LINK}"
+        description: "お買い得アイテム"
 
   # 美容・健康・ダイエット系
   beauty:
@@ -66,6 +69,9 @@ genres:
       - name: "コスメ・スキンケア"
         url: "https://www.amazon.co.jp/s?k=スキンケア+人気&tag=${AMAZON_TAG}"
         description: "Amazon人気コスメ"
+      - name: "楽天 美容ランキング"
+        url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Fwww.rakuten.co.jp%2Fcategory%2F100939%2F"
+        description: "楽天美容人気アイテム"
 
   # 学習・スキル系
   learning:
@@ -85,6 +91,9 @@ genres:
       - name: "コーヒー豆 (Amazon)"
         url: "https://www.amazon.co.jp/s?k=スペシャルティコーヒー&tag=${AMAZON_TAG}"
         description: "厳選コーヒー豆"
+      - name: "楽天 お取り寄せグルメ"
+        url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Fwww.rakuten.co.jp%2Fcategory%2F100227%2F"
+        description: "楽天人気グルメ"
       - name: "Yahoo!ショッピング グルメ"
         url: "${VCM_FOOD_LINK}"
         description: "お取り寄せグルメ"
