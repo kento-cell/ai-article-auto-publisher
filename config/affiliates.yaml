@@ -1,86 +1,98 @@
-# アフィリエイトリンク設定
-# ジャンル別に関連するASPリンクを設定
-# 記事生成時に末尾へ自動挿入される
+# アフィリエイト設定
+# ⚠️ このファイルには実IDを書かない。${ENV_VAR} 形式で .env を参照すること
+# .env にトラッキングID・広告リンクを保存（.gitignoreで除外済み）
 
-# 開示文（最小限 — グレーゾーン運用）
-# 「広告」「アフィリエイト」という単語は使用禁止
+# 開示文（最小限）
 disclosure: |
   ---
   ※一部にPRを含みます。
 
 # ジャンル別アフィリエイトリンク
-# 実際のASPリンクに置き換えてください
 genres:
   # テクノロジー系（Zenn向き）
   tech:
-    keywords: ["AI", "プログラミング", "Python", "JavaScript", "エンジニア", "開発", "コード"]
+    keywords: ["AI", "プログラミング", "Python", "JavaScript", "エンジニア", "開発", "コード", "TypeScript", "Go", "Rust"]
     links:
-      - name: "Udemy - 人気のオンラインコース"
-        url: "https://www.udemy.com/?ranMID=39197"  # TODO: 実ASPリンクに置き換え
-        description: "プログラミングやAI関連の講座が充実"
-      - name: "技術書 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=Python+入門&tag=satoarata-22"  # TODO
+      - name: "Udemy - Python・AI講座"
+        url: "${UDEMY_TECH_LINK}"
+        description: "プログラミング講座が充実"
+      - name: "技術書"
+        url: "https://www.amazon.co.jp/s?k=Python+実践&tag=${AMAZON_TAG}"
         description: "Amazonで技術書をチェック"
 
   # AI・自動化系
   ai:
-    keywords: ["ChatGPT", "Claude", "Gemini", "LLM", "自動化", "GPT", "生成AI"]
+    keywords: ["ChatGPT", "Claude", "Gemini", "LLM", "自動化", "GPT", "生成AI", "Stable Diffusion", "MCP", "RAG", "n8n"]
     links:
-      - name: "Claude Pro"
+      - name: "Claude Pro (公式)"
         url: "https://claude.ai"
         description: "高性能AIアシスタント"
-      - name: "AI本 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=ChatGPT&tag=satoarata-22"  # TODO
-        description: "AI関連書籍"
+      - name: "Udemy - ChatGPT/Claude活用講座"
+        url: "${UDEMY_AI_LINK}"
+        description: "AI活用の体系的学習"
+      - name: "AI関連書籍"
+        url: "https://www.amazon.co.jp/s?k=ChatGPT+Claude+活用&tag=${AMAZON_TAG}"
+        description: "最新AI本"
 
-  # 副業・マネー系
+  # 副業・マネー・投資系
   money:
-    keywords: ["副業", "稼ぐ", "投資", "NISA", "FIRE", "節約", "マネー", "収入"]
+    keywords: ["副業", "稼ぐ", "投資", "NISA", "FIRE", "節約", "マネー", "収入", "株", "クレカ", "FX", "仮想通貨"]
     links:
-      - name: "楽天証券 口座開設"
-        url: "https://www.rakuten-sec.co.jp/"  # TODO: もしもアフィリエイト等のリンクに
-        description: "NISA口座開設で投資デビュー"
-      - name: "マネー本 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=投資+入門&tag=satoarata-22"  # TODO
-        description: "投資・マネー関連書籍"
+      - name: "マネー関連案件"
+        url: "${A8_MONEY_LINK}"
+        description: "金融サービスをチェック"
+      - name: "投資・マネー本"
+        url: "https://www.amazon.co.jp/s?k=投資+入門+NISA&tag=${AMAZON_TAG}"
+        description: "マネーリテラシー向上"
 
-  # ライフスタイル系
+  # ライフスタイル・グルメ系
   lifestyle:
-    keywords: ["ライフハック", "健康", "ダイエット", "美容", "ファッション", "料理"]
+    keywords: ["ライフハック", "ファッション", "料理", "レシピ", "インテリア", "ガジェット"]
     links:
+      - name: "Yahoo!ショッピング"
+        url: "${VCM_LIFESTYLE_LINK}"
+        description: "お買い得アイテム"
       - name: "Amazon おすすめ"
-        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=satoarata-22"  # TODO
+        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=${AMAZON_TAG}"
         description: "日用品・生活グッズ"
-      - name: "楽天市場"
-        url: "https://www.rakuten.co.jp/"  # TODO: 楽天アフィリエイトリンクに
-        description: "お得なセール情報も"
+
+  # 美容・健康・ダイエット系
+  beauty:
+    keywords: ["美容", "コスメ", "スキンケア", "ダイエット", "健康", "サプリ", "エステ"]
+    links:
+      - name: "美容・健康商品"
+        url: "${AFB_BEAUTY_LINK}"
+        description: "人気の美容・健康アイテム"
+      - name: "コスメ・スキンケア"
+        url: "https://www.amazon.co.jp/s?k=スキンケア+人気&tag=${AMAZON_TAG}"
+        description: "Amazon人気コスメ"
 
   # 学習・スキル系
   learning:
-    keywords: ["英語", "学習", "資格", "スキル", "勉強", "読書"]
+    keywords: ["英語", "学習", "資格", "スキル", "勉強", "読書", "教育", "TOEIC"]
     links:
       - name: "Udemy 学習コース"
-        url: "https://www.udemy.com/?ranMID=39197"  # TODO
-        description: "英語やスキル講座"
+        url: "${UDEMY_LEARNING_LINK}"
+        description: "オンライン講座"
       - name: "Kindle Unlimited"
-        url: "https://www.amazon.co.jp/kindle-dbs/hz/subscribe/ku?tag=satoarata-22"  # TODO
-        description: "月額読み放題で学習コスト削減"
+        url: "https://www.amazon.co.jp/kindle-dbs/hz/subscribe/ku?tag=${AMAZON_TAG}"
+        description: "月額読み放題"
 
   # コーヒー・グルメ系
   food:
-    keywords: ["コーヒー", "グルメ", "カフェ", "料理", "レシピ"]
+    keywords: ["コーヒー", "グルメ", "カフェ", "料理レシピ", "食材"]
     links:
       - name: "コーヒー豆 (Amazon)"
-        url: "https://www.amazon.co.jp/s?k=スペシャルティコーヒー&tag=satoarata-22"  # TODO
+        url: "https://www.amazon.co.jp/s?k=スペシャルティコーヒー&tag=${AMAZON_TAG}"
         description: "厳選コーヒー豆"
-      - name: "調理道具 (楽天)"
-        url: "https://www.rakuten.co.jp/"  # TODO
-        description: "キッチンアイテム"
+      - name: "Yahoo!ショッピング グルメ"
+        url: "${VCM_FOOD_LINK}"
+        description: "お取り寄せグルメ"
 
   # デフォルト（マッチしない場合）
   default:
     keywords: []
     links:
       - name: "Amazon"
-        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=satoarata-22"  # TODO
+        url: "https://www.amazon.co.jp/ref=as_li_ss_tl?tag=${AMAZON_TAG}"
         description: "関連商品をチェック"
