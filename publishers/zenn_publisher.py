@@ -79,6 +79,11 @@ class ZennPublisher:
         if not topics:
             raise ValueError("At least one topic is required")
 
+        # Zenn max title length is 70 chars
+        if len(title) > 70:
+            title = title[:67] + "..."
+            logger.info("Title truncated to 70 chars: %s", title)
+
         slug = self._generate_slug(title)
         trimmed_topics = topics[:_MAX_TOPICS]
         frontmatter = self._build_frontmatter(
