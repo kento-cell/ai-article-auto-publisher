@@ -333,6 +333,12 @@ def handle_message(event: dict, say):
         _cmd_delete(say, url)
         return
 
+    # Handle edit command: "edit <URL>" - re-apply stored content from ArticleStore
+    if text.startswith("edit "):
+        url = raw_text[len("edit "):].strip()
+        _cmd_edit(say, url)
+        return
+
     if text == "help":
         _cmd_help(say)
     elif text == "generate":
@@ -441,6 +447,57 @@ def _cmd_learn(say):
         args=(say, "learn", "Note学習"),
         daemon=True,
     )
+    thread.start()
+
+
+def _cmd_edit(say, url: str):
+    """Re-apply stored content to an existing note article (preserves impressions)."""
+    if not url or "note.com" not in url:
+        say("❌ note.comのURLを指定してください\n例: `edit https://note.com/user/n/xxxxx`")
+        return
+
+    def _do_edit():
+        try:
+            import json as _json
+            from pathlib import Path as _P
+            say(f"✏️ 編集中: {url}")
+
+            # Find matching stored article by URL or title match
+            from utils.article_store import ArticleStore
+            from publishers.note_publisher import NotePublisher
+            import sys
+            if str(PROJECT_ROOT) not in sys.path:
+                sys.path.insert(0, str(PROJECT_ROOT))
+            from main import _extract_japanese_title
+
+            store = ArticleStore()
+            # Try to find article by checking all stored ones
+            target = None
+            for slug in store.list_all():
+                data = store.load(slug)
+                if data and data.get("platform") == "note":
+                    target = data
+                    break  # For now, edit the most recent note article
+
+            if not target:
+                say("❌ 編集対象の記事データが見つかりません")
+                return
+
+            content = target.get("content", "")
+            title = _extract_japanese_title(content) or target.get("title", "")
+
+            pub = NotePublisher(headless=False)
+            success = pub.edit_article(url, new_title=title, new_content=content)
+            pub.close()
+
+            if success:
+                say(f"✅ 編集完了: {url}")
+            else:
+                say(f"❌ 編集失敗: {url}")
+        except Exception as e:
+            say(f"❌ エラー: {e}")
+
+    thread = threading.Thread(target=_do_edit, daemon=True)
     thread.start()
 
 
