@@ -156,16 +156,45 @@ class ZennScrapPublisher:
             except Exception as e:
                 logger.warning("本文入力に問題: %s", e)
 
-            page.wait_for_timeout(1000)
+            # Wait longer for long content + validation
+            page.wait_for_timeout(3000)
 
-            # Submit — click "スクラップを作成"
-            try:
-                submit_btn = page.locator("button:has-text('スクラップを作成')").first
-                submit_btn.wait_for(state="visible", timeout=5000)
-                submit_btn.click(timeout=3000)
-                logger.info("Scrap create clicked")
-            except Exception as e:
-                raise RuntimeError(f"スクラップ作成ボタンが見つかりません: {e}") from e
+            # Submit — try multiple button texts
+            submit_selectors = [
+                "button:has-text('スクラップを作成')",
+                "button:has-text('作成する')",
+                "button:has-text('作成')",
+                "button:has-text('投稿する')",
+                "button[type='submit']",
+            ]
+            submitted = False
+            for sel in submit_selectors:
+                try:
+                    btns = page.locator(sel).all()
+                    for btn in btns:
+                        try:
+                            if btn.is_visible(timeout=1000):
+                                btn.scroll_into_view_if_needed(timeout=2000)
+                                btn.click(timeout=3000)
+                                submitted = True
+                                logger.info("Scrap submit via: %s", sel)
+                                break
+                        except Exception:
+                            continue
+                    if submitted:
+                        break
+                except Exception:
+                    continue
+
+            if not submitted:
+                try:
+                    page.screenshot(
+                        path=str(_REPO_ROOT / "logs" / "scrap_submit_failed.png"),
+                        full_page=True,
+                    )
+                except Exception:
+                    pass
+                raise RuntimeError("スクラップ作成ボタンが見つかりません")
 
             # Sometimes a confirmation 投稿する appears
             page.wait_for_timeout(1500)
