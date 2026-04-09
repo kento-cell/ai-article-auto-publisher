@@ -1129,6 +1129,58 @@ class NotePublisher:
             return False
 
     @staticmethod
+    def _ascii_to_bold(text: str) -> str:
+        """Convert ASCII letters/digits to Unicode sans-serif bold.
+
+        Japanese characters are left unchanged (they don't have bold variants
+        in Unicode that render consistently on note). ASCII becomes visually
+        thicker.
+        """
+        result = []
+        for c in text:
+            code = ord(c)
+            # Uppercase A-Z → 𝗔-𝗭 (Mathematical Sans-serif Bold Capital)
+            if 0x41 <= code <= 0x5A:
+                result.append(chr(0x1D5D4 + code - 0x41))
+            # Lowercase a-z → 𝗮-𝘇
+            elif 0x61 <= code <= 0x7A:
+                result.append(chr(0x1D5EE + code - 0x61))
+            # Digits 0-9 → 𝟬-𝟵
+            elif 0x30 <= code <= 0x39:
+                result.append(chr(0x1D7EC + code - 0x30))
+            else:
+                # Japanese/symbols: wrap in 『』 for emphasis (only if whole word is Japanese)
+                result.append(c)
+        converted = "".join(result)
+        # If no ASCII was converted (pure Japanese), wrap in 『』 instead
+        if converted == text and text.strip():
+            return f"『{text}』"
+        return converted
+
+    @staticmethod
+    def _strip_emojis(content: str) -> str:
+        """Remove Unicode emojis but keep math bold chars + kaomoji.
+
+        Carefully avoid stripping Mathematical Alphanumeric Symbols
+        (U+1D400-U+1D7FF) used for visual bold.
+        """
+        # Specific emoji blocks only (do NOT include math bold range)
+        emoji_pattern = re.compile(
+            "["
+            "\U0001F300-\U0001F5FF"  # symbols & pictographs
+            "\U0001F600-\U0001F64F"  # emoticons
+            "\U0001F680-\U0001F6FF"  # transport
+            "\U0001F900-\U0001F9FF"  # supplemental symbols
+            "\U0001FA00-\U0001FAFF"  # chess + symbols
+            "\U00002702-\U000027B0"  # dingbats
+            "]+",
+            flags=re.UNICODE,
+        )
+        # Remove ZWJ sequences (used for composite emojis like 👩‍🦲)
+        content = re.sub(r"\u200d", "", content)
+        return emoji_pattern.sub("", content)
+
+    @staticmethod
     def _markdown_to_plain(content: str) -> str:
         """Convert markdown syntax to plain text for note editor.
 
@@ -1199,11 +1251,14 @@ class NotePublisher:
 
         text = re.sub(r"`([^`\n]+?)`", _save_inline, text)
 
-        # Step 3: Convert markdown emphasis to Unicode visual emphasis
-        # note's ProseMirror doesn't parse markdown, so we use 【】 for bold visibility
-        text = re.sub(r"\*\*(.+?)\*\*", r"【\1】", text)
-        text = re.sub(r"__(.+?)__", r"【\1】", text)
-        # Italic: just strip markers (italic not as important)
+        # Step 3: Convert **bold** to Unicode mathematical sans-serif bold
+        # This actually renders visually thicker in the plain text editor
+        def _to_bold(m: re.Match[str]) -> str:
+            return NotePublisher._ascii_to_bold(m.group(1))
+
+        text = re.sub(r"\*\*(.+?)\*\*", _to_bold, text)
+        text = re.sub(r"__(.+?)__", _to_bold, text)
+        # Italic: just strip markers
         text = re.sub(r"(?<![*\w])\*([^*\n]+?)\*(?![*\w])", r"\1", text)
         text = re.sub(r"(?<![_\w])_([^_\n]+?)_(?![_\w])", r"\1", text)
 
@@ -1231,6 +1286,9 @@ class NotePublisher:
 
         # Collapse 3+ blank lines to 2
         text = re.sub(r"\n{3,}", "\n\n", text)
+
+        # Remove Unicode emojis (AI-like)
+        text = NotePublisher._strip_emojis(text)
 
         return text.strip()
 
