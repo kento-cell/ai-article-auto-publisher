@@ -127,25 +127,52 @@ _REASON_MAP = {
 
 
 def _extract_japanese_title(content: str) -> str:
-    """Extract the first H1 or H2 heading from markdown content as title.
+    """Extract the Japanese article title from generated content.
 
-    Gemma3 generates a Japanese title as the first heading even when the
-    source article is English. Use this instead of the English source title.
+    Priority order:
+    1. First H1 ('# ') line
+    2. First line starting with 【...】 or 「...」 (Gemma3 often places title this way)
+    3. First H2 ('## ') that is NOT a section heading (導入, はじめに, etc.)
+    4. First H2 fallback
     """
     if not content:
         return ""
-    # Prefer H1 (# ), fall back to H2 (## )
-    for line in content.split("\n"):
-        stripped = line.strip()
-        if stripped.startswith("# ") and not stripped.startswith("## "):
-            title = stripped[2:].strip()
+
+    # Section heading words to skip (not actual titles)
+    section_words = {
+        "導入", "はじめに", "序章", "本編", "概要", "まとめ",
+        "結論", "参考文献", "目次", "序文", "前書き",
+    }
+
+    lines = [line.strip() for line in content.split("\n") if line.strip()]
+
+    # Priority 1: First H1
+    for line in lines:
+        if line.startswith("# ") and not line.startswith("## "):
+            title = line[2:].strip()
             if title and not _is_mostly_ascii(title):
                 return title[:100]
-        if stripped.startswith("## "):
-            title = stripped[3:].strip()
+
+    # Priority 2: First line starting with 【 or 「 (Gemma3 title pattern)
+    for line in lines[:3]:  # Only check first 3 lines
+        if (line.startswith("【") or line.startswith("「")) and not _is_mostly_ascii(line):
+            return line[:100]
+
+    # Priority 3: First H2 that's NOT a section heading
+    first_section_h2 = None
+    for line in lines:
+        if line.startswith("## "):
+            title = line[3:].strip()
+            # Remove leading bracket prefix for comparison
+            clean = title.split("：", 1)[0].split(":", 1)[0].strip()
             if title and not _is_mostly_ascii(title):
-                return title[:100]
-    return ""
+                if clean not in section_words:
+                    return title[:100]
+                if first_section_h2 is None:
+                    first_section_h2 = title
+
+    # Priority 4: Fallback to first section H2 (better than English source)
+    return (first_section_h2 or "")[:100]
 
 
 def _is_mostly_ascii(text: str) -> bool:
