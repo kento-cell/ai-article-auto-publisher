@@ -84,6 +84,10 @@ class ZennPublisher:
             title = title[:67] + "..."
             logger.info("Title truncated to 70 chars: %s", title)
 
+        # Sanitize Mermaid: fix invalid syntax from Gemma3
+        # (e.g. D[出力 (3D)] — parens inside brackets break the parser)
+        content = self._sanitize_mermaid_labels(content)
+
         slug = self._generate_slug(title)
         trimmed_topics = topics[:_MAX_TOPICS]
         frontmatter = self._build_frontmatter(
@@ -166,6 +170,35 @@ class ZennPublisher:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _sanitize_mermaid_labels(content: str) -> str:
+        """Fix common Gemma3 mermaid syntax errors.
+
+        Problems fixed:
+        - D[出力 (3D)]: parens inside brackets → replaced with 全角
+        - D[label "with" quotes]: quotes → removed
+        """
+        mermaid_re = re.compile(r"(```mermaid\s*\n)(.*?)(```)", re.DOTALL)
+
+        def _fix_block(m: re.Match[str]) -> str:
+            fence_start = m.group(1)
+            body = m.group(2)
+            fence_end = m.group(3)
+
+            # In node labels [ ... ] or ( ... ), replace problematic chars
+            def _fix_bracket(bm: re.Match[str]) -> str:
+                label = bm.group(1)
+                # Replace parens → 全角
+                label = label.replace("(", "（").replace(")", "）")
+                # Remove double quotes
+                label = label.replace('"', "")
+                return f"[{label}]"
+
+            body = re.sub(r"\[([^\]]+)\]", _fix_bracket, body)
+            return fence_start + body + fence_end
+
+        return mermaid_re.sub(_fix_block, content)
 
     @staticmethod
     def _generate_slug(title: str) -> str:
