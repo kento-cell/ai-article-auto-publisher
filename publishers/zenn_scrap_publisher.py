@@ -114,74 +114,68 @@ class ZennScrapPublisher:
                     "Zennログイン切れ。scripts/zenn_login.py を実行してください"
                 )
 
-            # Title input
-            title_selectors = [
-                "input[placeholder*='タイトル']",
-                "input[type='text']",
-                "[data-testid='scrap-title']",
-            ]
-            title_filled = False
-            for sel in title_selectors:
-                try:
-                    loc = page.locator(sel).first
-                    if loc.is_visible(timeout=2000):
-                        loc.click()
-                        loc.fill(title)
-                        title_filled = True
-                        logger.debug("Title filled via %s", sel)
-                        break
-                except Exception:
-                    continue
-            if not title_filled:
-                raise RuntimeError("スクラップタイトル入力欄が見つかりません")
+            # Title input — verified selector (2026-04)
+            try:
+                title_input = page.locator("textarea#scrap-new-title").first
+                title_input.wait_for(state="visible", timeout=5000)
+                title_input.click()
+                title_input.fill(title)
+                logger.info("Scrap title filled")
+            except Exception as e:
+                raise RuntimeError(f"スクラップタイトル入力欄が見つかりません: {e}") from e
 
             page.wait_for_timeout(500)
 
-            # Body editor (Zenn uses a markdown textarea or CodeMirror)
-            body_selectors = [
-                "textarea[placeholder*='本文']",
-                "textarea[placeholder*='本文']",
-                ".CodeMirror textarea",
-                "textarea",
-            ]
-            body_filled = False
-            for sel in body_selectors:
-                try:
-                    loc = page.locator(sel).first
-                    if loc.is_visible(timeout=2000):
-                        loc.click()
-                        loc.fill(content)
-                        body_filled = True
-                        logger.debug("Body filled via %s", sel)
-                        break
-                except Exception:
-                    continue
-            if not body_filled:
-                # Fallback: type into whatever is focusable
-                page.keyboard.type(content, delay=2)
+            # Body editor — Zenn uses a CodeMirror-based markdown editor.
+            # Find the textarea that's NOT the title, or use CodeMirror's content area
+            try:
+                # Try CodeMirror first
+                cm_selectors = [
+                    ".cm-content",
+                    ".cm-editor .cm-content",
+                    ".CodeMirror",
+                    "textarea:not(#scrap-new-title)",
+                ]
+                body_filled = False
+                for sel in cm_selectors:
+                    try:
+                        body = page.locator(sel).first
+                        if body.is_visible(timeout=1500):
+                            body.click()
+                            page.wait_for_timeout(300)
+                            page.keyboard.type(content, delay=2)
+                            body_filled = True
+                            logger.info("Scrap body filled via %s", sel)
+                            break
+                    except Exception:
+                        continue
+                if not body_filled:
+                    # Last resort: just type after title
+                    page.keyboard.press("Tab")
+                    page.keyboard.type(content, delay=2)
+            except Exception as e:
+                logger.warning("本文入力に問題: %s", e)
 
-            page.wait_for_timeout(800)
+            page.wait_for_timeout(1000)
 
-            # Submit button
-            submit_selectors = [
-                "button:has-text('作成')",
-                "button:has-text('投稿')",
-                "button:has-text('公開')",
-                "button[type='submit']",
-            ]
-            submitted = False
-            for sel in submit_selectors:
-                try:
-                    loc = page.locator(sel).first
-                    if loc.is_visible(timeout=1500):
-                        loc.click(timeout=3000)
-                        submitted = True
-                        logger.info("Submit clicked: %s", sel)
-                        break
-                except Exception:
-                    continue
-            if not submitted:
-                raise RuntimeError("スクラップ作成ボタンが見つかりません")
+            # Submit — click "スクラップを作成"
+            try:
+                submit_btn = page.locator("button:has-text('スクラップを作成')").first
+                submit_btn.wait_for(state="visible", timeout=5000)
+                submit_btn.click(timeout=3000)
+                logger.info("Scrap create clicked")
+            except Exception as e:
+                raise RuntimeError(f"スクラップ作成ボタンが見つかりません: {e}") from e
+
+            # Sometimes a confirmation 投稿する appears
+            page.wait_for_timeout(1500)
+            try:
+                post_btn = page.locator("button:has-text('投稿する')").first
+                if post_btn.is_visible(timeout=2000):
+                    post_btn.click(timeout=3000)
+                    logger.info("投稿する clicked")
+            except Exception:
+                pass
 
             # Wait for redirect to the new scrap URL
             try:
