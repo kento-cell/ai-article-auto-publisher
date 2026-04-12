@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_PATH = _REPO_ROOT / "config" / "affiliates.yaml"
 _ENV_VAR_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
+# HTML-comment sentinel marking an injected affiliate section. Used as
+# the authoritative idempotency check; the visible heading alone is
+# unreliable (users may write their own "## 関連リンク" sections in
+# article bodies, and the heading text may drift).
+_AFFILIATE_SENTINEL = "<!-- AFFILIATE_SECTION -->"
 
 
 class AffiliateInjector:
@@ -76,6 +81,11 @@ class AffiliateInjector:
         if not self._config:
             return content
 
+        # Idempotency guard: never double-inject.
+        if _AFFILIATE_SENTINEL in content:
+            logger.debug("Affiliate sentinel present; skipping inject")
+            return content
+
         genre = self._detect_genre(title + " " + content)
         genre_config = self._config.get("genres", {}).get(genre, {})
         links = genre_config.get("links", [])
@@ -95,9 +105,13 @@ class AffiliateInjector:
 
         # Build the affiliate section (minimal gray-zone disclosure)
         disclosure = self._config.get("disclosure", "").strip()
+        # Preserve trailing whitespace on the final content line; only strip
+        # trailing newlines so that the affiliate section lands with a clean
+        # one-blank-line separator.
         sections = [
-            content.rstrip(),
+            content.rstrip("\n"),
             "",
+            _AFFILIATE_SENTINEL,
             "## 関連リンク",
             "",
         ]
