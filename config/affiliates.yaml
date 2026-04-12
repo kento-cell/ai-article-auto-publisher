@@ -11,25 +11,25 @@ disclosure: |
 genres:
   # テクノロジー系（Zenn向き）
   tech:
-    keywords: ["AI", "プログラミング", "Python", "JavaScript", "エンジニア", "開発", "コード", "TypeScript", "Go", "Rust"]
+    keywords: ["AI", "プログラミング", "Python", "JavaScript", "エンジニア", "開発", "コード", "TypeScript", "Go", "Rust", "Web開発", "バックエンド", "フロントエンド"]
     links:
-      - name: "Udemy - Python・AI講座"
-        url: "${UDEMY_TECH_LINK}"
-        description: "プログラミング講座が充実"
+      - name: "SkillHacks - プログラミングスクール"
+        url: "${A8_PROGRAMMING_SCHOOL_LINK}"
+        description: "独学で挫折した人向け実践型スクール"
       - name: "技術書"
         url: "https://www.amazon.co.jp/s?k=Python+実践&tag=${AMAZON_TAG}"
         description: "Amazonで技術書をチェック"
 
   # AI・自動化系
   ai:
-    keywords: ["ChatGPT", "Claude", "Gemini", "LLM", "自動化", "GPT", "生成AI", "Stable Diffusion", "MCP", "RAG", "n8n"]
+    keywords: ["ChatGPT", "Claude", "Gemini", "LLM", "自動化", "GPT", "生成AI", "Stable Diffusion", "MCP", "RAG", "n8n", "AIエージェント"]
     links:
       - name: "Claude Pro (公式)"
         url: "https://claude.ai"
         description: "高性能AIアシスタント"
-      - name: "Udemy - ChatGPT/Claude活用講座"
-        url: "${UDEMY_AI_LINK}"
-        description: "AI活用の体系的学習"
+      - name: "SkillHacks - AI・プログラミング学習"
+        url: "${A8_PROGRAMMING_SCHOOL_LINK}"
+        description: "AIを使いこなすエンジニアへ"
       - name: "AI関連書籍"
         url: "https://www.amazon.co.jp/s?k=ChatGPT+Claude+活用&tag=${AMAZON_TAG}"
         description: "最新AI本"
@@ -92,17 +92,23 @@ genres:
 
   # 学習・スキル系
   learning:
-    keywords: ["英語", "学習", "資格", "スキル", "勉強", "読書", "教育", "TOEIC", "独学"]
+    keywords: ["英語", "学習", "資格", "スキル", "勉強", "読書", "教育", "TOEIC", "独学", "動画編集", "ブログ運営"]
     links:
+      - name: "SkillHacks - プログラミング学習"
+        url: "${A8_PROGRAMMING_SCHOOL_LINK}"
+        description: "最短で実務レベルに到達"
+      - name: "Movie Hacks - 動画編集"
+        url: "${A8_VIDEO_SCHOOL_LINK}"
+        description: "動画編集初心者から脱却"
       - name: "ココナラ - スキル販売"
         url: "${A8_COCONALA_LINK}"
         description: "得意を生かして収入化"
-      - name: "Udemy 学習コース"
-        url: "${UDEMY_LEARNING_LINK}"
-        description: "オンライン講座"
       - name: "Kindle Unlimited"
         url: "https://www.amazon.co.jp/kindle-dbs/hz/subscribe/ku?tag=${AMAZON_TAG}"
         description: "月額読み放題"
+      - name: "楽天ブックス - 品揃え200万点以上"
+        url: "${A8_RAKUTEN_BOOKS_LINK}"
+        description: "書籍・雑誌・電子書籍が充実"
 
   # コーヒー・グルメ系
   food:
@@ -117,6 +123,20 @@ genres:
       - name: "Yahoo!ショッピング グルメ"
         url: "${VCM_FOOD_LINK}"
         description: "お取り寄せグルメ"
+
+  # ゲーム・サーバー系
+  gaming:
+    keywords: ["マイクラ", "Minecraft", "マルチプレイ", "ゲームサーバー", "レンタルサーバー", "VPS", "ARK", "Rust", "Valheim", "Palworld", "パルワールド", "ゲーム鯖"]
+    links:
+      - name: "XServer GAMEs - 3分でマルチプレイ開始"
+        url: "${A8_GAME_SERVER_LINK}"
+        description: "初心者でも3分でマルチプレイ可能な国内最速ゲームサーバー"
+      - name: "【マイクラ】マルチサーバーの立て方6ステップ"
+        url: "${A8_MINECRAFT_LINK}"
+        description: "初心者でも迷わず構築できるマイクラサーバー"
+      - name: "ゲーミング周辺機器 (Amazon)"
+        url: "https://www.amazon.co.jp/s?k=ゲーミング+マウス+キーボード&tag=${AMAZON_TAG}"
+        description: "人気のゲーミング機器"
 
   # デフォルト（マッチしない場合）
   default:
