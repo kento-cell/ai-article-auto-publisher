@@ -27,6 +27,7 @@ import yaml
 from dotenv import load_dotenv
 
 from collectors.arxiv_collector import ArxivCollector
+from collectors.bluesky_collector import BlueskyCollector
 from collectors.reddit_collector import RedditCollector
 from collectors.rss_collector import RssCollector
 from collectors.trend_detector import TrendDetector
@@ -215,6 +216,44 @@ def _translate_reasons(reasons_str: str) -> str:
 # Markdown post-processing
 # =====================================================================
 
+def _extract_area_hint(article: dict) -> str:
+    """Extract a locality keyword (e.g. "下北沢") from the source article.
+
+    Order of precedence:
+      1. ``article["query"]`` — set by BlueskyCollector, first token is
+         the already-normalised area name (most trustworthy).
+      2. Exact-match against the known-area list (same list the
+         collector uses) scanned in title + content.
+      3. Regex fallback for explicit locality suffixes (駅/区/市/町/村).
+    """
+    q = article.get("query") or ""
+    if q:
+        tokens = q.split()
+        if tokens:
+            return tokens[0]
+
+    haystack = (article.get("title") or "") + " " + (article.get("content") or "")
+    try:
+        from collectors.bluesky_collector import (
+            _TOKYO_AREAS, _KANAGAWA_AREAS, _SAITAMA_AREAS,
+            _CHIBA_AREAS, _SHIZUOKA_AREAS,
+        )
+        for area in (
+            _TOKYO_AREAS + _KANAGAWA_AREAS + _SAITAMA_AREAS
+            + _CHIBA_AREAS + _SHIZUOKA_AREAS
+        ):
+            if area in haystack:
+                return area
+    except ImportError:
+        pass
+
+    m = re.search(
+        r"([一-龥ぁ-んァ-ヴー]{2,6}(?:駅|区|市|町|村))",
+        haystack,
+    )
+    return m.group(1) if m else ""
+
+
 def _fix_markdown_structure(content: str) -> str:
     """Fix common Markdown structure issues from LLM output.
 
@@ -262,34 +301,64 @@ _JP_STOPWORDS = frozenset({
 })
 
 
+_THEME_KEYWORDS: list[tuple[str, str]] = [
+    ("コーヒー", "coffee"), ("カフェ", "cafe"), ("ランチ", "restaurant food"),
+    ("居酒屋", "izakaya japanese bar"), ("グルメ", "food"),
+    ("ラーメン", "ramen"), ("寿司", "sushi"), ("スイーツ", "dessert"),
+    ("韓国", "korea seoul"), ("美容", "beauty cosmetics"),
+    ("コスメ", "cosmetics"), ("ファッション", "fashion"),
+    ("旅行", "travel"), ("観光", "travel landmark"),
+    ("AI", "artificial intelligence"), ("LLM", "ai technology"),
+    ("Claude", "ai technology"), ("ChatGPT", "ai technology"),
+    ("Python", "python code"), ("React", "web development"),
+    ("論文", "research paper"), ("機械学習", "machine learning"),
+    ("投資", "finance investment"), ("副業", "business laptop"),
+    ("マネタイズ", "business money"), ("起業", "startup"),
+]
+
+
 def _extract_image_query(title: str) -> str:
     """Extract a short English-friendly search query from a Japanese title.
 
-    Strategy: drop bracketed/punctuation noise, remove particles, keep the
-    longest meaningful tokens. Falls back to the raw title.
+    Strategy:
+      1. Match known Japanese theme keywords → map to English terms
+         (best signal for image search).
+      2. Extract any ASCII alphanumeric runs (e.g. "Claude", "LLM").
+      3. Fallback to a hard-coded generic term.
+
+    Unsplash/Pexels handle English far better than Japanese and outright
+    reject very long queries, so we cap at ~3 short tokens.
     """
     if not title:
         return "technology"
 
-    # Strip brackets and punctuation noise
-    cleaned = re.sub(r"[\[\]【】「」『』（）()<>《》\"'!?！？、。:：;；・…\-—_/\\|]", " ", title)
-    # Split by whitespace and Japanese particles
-    tokens = [t for t in cleaned.split() if t]
-
-    # Filter stopwords and short fragments
     keywords: list[str] = []
-    for tok in tokens:
-        if tok in _JP_STOPWORDS:
-            continue
-        if len(tok) < 2:
-            continue
-        keywords.append(tok)
 
-    if not keywords:
-        return title.strip() or "technology"
+    # 1. Theme keyword mapping — most reliable.
+    for jp, en in _THEME_KEYWORDS:
+        if jp.lower() in title.lower() and en not in keywords:
+            keywords.append(en)
+            if len(keywords) >= 2:
+                break
 
-    # Use top 3 tokens joined with space (Unsplash/Pexels handle multi-word)
-    return " ".join(keywords[:3])
+    # 2. Pull out ASCII tokens (product names, acronyms).
+    for m in re.findall(r"[A-Za-z][A-Za-z0-9+]{1,14}", title):
+        if m.lower() in {"http", "https", "www", "com"}:
+            continue
+        if m not in keywords:
+            keywords.append(m)
+        if len(keywords) >= 3:
+            break
+
+    if keywords:
+        return " ".join(keywords[:3])
+
+    # 3. Fallback: generic term based on rough domain guess.
+    if any(w in title for w in ("AI", "ＡＩ", "LLM", "モデル", "論文")):
+        return "technology ai"
+    if any(w in title for w in ("店", "グルメ", "食", "メニュー")):
+        return "food restaurant"
+    return "lifestyle"
 
 
 def _download_image(url: str, dest: Path) -> Path | None:
@@ -517,6 +586,21 @@ def collect_articles(config: dict) -> dict:
     except Exception as e:
         logger.error("RSS(note)収集エラー: %s", e)
 
+    # Bluesky: hyper-local / niche gourmet / lifestyle posts for note
+    try:
+        bsky_cfg = config.get("collection", {}).get("bluesky", {}) or {}
+        bsky = BlueskyCollector(
+            queries=bsky_cfg.get("queries") or None,
+            min_likes=bsky_cfg.get("min_likes", 2),
+            limit_per_query=bsky_cfg.get("limit_per_query", 25),
+            max_results=bsky_cfg.get("max_results", 30),
+        )
+        articles = bsky.collect()
+        collected["note"].extend(articles)
+        logger.info("Bluesky: %d件収集", len(articles))
+    except Exception as e:
+        logger.error("Bluesky収集エラー: %s", e)
+
     return collected
 
 
@@ -613,6 +697,29 @@ def _generate_single_article(
 
     # --- Markdown構造補正（Gemma3が見出しを省略する問題の対策） ---
     content = _fix_markdown_structure(content)
+
+    # --- Google Places API によるスポット検証（note グルメ/地域記事のみ） ---
+    # LLMが書いた店名を Google Places で検証し、実在しない店は丸ごと削除、
+    # 実在する店は住所/営業時間/価格/公式URL を Places の正式データで上書き。
+    if platform == "note":
+        try:
+            from utils.places_verifier import PlacesVerifier
+            _verifier = PlacesVerifier()
+            if _verifier.is_available():
+                area_hint = _extract_area_hint(article)
+                content, _places_stats = _verifier.verify_and_fill(
+                    content, area_hint=area_hint
+                )
+                if _places_stats["verified"] or _places_stats["dropped"]:
+                    logger.info(
+                        "[note] Places検証: verified=%d dropped=%d chain=%d (area=%s)",
+                        _places_stats["verified"],
+                        _places_stats["dropped"],
+                        _places_stats["chain_filtered"],
+                        area_hint or "-",
+                    )
+        except Exception as exc:
+            logger.warning("Places検証失敗: %s", exc)
 
     # --- アフィリエイトリンク自動挿入 ---
     try:
