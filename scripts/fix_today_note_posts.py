@@ -24,8 +24,11 @@ from __future__ import annotations
 import io
 import json
 import logging
+import re
 import sys
+import time
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -49,9 +52,9 @@ logger = logging.getLogger("fix_today_note_posts")
 
 _DISCLAIMER = """---
 
-## ⚠️ 免責事項
+## 注意事項
 
-本記事の店舗・施設情報は、執筆時点のGoogle Maps公開データおよび投稿情報をもとにAIが構成しています。営業時間・価格・メニュー等は変更される場合があるため、来店前に[公式サイト](https://fujin.gorp.jp/)または店舗へ直接ご確認ください。また、本記事は情報提供を目的としており、掲載情報の正確性・完全性を保証するものではありません。ご利用は読者ご自身の判断でお願いいたします。
+本記事の店舗・施設情報は、執筆時点の公開データおよびSNS投稿情報をもとにAIが構成しています。営業時間・価格・メニュー等は変更される場合があるため、来店前に各店舗の公式サイトまたは店舗へ直接ご確認ください。本記事は情報提供を目的としており、掲載情報の正確性・完全性を保証するものではありません。ご利用は読者ご自身の判断でお願いいたします。
 """
 
 
@@ -173,56 +176,41 @@ YAYOIKEN_CONTENT = """## 【本音】「下北沢にやよい軒を誘致して�
 
 Blueskyに、こんな一言が流れてきました。
 
-> もう下北沢に古着屋とネオ居酒屋はいらん。やよい軒だ。やよい軒を誘致してくれ
+「もう下北沢に古着屋とネオ居酒屋はいらん。やよい軒だ。やよい軒を誘致してくれ」
 
-投稿者は「たぬ」さん。元ネタはこちらです → [Blueskyの投稿](https://bsky.app/profile/tanu.bsky.social/post/3llntqnztmk2s)
+投稿者は「たぬ」さん。元ネタは[Blueskyの投稿](https://bsky.app/profile/tanu.bsky.social/post/3llntqnztmk2s)から見られます。
 
 一瞬ジョークに見えますが、下北沢の今を眺めていると、実はかなり本質を突いている叫びだと思うんです。今回は個別の店の紹介ではなく、この一言から透けて見える「街の疲れ」について考察します。
 
 ### 下北沢、尖りすぎ問題
 
-ここ数年の下北沢はとにかく「尖った店」が増えました。古着屋、ネオ居酒屋、個人営業のコーヒー、アートブックカフェ。どれも単品では魅力的なんですが、街全体として密度が濃すぎて、来る側はけっこう疲れる。
+ここ数年の下北沢はとにかく尖った店が増えました。古着屋、ネオ居酒屋、個人営業のコーヒー、アートブックカフェ。どれも単品では魅力的なんですが、街全体として密度が濃すぎて、来る側はけっこう疲れる。
 
-- 「SNSで見た店」を1日に3軒回るツアー型の訪問
-- 初見の店が多すぎて、何を選べばハズレないか分からない
-- どの店も個性主張が強くて、気軽に入れる空気じゃない
+「SNSで見た店」を1日に3軒回るツアー型の訪問も、初見の店ばかりで何を選べばハズレないか分からない状況も、どの店も個性主張が強くて気軽に入れる空気じゃない感じも、全部疲労の原因です。
 
 「楽しくない」とは言わない。でも「休憩できない」街になっているのは確かで、その反動として「いっそチェーンでいい。やよい軒でいい」という叫びが生まれる。
 
 ### なぜ「やよい軒」なのか（たぬさんの深層心理を勝手に読む）
 
-あえて他のチェーンじゃなく「やよい軒」を名指ししているのが、この投稿の面白いところです。やよい軒には次の特徴があります。
+あえて他のチェーンじゃなく「やよい軒」を名指ししているのが、この投稿の面白いところです。やよい軒には「定食に味噌汁とご飯がついて、ちゃんとした食事の最低ラインを守ってくれる」「一人で入っても浮かない」「価格が予測できるので今日は1000円で済ませたいが成立する」という安心感があります。
 
-1. 定食に味噌汁とご飯がついて、「ちゃんとした食事」の最低ラインを守ってくれる
-2. 一人で入っても浮かない
-3. 価格が予測できるので「今日は1000円で済ませたい」が成立する
+つまり「考えなくていい選択肢」が欲しいんです。下北沢を歩いていると、どのお店に入るかすら決断コストがかかる。その決断疲れから解放してくれる存在として、やよい軒というワードが選ばれた。そう読めます。
 
-つまり、**「考えなくていい選択肢」** が欲しいんです。下北沢を歩いていると、どのお店に入るかすら決断コストがかかる。その決断疲れから解放してくれる存在として、やよい軒というワードが選ばれた。そう読めます。
+### 街の多様性には退屈も必要かもしれない
 
-### 「街の多様性」には、退屈も必要かもしれない
-
-個性的な店が並ぶこと自体は素晴らしい。ただ、個性しかない街は逆にしんどい。退屈な選択肢 = 街のセーフティネットであって、それがあるからこそ、尖った店を試す余裕も生まれる。
+個性的な店が並ぶこと自体は素晴らしい。ただ、個性しかない街は逆にしんどい。退屈な選択肢イコール街のセーフティネットであって、それがあるからこそ、尖った店を試す余裕も生まれる。
 
 今回の投稿は、下北沢ファンからの愛ある皮肉だと思います。「この街のことが好きだから、もう少し肩の力を抜ける余地がほしい」という要望が、やよい軒という固有名詞に凝縮されている。
 
-### 他の街ではどうなっているか
+### 他の街で起きている同じ現象
 
-似た現象は他エリアでも起きています。
-
-| エリア | 尖り方 | セーフティ役 |
-|---|---|---|
-| 下北沢 | 古着 × ネオ居酒屋 × 個人店 | 不在（投稿の背景） |
-| 中目黒 | カフェ × アパレル | 目黒川沿いのチェーン系 |
-| 吉祥寺 | 商店街 × 独立書店 | ハモニカ横丁と駅ビル |
-| 下北沢（理想） | 個人店ゾーン + 休憩ゾーンの分離 | — |
+似た現象は他エリアでも起きています。中目黒はカフェとアパレルで尖っていて、目黒川沿いのチェーン系がセーフティ役を担っている。吉祥寺は商店街と独立書店のゾーンの外に、ハモニカ横丁と駅ビルという退屈ゾーンが共存しています。
 
 要するに、街が成熟するには「寄り道できる気軽な店」と「尖った体験ができる店」の両輪が要るわけで、下北沢は片輪で走っている自覚があるから、ああいう叫びが出る。
 
 ### まとめ：個性と退屈のバランス
 
-- 「下北沢にやよい軒を」は単なるチェーン推しではなく、**選択疲れへの処方箋**を求めた叫び
-- 街のSNS話題度が高いほど、逆に「気軽な店」の価値が上がる
-- Blueskyのような静かなSNSでこういう本音が出るのは、街を愛する人の率直な気持ちがにじむから
+「下北沢にやよい軒を」は単なるチェーン推しではなく、選択疲れへの処方箋を求めた叫びです。街のSNS話題度が高いほど、逆に気軽な店の価値が上がる。Blueskyのような静かなSNSでこういう本音が出るのは、街を愛する人の率直な気持ちがにじむからでしょう。
 
 街を語るのは、SNSで跳ねるバズ店リストだけじゃなく、こういう「静かな要望」も大事な情報源だと改めて思います。
 
@@ -259,6 +247,37 @@ TARGETS: list[dict[str, str]] = [
 ]
 
 
+def _extract_expected_hrefs(content: str) -> list[str]:
+    """Return every URL referenced via markdown [label](url) syntax."""
+    return re.findall(
+        r"\[(?:[^\]]+)\]\(((?:https?://)[^)]+)\)",
+        content,
+    )
+
+
+def _verify_live_page(url: str, expected: list[str]) -> list[str]:
+    """Fetch *url* and return the subset of *expected* hrefs missing.
+
+    Normalises HTML-entity encoding (``&amp;`` → ``&``) before the
+    membership test because note.com renders href attributes with
+    escaped ampersands, which would otherwise make a perfectly good
+    anchor appear missing.
+    """
+    try:
+        req = Request(url, headers={"User-Agent": "Mozilla/5.0 repair-verify/1.0"})
+        html = urlopen(req, timeout=30).read().decode("utf-8", errors="replace")
+    except Exception as exc:
+        logger.error("Live fetch failed for %s: %s", url, exc)
+        return list(expected)
+    import html as _html
+    decoded = _html.unescape(html)
+    missing: list[str] = []
+    for href in expected:
+        if href not in decoded and href not in html:
+            missing.append(href)
+    return missing
+
+
 def _update_stored_json(path: Path, title: str, content: str) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     data["title"] = title
@@ -272,6 +291,7 @@ def _update_stored_json(path: Path, title: str, content: str) -> None:
 def main() -> int:
     pub = NotePublisher(headless=False)
     failures: list[str] = []
+    verification_issues: list[tuple[str, list[str]]] = []
     try:
         for t in TARGETS:
             json_path = _REPO / t["json"]
@@ -286,18 +306,38 @@ def main() -> int:
                 new_title=t["title"],
                 new_content=t["content"],
             )
-            if ok:
-                logger.info("[OK] %s", t["url"])
-            else:
-                logger.error("[FAIL] %s", t["url"])
+            if not ok:
+                logger.error("[FAIL edit] %s", t["url"])
                 failures.append(t["url"])
+                continue
+            logger.info("[OK edit] %s", t["url"])
+
+            # Live verification: wait, fetch page, confirm embedded
+            # anchors exist for every [label](url) in the new content.
+            time.sleep(6)
+            expected = _extract_expected_hrefs(t["content"])
+            missing = _verify_live_page(t["url"], expected)
+            if missing:
+                logger.error(
+                    "[FAIL verify] %s — missing anchors: %s",
+                    t["url"], missing,
+                )
+                verification_issues.append((t["url"], missing))
+            else:
+                logger.info(
+                    "[OK verify] %s — %d anchors confirmed",
+                    t["url"], len(expected),
+                )
     finally:
         pub.close()
 
     if failures:
-        logger.error("Failed: %s", failures)
+        logger.error("Edit failures: %s", failures)
+    if verification_issues:
+        logger.error("Verification failures: %s", verification_issues)
+    if failures or verification_issues:
         return 1
-    logger.info("All note posts updated successfully.")
+    logger.info("All note posts updated and verified successfully.")
     return 0
 
 
