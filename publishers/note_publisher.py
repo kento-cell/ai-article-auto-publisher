@@ -973,10 +973,15 @@ class NotePublisher:
                 logger.info("Body updated via HTML clipboard paste")
 
             # Upload inline images via the ProseMirror paste-image
-            # handler. We do this AFTER the main body so the cursor
-            # is at the end of the document; pressing Control+Home
-            # moves us to the very top, then Enter creates a fresh
-            # paragraph that the image lands in.
+            # handler. The cursor needs to be parked at the START
+            # of the second top-level block (the body paragraph
+            # that follows the lead H2) — placing it inside the H2
+            # itself causes Enter to split the heading mid-line and
+            # leak the second half into a new paragraph. Setting
+            # the selection via page.evaluate against the
+            # ProseMirror view is the only reliable way: keyboard
+            # End/Home behave per *visual* line, which depends on
+            # the editor width.
             if inline_image_paths:
                 logger.info(
                     "Uploading %d inline image(s) at top of body",
@@ -985,16 +990,48 @@ class NotePublisher:
                 body_loc = page.locator(".ProseMirror").first
                 body_loc.click()
                 page.wait_for_timeout(300)
-                page.keyboard.press("Control+Home")
-                page.wait_for_timeout(150)
-                page.keyboard.press("End")
-                page.wait_for_timeout(150)
-                page.keyboard.press("Enter")
-                page.wait_for_timeout(250)
+                # Park caret at the start of the second top-level
+                # block. If there is no second block, fall back to
+                # the end of the only block we have.
+                page.evaluate(
+                    """() => {
+                        const editor = document.querySelector('.ProseMirror');
+                        if (!editor) return false;
+                        const blocks = Array.from(editor.children);
+                        const target = blocks[1] || blocks[0];
+                        if (!target) return false;
+                        const range = document.createRange();
+                        range.setStart(target, 0);
+                        range.collapse(true);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        editor.focus();
+                        return true;
+                    }"""
+                )
+                page.wait_for_timeout(200)
                 for p in inline_image_paths:
                     try:
                         self._upload_image(p)
                         logger.info("inline image uploaded: %s", p)
+                        # Image-caption disclaimer: the inline photo
+                        # is illustrative (Unsplash CC0 stock), not
+                        # an actual photo of the venue under review.
+                        # Without this caption a reader could mistake
+                        # the stock image for an authentic on-site
+                        # shot — disrespectful to the real store and
+                        # legally murky. Always type a short notice
+                        # underneath the freshly inserted image.
+                        page.keyboard.press("Enter")
+                        page.wait_for_timeout(150)
+                        page.keyboard.type(
+                            "※画像はイメージです（実際の店舗・施設・商品とは異なります）",
+                            delay=4,
+                        )
+                        page.wait_for_timeout(200)
+                        page.keyboard.press("Enter")
+                        page.wait_for_timeout(150)
                     except Exception as exc:
                         logger.warning(
                             "inline image upload failed (%s): %s", p, exc
