@@ -201,6 +201,17 @@ class NotePublisher:
         self._context.add_init_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
+        # Grant clipboard read/write so the link-dialog paste step in
+        # _type_with_embedded_links can populate URLs via Ctrl+V
+        # instead of keyboard.type (which garbles ? & % on non-US
+        # layouts).
+        try:
+            self._context.grant_permissions(
+                ["clipboard-read", "clipboard-write"],
+                origin="https://editor.note.com",
+            )
+        except Exception as exc:
+            logger.debug("clipboard permission grant skipped: %s", exc)
         self._context.set_default_timeout(_ELEMENT_TIMEOUT_MS)
         self._context.set_default_navigation_timeout(_NAV_TIMEOUT_MS)
         self._page = (
@@ -896,23 +907,27 @@ class NotePublisher:
 
             # Update body if provided
             if new_content:
-                # Process content like on publish (mermaid→ascii, strip images, md→plain)
+                # Convert markdown to HTML and paste via clipboard so
+                # note's ProseMirror editor parses real <a> elements.
+                # The Ctrl+K dialog flow is too flaky across multiple
+                # links — ProseMirror keeps absorbing subsequent text
+                # into the previous link mark regardless of how we
+                # try to exit it. HTML-clipboard paste bypasses the
+                # mark-exit problem entirely.
                 new_content = self._mermaid_to_ascii(new_content)
                 new_content = self._strip_local_images(new_content)
-                new_content = self._markdown_to_plain(new_content)
+                html = self._markdown_to_html_for_note(new_content)
 
                 body = page.locator(".ProseMirror").first
                 body.click()
                 page.wait_for_timeout(500)
-                # Clear existing
                 page.keyboard.press("Control+a")
                 page.wait_for_timeout(300)
                 page.keyboard.press("Delete")
                 page.wait_for_timeout(500)
-                # Type new content
-                page.keyboard.type(new_content, delay=2)
-                page.wait_for_timeout(1000)
-                logger.info("Body updated")
+                self._paste_html(page, html)
+                page.wait_for_timeout(1200)
+                logger.info("Body updated via HTML clipboard paste")
 
             # Click 公開に進む / 更新する button
             page.wait_for_timeout(1500)
@@ -1180,14 +1195,166 @@ class NotePublisher:
         content = re.sub(r"\u200d", "", content)
         return emoji_pattern.sub("", content)
 
+    # Markdown link pattern reused by _type_with_embedded_links so the
+    # typing step recognises the same syntax _markdown_to_plain leaves
+    # alone when ``preserve_links=True``.
+    _INLINE_LINK_RE = re.compile(
+        r"\[([^\]]+)\]\(((?:[^()]|\([^)]*\))+)\)"
+    )
+
     @staticmethod
-    def _markdown_to_plain(content: str) -> str:
+    def _type_with_embedded_links(page, content: str) -> None:
+        """Type *content* into the current note editor focus.
+
+        Plain-text chunks are typed verbatim. Each ``[anchor](url)``
+        markdown link is materialised as an embedded note link by:
+
+        1. Typing the anchor text.
+        2. Selecting that text backwards via Shift+ArrowLeft.
+        3. Pressing Ctrl+K to open note's link dialog.
+        4. Pasting the URL from the clipboard (avoids any special-char
+           issues with ``?``, ``&``, ``%``, etc. in Google Maps URLs).
+        5. Pressing Enter to confirm the dialog.
+        6. Pressing ArrowRight to step **out of** the newly-created
+           link mark — without this ProseMirror keeps subsequent
+           typed characters inside the link mark, so later paragraphs
+           end up as part of the previous ``<a>`` element.
+
+        This is the only way to produce a real embedded link via
+        Playwright because note.com's ProseMirror editor does not
+        parse markdown on input — it must be told via the editor's
+        own affordances.
+        """
+        pos = 0
+        for m in NotePublisher._INLINE_LINK_RE.finditer(content):
+            before = content[pos : m.start()]
+            if before:
+                page.keyboard.type(before, delay=2)
+            anchor = m.group(1)
+            url = m.group(2).strip()
+
+            # Type the anchor, then select it backwards.
+            page.keyboard.type(anchor, delay=2)
+            for _ in range(len(anchor)):
+                page.keyboard.press("Shift+ArrowLeft")
+            page.wait_for_timeout(150)
+
+            # Open the link dialog.
+            page.keyboard.press("Control+k")
+            page.wait_for_timeout(400)
+
+            # Paste the URL into the dialog's input field via the
+            # clipboard, not keyboard.type — the latter garbles URLs
+            # containing ``?``, ``&`` and URL-encoded bytes on some
+            # OS keyboard layouts, which silently produces a
+            # malformed href and drops the anchor.
+            NotePublisher._paste_text(page, url)
+            page.wait_for_timeout(200)
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(300)
+
+            # Step out of the link mark so the next chunk lands as
+            # plain text rather than being absorbed into the just-
+            # created ``<a>`` element.
+            page.keyboard.press("ArrowRight")
+            page.wait_for_timeout(80)
+
+            pos = m.end()
+
+        tail = content[pos:]
+        if tail:
+            page.keyboard.type(tail, delay=2)
+
+    @staticmethod
+    def _markdown_to_html_for_note(content: str) -> str:
+        """Convert article markdown to HTML suitable for note pasting.
+
+        Runs the same pre-processing as the plain-text path (mermaid
+        already handled, images already stripped) and then uses the
+        ``markdown`` package to convert headings, lists, emphasis,
+        blockquotes, and most importantly inline links into real
+        ``<a href="...">text</a>`` elements. Tables are included via
+        the ``tables`` extension.
+
+        The emoji stripper is still run so note's AI-detection heuristics
+        do not flag the post.
+        """
+        import markdown as _md
+        text = NotePublisher._strip_emojis(content)
+        html = _md.markdown(
+            text,
+            extensions=["extra", "sane_lists", "tables", "nl2br"],
+        )
+        return html
+
+    @staticmethod
+    def _paste_html(page, html: str) -> None:
+        """Write *html* to the clipboard as text/html then Ctrl+V.
+
+        Uses the async Clipboard API via :meth:`Page.evaluate` so the
+        browser sees a genuine rich-text payload. note's ProseMirror
+        editor parses the HTML on paste and constructs proper
+        headings, lists, emphasis and anchor marks — none of the
+        keyboard-dialog gymnastics the Ctrl+K flow required.
+        """
+        try:
+            page.evaluate(
+                """async (html) => {
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const plain = new Blob([html.replace(/<[^>]+>/g, '')], { type: 'text/plain' });
+                    const item = new ClipboardItem({
+                        'text/html': blob,
+                        'text/plain': plain,
+                    });
+                    await navigator.clipboard.write([item]);
+                }""",
+                html,
+            )
+        except Exception as exc:
+            logger.warning("HTML clipboard write failed: %s — falling back to plain text paste", exc)
+            page.evaluate(
+                "async (t) => { await navigator.clipboard.writeText(t); }",
+                html,
+            )
+        page.keyboard.press("Control+v")
+
+    @staticmethod
+    def _paste_text(page, text: str) -> None:
+        """Write *text* to the OS clipboard and trigger Ctrl+V.
+
+        Used instead of ``keyboard.type`` for URLs because the latter
+        interprets certain characters through the current keyboard
+        layout — a URL with ``?`` and ``&`` can land as different
+        glyphs on non-US layouts, breaking the link. Clipboard paste
+        bypasses the layout entirely.
+        """
+        try:
+            page.evaluate(
+                "async (t) => { await navigator.clipboard.writeText(t); }",
+                text,
+            )
+            page.keyboard.press("Control+v")
+            return
+        except Exception:
+            # Fallback: type character-by-character if clipboard write
+            # is blocked by the browser context permissions.
+            page.keyboard.type(text, delay=4)
+
+    @staticmethod
+    def _markdown_to_plain(content: str, preserve_links: bool = False) -> str:
         """Convert markdown syntax to plain text for note editor.
 
         note.com's ProseMirror editor does not parse markdown input, so
         we need to strip markdown syntax. Headings become bare text with
-        blank-line spacing; bold/italic markers are removed; link syntax
-        is converted to "text (url)".
+        blank-line spacing; bold/italic markers are removed.
+
+        Links behave differently depending on *preserve_links*:
+
+        - ``preserve_links=False`` (default, back-compat): each
+          ``[text](url)`` is flattened to ``text (url)`` plain text.
+        - ``preserve_links=True``: ``[text](url)`` markers are left
+          untouched so the caller can later type them via the
+          Ctrl+K link-dialog flow and get a real embedded link.
         """
         lines = content.split("\n")
         result = []
@@ -1221,7 +1388,18 @@ class NotePublisher:
                 result.append(f"{indent}・{item}")
                 continue
 
-            # Ordered list: keep as is (1. 2. 3.)
+            # Ordered list: "1. item" → "・item" (drop the number marker).
+            # Note's editor auto-enters list mode on "1. " which interacts
+            # badly with subsequent Enter keystrokes from the Playwright
+            # typing path — Mid-list typing can stall. Converting to the
+            # same bullet style as unordered lists side-steps it.
+            ordered_match = re.match(r"^(\s*)\d+\.\s+(.+)$", stripped)
+            if ordered_match:
+                indent = ordered_match.group(1)
+                item = ordered_match.group(2).strip()
+                result.append(f"{indent}・{item}")
+                continue
+
             result.append(stripped)
 
         text = "\n".join(result)
@@ -1268,15 +1446,17 @@ class NotePublisher:
         # Horizontal rule: --- → blank
         text = re.sub(r"^---+\s*$", "", text, flags=re.MULTILINE)
 
-        # Link: [text](url) → text (url) — handles nested parens in URLs
-        def _replace_link(m: re.Match[str]) -> str:
-            return f"{m.group(1)} ({m.group(2)})"
-        # Match balanced parens in URL (up to 1 nested pair)
-        text = re.sub(
-            r"\[([^\]]+)\]\(((?:[^()]|\([^)]*\))+)\)",
-            _replace_link,
-            text,
-        )
+        # Link: [text](url) — either flattened to "text (url)" for the
+        # legacy plain-text path, or left as markdown for the caller to
+        # convert into embedded links via the Ctrl+K dialog flow.
+        if not preserve_links:
+            def _replace_link(m: re.Match[str]) -> str:
+                return f"{m.group(1)} ({m.group(2)})"
+            text = re.sub(
+                r"\[([^\]]+)\]\(((?:[^()]|\([^)]*\))+)\)",
+                _replace_link,
+                text,
+            )
 
         # Step 4: Restore inline code and code blocks
         for i, code in enumerate(inline_codes):
