@@ -3,11 +3,12 @@
 Uses *gspread* with a service-account JSON key whose path is read from
 the ``GOOGLE_SHEETS_CREDENTIALS_PATH`` environment variable.
 
-Column schema (14 columns -- Codex-approved middle form):
+Column schema (15 columns — new ``numeric_score`` appended at the end
+to avoid shifting existing data in deployed sheets):
     A: article_id, B: title, C: status, D: evidence_level,
     E: overall_grade, F: platform, G: tier12_ratio, H: citation_count,
     I: visual_count, J: originality, K: accuracy, L: readability,
-    M: engagement, N: critic_summary
+    M: engagement, N: critic_summary, O: numeric_score
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ HEADER_ROW = [
     "readability",      # L: A/B/C
     "engagement",       # M: A/B/C
     "critic_summary",   # N: 1-line summary
+    "numeric_score",    # O: 0-100 composite (Zenn article threshold: 82.5)
 ]
 
 REJECTED_HEADER_ROW = [
@@ -158,10 +160,22 @@ class SheetsManager:
             return None
 
     def _ensure_headers(self, ws: gspread.Worksheet) -> None:
-        """Write the header row if cell A1 is empty."""
-        if not ws.acell("A1").value:
-            end_col = chr(ord("A") + len(HEADER_ROW) - 1)
-            ws.update(f"A1:{end_col}1", [HEADER_ROW])
+        """Write or refresh the header row to match HEADER_ROW exactly.
+
+        Overwrites the existing row-1 labels when they drift from the
+        current schema (new columns, renames) so deployed sheets pick
+        up schema additions automatically. Existing data rows are
+        untouched — we only append new columns at the end of
+        HEADER_ROW, never in the middle, to keep old rows aligned.
+        """
+        end_col = chr(ord("A") + len(HEADER_ROW) - 1)
+        existing = ws.row_values(1)
+        if existing == HEADER_ROW:
+            return
+        ws.update(f"A1:{end_col}1", [HEADER_ROW])
+        if existing:
+            self._logger.info("Header row refreshed (schema drift fixed)")
+        else:
             self._logger.info("Header row written")
 
     def _open_rejected_worksheet(self) -> gspread.Worksheet | None:
