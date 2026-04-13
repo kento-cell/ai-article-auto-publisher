@@ -1500,6 +1500,37 @@ def _publish_zenn(
     return None
 
 
+def _fetch_topic_cover(title: str) -> Path | None:
+    """Download an Unsplash photo themed to *title* for the eyecatch.
+
+    Falls through to ``None`` so the caller can decide whether to
+    fall back to the PIL KENTO mascot (NoteCoverGenerator) or skip
+    the cover entirely.
+    """
+    try:
+        from generators.image_sourcer import ImageSourcer
+        sourcer = ImageSourcer()
+        query = _extract_image_query(title)
+        results = sourcer.find_images(query, count=1)
+        if not results:
+            logger.info("[cover] no Unsplash result for %r", query)
+            return None
+        url = results[0].get("url") or results[0].get("download_url")
+        if not url:
+            return None
+        from urllib.request import Request, urlopen
+        safe_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", title)[:40]
+        out = Path("data/images/covers") / f"unsplash_{safe_slug}.jpg"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        req = Request(url, headers={"User-Agent": "ai-article-cover/1.0"})
+        out.write_bytes(urlopen(req, timeout=20).read())
+        logger.info("[cover] Unsplash query=%r → %s (%d bytes)", query, out, out.stat().st_size)
+        return out
+    except Exception as exc:
+        logger.warning("[cover] fetch failed: %s", exc)
+        return None
+
+
 def _publish_note(
     title: str, content: str, config: dict, source: str = "", price: int = 0
 ) -> str | None:
@@ -1519,11 +1550,17 @@ def _publish_note(
             tags = ["AI", "テクノロジー", "トレンド"]
         logger.info("note ハッシュタグ: %s", tags)
 
+        # Topic-themed cover from Unsplash. Falls back to None when
+        # Unsplash is unreachable; publish_article will skip the
+        # eyecatch step in that case.
+        cover_path = _fetch_topic_cover(title)
+
         url = note_pub.publish_article(
             title=title,
             content=content,
             tags=tags,
             price=price,
+            cover_image_path=str(cover_path) if cover_path else None,
         )
         return url
     except Exception as e:
