@@ -670,6 +670,37 @@ def _attach_cover(page, url: str, cover_path: Path) -> bool:
             pass
         return False
 
+    # Personal-info modal interception: a 本人情報の登録 / 入力 dialog
+    # sometimes pops up after 公開に進む for paid/monetised accounts and
+    # blocks the update button from being hit-testable. Close it the
+    # same way NotePublisher.edit_article does.
+    for _text in ("本人情報の入力", "本人情報の登録"):
+        try:
+            if page.locator(f":text('{_text}')").first.is_visible(timeout=600):
+                logger.info("  personal info modal detected — dismissing")
+                for _sel in (
+                    "button:has-text('キャンセル')",
+                    "button[aria-label='閉じる']",
+                    "button[aria-label='Close']",
+                    "button:has-text('×')",
+                    "[role='dialog'] button:first-child",
+                ):
+                    try:
+                        _b = page.locator(_sel).first
+                        if _b.is_visible(timeout=400):
+                            _b.click(timeout=2000)
+                            page.wait_for_timeout(600)
+                            break
+                    except Exception:
+                        continue
+                else:
+                    page.keyboard.press("Escape")
+                    page.wait_for_timeout(600)
+                break
+        except Exception:
+            continue
+    page.wait_for_timeout(1200)
+
     try:
         page.screenshot(path=str(_LOGS_DIR / "retrofit_publish_ready.png"), full_page=True)
     except Exception:
