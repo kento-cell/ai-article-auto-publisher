@@ -83,6 +83,8 @@ class NotePublisher:
         tags: list[str],
         price: int = 0,
         slug: str = "article",
+        cover_image_path: str | None = None,
+        inline_image_paths: list[str] | None = None,
     ) -> str:
         """Create and publish an article on note.com.
 
@@ -121,7 +123,11 @@ class NotePublisher:
             self._assert_logged_in()
             self._navigate_to_editor()
             self._input_title(title)
+            if cover_image_path:
+                self._set_eyecatch_on_current_page(cover_image_path)
             self._input_content_html(html)
+            if inline_image_paths:
+                self._inject_inline_images(inline_image_paths)
             self._open_publish_settings()
             self._input_tags(tags)
             if price > 0:
@@ -875,6 +881,7 @@ class NotePublisher:
         new_title: str | None = None,
         new_content: str | None = None,
         inline_image_paths: list[str] | None = None,
+        cover_image_path: str | None = None,
     ) -> bool:
         """Edit an existing note article (preserves URL and impressions).
 
@@ -972,71 +979,13 @@ class NotePublisher:
                 page.wait_for_timeout(1200)
                 logger.info("Body updated via HTML clipboard paste")
 
-            # Upload inline images via the ProseMirror paste-image
-            # handler. The cursor needs to be parked at the START
-            # of the second top-level block (the body paragraph
-            # that follows the lead H2) — placing it inside the H2
-            # itself causes Enter to split the heading mid-line and
-            # leak the second half into a new paragraph. Setting
-            # the selection via page.evaluate against the
-            # ProseMirror view is the only reliable way: keyboard
-            # End/Home behave per *visual* line, which depends on
-            # the editor width.
+            # Upload inline images via the shared helper.
             if inline_image_paths:
-                logger.info(
-                    "Uploading %d inline image(s) at top of body",
-                    len(inline_image_paths),
-                )
-                body_loc = page.locator(".ProseMirror").first
-                body_loc.click()
-                page.wait_for_timeout(300)
-                # Park caret at the start of the second top-level
-                # block. If there is no second block, fall back to
-                # the end of the only block we have.
-                page.evaluate(
-                    """() => {
-                        const editor = document.querySelector('.ProseMirror');
-                        if (!editor) return false;
-                        const blocks = Array.from(editor.children);
-                        const target = blocks[1] || blocks[0];
-                        if (!target) return false;
-                        const range = document.createRange();
-                        range.setStart(target, 0);
-                        range.collapse(true);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                        editor.focus();
-                        return true;
-                    }"""
-                )
-                page.wait_for_timeout(200)
-                for p in inline_image_paths:
-                    try:
-                        self._upload_image(p)
-                        logger.info("inline image uploaded: %s", p)
-                        # Image-caption disclaimer: the inline photo
-                        # is illustrative (Unsplash CC0 stock), not
-                        # an actual photo of the venue under review.
-                        # Without this caption a reader could mistake
-                        # the stock image for an authentic on-site
-                        # shot — disrespectful to the real store and
-                        # legally murky. Always type a short notice
-                        # underneath the freshly inserted image.
-                        page.keyboard.press("Enter")
-                        page.wait_for_timeout(150)
-                        page.keyboard.type(
-                            "※画像はイメージです（実際の店舗・施設・商品とは異なります）",
-                            delay=4,
-                        )
-                        page.wait_for_timeout(200)
-                        page.keyboard.press("Enter")
-                        page.wait_for_timeout(150)
-                    except Exception as exc:
-                        logger.warning(
-                            "inline image upload failed (%s): %s", p, exc
-                        )
-                page.wait_for_timeout(1500)
+                self._inject_inline_images(inline_image_paths)
+
+            # Cover image (eyecatch) upload via shared helper.
+            if cover_image_path:
+                self._set_eyecatch_on_current_page(cover_image_path)
 
             # Click 公開に進む / 更新する button
             page.wait_for_timeout(1500)
@@ -1373,6 +1322,139 @@ class NotePublisher:
         tail = content[pos:]
         if tail:
             page.keyboard.type(tail, delay=2)
+
+    def _inject_inline_images(self, image_paths: list[str]) -> None:
+        """Park caret at top of body and upload each image inline.
+
+        Used by both ``publish_article`` and ``edit_article`` so the
+        cursor-positioning + ProseMirror paste-image handling lives
+        in one place. Caller must have already entered the body
+        content; this method will not save.
+        """
+        assert self._page is not None
+        page = self._page
+        if not image_paths:
+            return
+        logger.info("Injecting %d inline image(s) at top of body", len(image_paths))
+        body_loc = page.locator(".ProseMirror").first
+        body_loc.click()
+        page.wait_for_timeout(300)
+        page.evaluate(
+            """() => {
+                const editor = document.querySelector('.ProseMirror');
+                if (!editor) return false;
+                const blocks = Array.from(editor.children);
+                const target = blocks[1] || blocks[0];
+                if (!target) return false;
+                const range = document.createRange();
+                range.setStart(target, 0);
+                range.collapse(true);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                editor.focus();
+                return true;
+            }"""
+        )
+        page.wait_for_timeout(200)
+        for p in image_paths:
+            try:
+                self._upload_image(p)
+                logger.info("inline image uploaded: %s", p)
+                page.keyboard.press("Enter")
+                page.wait_for_timeout(150)
+                page.keyboard.type(
+                    "※画像はイメージです（実際の店舗・施設・商品とは異なります）",
+                    delay=4,
+                )
+                page.wait_for_timeout(200)
+                page.keyboard.press("Enter")
+                page.wait_for_timeout(150)
+            except Exception as exc:
+                logger.warning("inline image upload failed (%s): %s", p, exc)
+        page.wait_for_timeout(1000)
+
+    def _set_eyecatch_on_current_page(self, file_path: str) -> bool:
+        """Upload *file_path* as the eyecatch on the currently-open editor.
+
+        Reuses the dual-strategy approach from
+        scripts/retrofit_note_covers._attach_cover but operates on the
+        page we are already editing — no navigation, no save click.
+        Caller is responsible for saving after.
+        """
+        assert self._page is not None
+        page = self._page
+        try:
+            page.evaluate("window.scrollTo(0, 0)")
+            page.wait_for_timeout(300)
+
+            # Detect existing cover so we skip re-upload (idempotent).
+            already = page.evaluate(
+                """() => !document.querySelector('[aria-label="画像を追加"]')"""
+            )
+            if already:
+                logger.info("eyecatch already present; skipping upload")
+                return True
+
+            # Strategy A: hidden file input.
+            file_inputs = page.locator('input[type="file"]').all()
+            for fi in file_inputs:
+                try:
+                    fi.set_input_files(file_path)
+                    page.wait_for_timeout(2500)
+                    self._dismiss_crop_modal()
+                    page.wait_for_timeout(800)
+                    logger.info("eyecatch uploaded via file input: %s", file_path)
+                    return True
+                except Exception as exc:
+                    logger.debug("file input rejected: %s", exc)
+                    continue
+
+            # Strategy B: synthetic drop event onto the eyecatch dropzone.
+            import base64
+            data = Path(file_path).read_bytes()
+            b64 = base64.b64encode(data).decode()
+            mime = "image/png" if file_path.lower().endswith(".png") else "image/jpeg"
+            result = page.evaluate(
+                """({b64, name, mime}) => {
+                    const byteString = atob(b64);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                    const blob = new Blob([ab], {type: mime});
+                    const file = new File([blob], name, {type: mime});
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    const btn = document.querySelector('[aria-label="画像を追加"]');
+                    if (!btn) return 'no-button';
+                    const zone = btn.closest('[data-dragging]') || btn.closest('div') || btn.parentElement;
+                    if (!zone) return 'no-zone';
+                    const rect = zone.getBoundingClientRect();
+                    const cx = rect.left + rect.width / 2;
+                    const cy = rect.top + rect.height / 2;
+                    for (const type of ['dragenter', 'dragover', 'drop']) {
+                        const ev = new DragEvent(type, {
+                            bubbles: true, cancelable: true,
+                            clientX: cx, clientY: cy, dataTransfer: dt,
+                        });
+                        try { Object.defineProperty(ev, 'dataTransfer', {value: dt}); } catch (_) {}
+                        zone.dispatchEvent(ev);
+                    }
+                    return 'ok';
+                }""",
+                {"b64": b64, "name": Path(file_path).name, "mime": mime},
+            )
+            if result == "ok":
+                page.wait_for_timeout(4000)
+                self._dismiss_crop_modal()
+                page.wait_for_timeout(800)
+                logger.info("eyecatch uploaded via drop event: %s", file_path)
+                return True
+            logger.warning("eyecatch upload failed: %s", result)
+            return False
+        except Exception as exc:
+            logger.warning("eyecatch upload exception: %s", exc)
+            return False
 
     @staticmethod
     def _markdown_to_html_for_note(content: str) -> str:

@@ -78,7 +78,14 @@ genres:
 
   # 美容・健康・ダイエット系
   beauty:
-    keywords: ["美容", "コスメ", "スキンケア", "ダイエット", "健康", "サプリ", "エステ"]
+    keywords: [
+      "美容", "コスメ", "スキンケア", "ダイエット", "健康", "サプリ", "エステ",
+      "メイク", "化粧水", "美容液", "クリーム", "下地", "ファンデーション",
+      "リップ", "アイシャドウ", "マスカラ", "アイブロウ", "チーク",
+      "韓国コスメ", "プチプラ", "デパコス", "オーガニックコスメ",
+      "毛穴", "シミ", "シワ", "ニキビ", "乾燥肌", "敏感肌",
+      "美白", "アンチエイジング", "エイジングケア",
+    ]
     links:
       - name: "美容・健康商品"
         url: "${AFB_BEAUTY_LINK}"
@@ -89,6 +96,78 @@ genres:
       - name: "楽天 美容ランキング"
         url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Fwww.rakuten.co.jp%2Fcategory%2F100939%2F"
         description: "楽天美容人気アイテム"
+
+  # スパ・エステ・サロン予約系（女性向け予約・高単価）
+  beauty_spa_salon:
+    keywords: [
+      "スパ", "エステ", "ヘアサロン", "美容室", "美容院", "ネイルサロン",
+      "ネイル", "ジェルネイル", "マッサージ", "整体", "リラクゼーション",
+      "アロマ", "リフレクソロジー", "ホットストーン",
+      "脱毛", "全身脱毛", "顔脱毛", "VIO", "医療脱毛",
+      "フェイシャル", "痩身", "ボディケア", "美容医療",
+      "ホットペッパー", "ホットペッパービューティー",
+      "ブライダルエステ", "結婚式", "プレ花嫁",
+    ]
+    links:
+      - name: "ホットペッパービューティー — ヘア・サロン予約"
+        url: "${VCM_HPB_LINK}"
+        description: "全国19万件以上のサロン予約。新規予約成果"
+      - name: "OZmall ビューティ — 女性向けスパ・エステ予約"
+        url: "${VCM_OZMALL_BEAUTY_LINK}"
+        description: "ホテルスパ・高級エステに強い"
+      - name: "リゼクリニック — 医療脱毛"
+        url: "${A8_RIZE_LINK}"
+        description: "全国展開の医療脱毛、無料カウンセリング"
+      - name: "ミュゼプラチナム — 全身脱毛"
+        url: "${A8_MUSEE_LINK}"
+        description: "業界大手の脱毛サロン"
+
+  # コスメEC・サブスク系（試供品・初回購入で発生）
+  beauty_cosmetics:
+    keywords: [
+      "DHC", "オルビス", "ORBIS", "ファンケル", "FANCL", "POLA", "資生堂",
+      "SK-II", "アルビオン", "コスメデコルテ", "イプサ",
+      "コスメサブスク", "化粧品定期便", "BLOOMBOX", "RAXY",
+      "プチプラコスメ", "韓国スキンケア", "シカ", "セラミド", "ヒアルロン酸",
+      "サンプル", "お試しセット", "トライアル",
+    ]
+    links:
+      - name: "オルビス公式 — トライアルセット"
+        url: "${A8_ORBIS_LINK}"
+        description: "30日間返品保証付き。初回購入¥1,000"
+      - name: "DHC公式オンライン"
+        url: "${A8_DHC_LINK}"
+        description: "サンプル無料、定期便で割引"
+      - name: "BLOOMBOX — コスメサブスクボックス"
+        url: "${A8_BLOOMBOX_LINK}"
+        description: "毎月コスメが届く定期便"
+      - name: "楽天 美容コスメランキング"
+        url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Franking.rakuten.co.jp%2Fdaily%2F100939%2F"
+        description: "楽天デイリーランキング"
+
+  # ダイエット・フィットネス・ウェルネス系
+  wellness_diet:
+    keywords: [
+      "ダイエット", "痩せる", "減量", "糖質制限", "ケトジェニック",
+      "プロテイン", "EAA", "BCAA", "サプリ",
+      "パーソナルジム", "ライザップ", "RIZAP", "24/7", "BEYOND",
+      "ヨガ", "ピラティス", "オンラインヨガ", "SOELU",
+      "オートミール", "プロテインバー", "低糖質スイーツ",
+      "腸活", "ファスティング", "酵素ドリンク",
+    ]
+    links:
+      - name: "RIZAP — 結果にコミット"
+        url: "${A8_RIZAP_LINK}"
+        description: "無料カウンセリング申込で成果¥10,000+"
+      - name: "SOELU — オンラインヨガ"
+        url: "${A8_SOELU_LINK}"
+        description: "100円で30日体験"
+      - name: "BEYOND — パーソナルジム"
+        url: "${A8_BEYOND_LINK}"
+        description: "体験トレーニング申込"
+      - name: "プロテイン (Amazon)"
+        url: "https://www.amazon.co.jp/s?k=プロテイン+女性&tag=${AMAZON_TAG}"
+        description: "女性向けプロテインランキング"
 
   # 学習・スキル系
   learning:
