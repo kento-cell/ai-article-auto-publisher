@@ -12,6 +12,7 @@ AI記事自動生成・投稿システム メインスクリプト
 
 import argparse
 import io
+import json
 import os
 import re
 import sys
@@ -309,6 +310,53 @@ def _ensure_ai_disclaimer(content: str) -> str:
     if re.search(r"(?m)^#{1,3}.{0,6}免責", content):
         return content
     return content.rstrip() + "\n" + _AI_DISCLAIMER_BLOCK
+
+
+_RECENT_AREA_WINDOW = 6
+_RECENT_AREA_PATH = Path("data/recent_note_areas.json")
+
+
+def _load_recent_note_areas() -> list[str]:
+    """Return the rolling window of recently-used Bluesky note areas."""
+    if not _RECENT_AREA_PATH.exists():
+        return []
+    try:
+        data = json.loads(_RECENT_AREA_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return [str(a) for a in data][-_RECENT_AREA_WINDOW:]
+    except Exception:
+        pass
+    return []
+
+
+def _remember_note_area(area: str) -> None:
+    """Append *area* to the recent-used list, capped at the window size."""
+    if not area:
+        return
+    areas = _load_recent_note_areas()
+    areas.append(area)
+    areas = areas[-_RECENT_AREA_WINDOW:]
+    try:
+        _RECENT_AREA_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _RECENT_AREA_PATH.write_text(
+            json.dumps(areas, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception as exc:
+        logger.debug("recent areas save failed: %s", exc)
+
+
+def _area_of_article(article: dict) -> str:
+    """Return the normalised area token associated with *article*.
+
+    Prefers the BlueskyCollector's ``query`` field (first token is the
+    area), falls back to :func:`_extract_area_hint` scanning.
+    """
+    q = article.get("query") or ""
+    if q:
+        tokens = q.split()
+        if tokens:
+            return tokens[0]
+    return _extract_area_hint(article)
 
 
 def _extract_area_hint(article: dict) -> str:
@@ -1047,22 +1095,34 @@ def generate_and_score(
         # Bluesky posts rank lower than Reddit by raw social signal,
         # but niche locality content is the whole point of including
         # Bluesky, so we guarantee one slot for it when available.
+        # Also rotate area coverage: avoid picking a post from an
+        # area we already covered in the last _RECENT_AREA_WINDOW
+        # runs so 下北沢 etc. do not dominate the feed.
         selection = candidates[:articles_per_week]
         if platform == "note":
-            top_bluesky = next(
-                (a for a in candidates if a.get("source") == "bluesky"),
-                None,
-            )
+            recent_areas = _load_recent_note_areas()
+            bluesky_candidates = [
+                a for a in candidates if a.get("source") == "bluesky"
+            ]
+            # Prefer candidates whose area is NOT in the recent window.
+            fresh = [
+                a for a in bluesky_candidates
+                if _area_of_article(a) not in recent_areas
+            ]
+            top_bluesky = (fresh or bluesky_candidates)[0] if (fresh or bluesky_candidates) else None
             if top_bluesky and top_bluesky not in selection:
-                # Replace the lowest-ranked pick with the Bluesky one.
                 if selection:
                     selection[-1] = top_bluesky
                 else:
                     selection = [top_bluesky]
+                picked_area = _area_of_article(top_bluesky) or "-"
                 logger.info(
-                    "[note] Bluesky枠を確保: %s",
+                    "[note] Bluesky枠を確保: [%s] %s (recent: %s)",
+                    picked_area,
                     top_bluesky.get("title", "")[:40],
+                    ",".join(recent_areas) or "none",
                 )
+                _remember_note_area(picked_area)
 
         for article in selection:
             try:
