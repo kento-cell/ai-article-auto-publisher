@@ -95,8 +95,17 @@ def _is_authorized(event: dict) -> bool:
     if channel_name != ALLOWED_CHANNEL:
         return False
 
-    # If no whitelist configured, allow all users in the channel
-    if ALLOWED_USER_IDS and user_id not in ALLOWED_USER_IDS:
+    # Fail-closed: an empty whitelist must NOT authorise everyone in
+    # the channel. A compromised workspace or accidentally public
+    # channel would otherwise let any member run generate/publish/stop.
+    if not ALLOWED_USER_IDS:
+        logger.warning(
+            "SLACK_ALLOWED_USERS is empty — denying user %s. "
+            "Set SLACK_ALLOWED_USERS in .env to enable the bot.",
+            user_id,
+        )
+        return False
+    if user_id not in ALLOWED_USER_IDS:
         logger.warning("Unauthorized user: %s", user_id)
         return False
 
