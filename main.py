@@ -216,6 +216,38 @@ def _translate_reasons(reasons_str: str) -> str:
 # Markdown post-processing
 # =====================================================================
 
+_TITLE_BRACKETS: list[str] = [
+    "殿堂入り記事", "殿堂記事", "殿堂入り記事・警告",
+    "永久保存版", "保存版", "完全保存版", "警告・永久保存版", "決定版",
+    "完全無料", "完全自動", "完全攻略", "完全ガイド", "完全まとめ",
+    "速報", "最新", "2026年最新", "緊急", "号外", "現地レポ",
+    "朝メモ", "夜メモ", "深夜便", "週末特集", "今月のベスト",
+    "警告", "注意", "暴露", "本音", "リーク", "裏事情",
+    "衝撃", "悲報", "朗報", "号泣", "絶句", "禁断",
+    "入門", "必修", "コアメンバー", "プロが教える", "現場の声",
+    "3分でわかる", "5選", "10の真実", "100人に聞いた", "99%が知らない",
+    "ローカル限定", "穴場", "地元民だけが知る",
+]
+
+
+def _pick_title_bracket_hint() -> str:
+    """Return a short instruction pinning a random bracket for this run.
+
+    The title-bracket list in prompts.yaml is explanatory; small local
+    LLMs still collapse on a single favourite (【狂気】) unless a
+    concrete choice is forced per run. This nudge picks one and
+    instructs the model to use it verbatim, maximising variety across
+    runs.
+    """
+    import random
+    choice = random.choice(_TITLE_BRACKETS)
+    return (
+        f"\n\n【今回のタイトルブラケット指定】\n"
+        f"この記事のタイトルの先頭は必ず「【{choice}】」で始めること。\n"
+        f"他のブラケットは使用しないこと。同じ記事内で【狂気】等の別表現を重ねない。\n"
+    )
+
+
 _AI_DISCLAIMER_SENTINEL = "<!-- AI_DISCLAIMER -->"
 _AI_DISCLAIMER_BLOCK = f"""
 ---
@@ -708,9 +740,13 @@ def _generate_single_article(
         )
         logger.info("[%s] 構成パターン: %s", platform, structure_name)
 
+    # Runtime bracket rotation: pick one title bracket at random so
+    # the LLM does not keep defaulting to 【狂気】 / 【永久保存版】.
+    bracket_hint = _pick_title_bracket_hint()
+
     # --- 生成 ---
     try:
-        prompt = template.format(**article) + structure_instruction
+        prompt = template.format(**article) + structure_instruction + bracket_hint
     except KeyError as e:
         logger.warning("プロンプトテンプレートのキー不足: %s", e)
         return None
