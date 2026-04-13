@@ -1,10 +1,20 @@
 # 環境変数
 .env
 
-# 認証情報
+# 認証情報 / シークレット
 config/credentials.json
 ai-publisher-*.json
+*-service-account*.json
+*.pem
+*.key
 config/settings.yaml
+
+# ブラウザ永続セッション（note.com / Selenium / Playwright）
+# — 認証済みCookieやIndexedDBが含まれるため絶対にコミットしない
+data/note-profile/
+data/selenium-profile/
+*_cookies.json
+cookies/
 
 # Python
 __pycache__/
