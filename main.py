@@ -230,6 +230,41 @@ _TITLE_BRACKETS: list[str] = [
 ]
 
 
+def _codex_research_brief(article: dict) -> str:
+    """Run a Codex web-search research pass and return a prompt block.
+
+    Only fires when the Codex CLI is available. On failure the block
+    is empty so generation proceeds with the unchanged LLM-only path.
+    The brief is injected at the end of the article prompt so Gemma3
+    sees it as authoritative ground truth.
+    """
+    try:
+        from utils.codex_researcher import CodexResearcher
+        researcher = CodexResearcher()
+        if not researcher.is_available():
+            return ""
+        area = _extract_area_hint(article)
+        title = article.get("title", "")
+        content = article.get("content", "")
+        brief = researcher.research(
+            source_title=title,
+            source_content=content,
+            area_hint=area,
+        )
+        if not brief.stores and not brief.summary:
+            logger.info("[research] Codex returned empty brief")
+            return ""
+        verified = sum(1 for s in brief.stores if s.verified)
+        logger.info(
+            "[research] Codex brief: %d stores (%d verified)",
+            len(brief.stores), verified,
+        )
+        return "\n\n" + brief.to_prompt_block()
+    except Exception as exc:
+        logger.warning("Codex research failed: %s", exc)
+        return ""
+
+
 def _pick_title_bracket_hint() -> str:
     """Return a short instruction pinning a random bracket for this run.
 
@@ -744,9 +779,21 @@ def _generate_single_article(
     # the LLM does not keep defaulting to 【狂気】 / 【永久保存版】.
     bracket_hint = _pick_title_bracket_hint()
 
+    # Pre-generation research pass: delegate web search to Codex CLI
+    # so Gemma3 has a grounded fact brief to cite from. Only for note
+    # — Zenn tech articles are research-light.
+    research_block = ""
+    if platform == "note":
+        research_block = _codex_research_brief(article)
+
     # --- 生成 ---
     try:
-        prompt = template.format(**article) + structure_instruction + bracket_hint
+        prompt = (
+            template.format(**article)
+            + structure_instruction
+            + bracket_hint
+            + research_block
+        )
     except KeyError as e:
         logger.warning("プロンプトテンプレートのキー不足: %s", e)
         return None
