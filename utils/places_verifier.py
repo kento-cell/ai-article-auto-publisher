@@ -69,6 +69,21 @@ _PRICE_LEVEL_JA = {
 _STORE_BLOCK_START = "<!-- STORE_BLOCK_START -->"
 _STORE_BLOCK_END = "<!-- STORE_BLOCK_END -->"
 
+# LLMs (especially small local models) often mangle HTML comment
+# markers — dropping the leading/trailing comment delimiters or
+# converting them to different punctuation. Match any line whose
+# normalised form ends with the core token.
+_START_TOKEN_RE = re.compile(r"STORE_BLOCK_START")
+_END_TOKEN_RE = re.compile(r"STORE_BLOCK_END")
+
+
+def _is_start_marker(line: str) -> bool:
+    return bool(_START_TOKEN_RE.search(line))
+
+
+def _is_end_marker(line: str) -> bool:
+    return bool(_END_TOKEN_RE.search(line))
+
 # Line prefixes that indicate LLM-authored factual claims. Always
 # stripped — even on fail-open paths — to prevent hallucinated
 # addresses / hours / phones from reaching readers.
@@ -84,7 +99,7 @@ def _find_block_end(lines: list[str], start: int) -> int:
     If no closing marker is found, returns the end of *lines*.
     """
     for j in range(start, len(lines)):
-        if lines[j].strip() == _STORE_BLOCK_END:
+        if _is_end_marker(lines[j]):
             return j
     return len(lines)
 
@@ -190,7 +205,7 @@ class PlacesVerifier:
             "verified": 0, "dropped": 0,
             "chain_filtered": 0, "scrubbed": 0,
         }
-        if _STORE_BLOCK_START not in content:
+        if not _START_TOKEN_RE.search(content):
             # No sentinel blocks — untouched.
             return content, stats
 
@@ -204,7 +219,7 @@ class PlacesVerifier:
         out: list[str] = []
         i = 0
         while i < len(lines):
-            if lines[i].strip() == _STORE_BLOCK_START:
+            if _is_start_marker(lines[i]):
                 end = _find_block_end(lines, i + 1)
                 block_lines = lines[i + 1 : end]
                 rendered = self._process_block(
