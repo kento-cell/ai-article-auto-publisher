@@ -110,19 +110,73 @@ genres:
         url: "${A8_RAKUTEN_BOOKS_LINK}"
         description: "書籍・雑誌・電子書籍が充実"
 
-  # コーヒー・グルメ系
+  # コーヒー・グルメ・お取り寄せ・飲食店系
   food:
-    keywords: ["コーヒー", "グルメ", "カフェ", "料理レシピ", "食材"]
+    keywords: [
+      "コーヒー", "グルメ", "カフェ", "料理レシピ", "食材", "お取り寄せ",
+      "スイーツ", "ご当地グルメ", "名物", "テイクアウト",
+      # 飲食店/料理ジャンル — 個人店紹介記事をここに集約
+      "ラーメン", "塩中華", "つけ麺", "うどん", "そば店", "蕎麦",
+      "寿司", "鮨", "焼肉", "焼鳥", "焼き鳥", "とんかつ",
+      "居酒屋", "和食", "イタリアン", "フレンチ", "中華料理",
+      "韓国料理", "タイ料理", "エスニック",
+      "定食", "ランチ", "朝食", "モーニング", "おやつ",
+      "個人店", "隠れ家", "名店", "穴場", "老舗", "町中華",
+      "デザート", "ケーキ", "和菓子", "パン屋", "ベーカリー",
+      "茶葉", "紅茶", "日本茶", "ワイン", "日本酒", "クラフトビール",
+    ]
     links:
       - name: "コーヒー豆 (Amazon)"
         url: "https://www.amazon.co.jp/s?k=スペシャルティコーヒー&tag=${AMAZON_TAG}"
-        description: "厳選コーヒー豆"
+        description: "厳選スペシャルティコーヒー"
       - name: "楽天 お取り寄せグルメ"
         url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Fwww.rakuten.co.jp%2Fcategory%2F100227%2F"
-        description: "楽天人気グルメ"
+        description: "楽天で人気のお取り寄せグルメ"
       - name: "Yahoo!ショッピング グルメ"
         url: "${VCM_FOOD_LINK}"
-        description: "お取り寄せグルメ"
+        description: "お取り寄せの定番"
+
+  # 食材宅配・ミールキット系（高単価・サブスク型）
+  food_delivery:
+    keywords: ["食材宅配", "ミールキット", "オイシックス", "Oisix", "らでぃっしゅぼーや", "パルシステム", "ナッシュ", "nosh", "ヨシケイ", "コープデリ", "宅配弁当", "宅食", "冷凍弁当", "時短料理", "共働き", "離乳食"]
+    links:
+      - name: "Oisix（オイシックス）— 有機・特別栽培の食材宅配"
+        url: "${A8_OISIX_LINK}"
+        description: "野菜は安心、料理は時短。お試しセット送料無料"
+      - name: "ナッシュ（nosh）— 低糖質・低塩分の冷凍宅配弁当"
+        url: "${A8_NOSH_LINK}"
+        description: "管理栄養士監修、レンジで温めるだけ"
+      - name: "らでぃっしゅぼーや — 有機野菜定期便"
+        url: "${A8_RADISH_LINK}"
+        description: "産地直送のオーガニック宅配"
+
+  # ふるさと納税系（高単価／決定率高）
+  furusato:
+    keywords: ["ふるさと納税", "返礼品", "寄附", "寄付", "ワンストップ特例", "確定申告", "節税", "地方創生", "ふるなび", "さとふる", "楽天ふるさと納税", "ふるさとチョイス"]
+    links:
+      - name: "楽天ふるさと納税 — 楽天ポイントも貯まる"
+        url: "https://hb.afl.rakuten.co.jp/ichiba/${RAKUTEN_AFFILIATE_ID}/?pc=https%3A%2F%2Fevent.rakuten.co.jp%2Ffurusato%2F"
+        description: "食品カテゴリは料率4%（業界トップクラス）"
+      - name: "さとふる — テレビCMでお馴染み"
+        url: "${VCM_SATOFUL_LINK}"
+        description: "返礼品レビューが豊富で初心者向け"
+      - name: "ふるなび — Amazonギフトカード還元"
+        url: "${VCM_FURUNAVI_LINK}"
+        description: "寄付額の最大20%還元キャンペーン"
+
+  # レストラン予約系（一人あたり中単価、宴会で高単価）
+  gourmet_reservation:
+    keywords: ["レストラン予約", "個室", "ディナー", "誕生日", "記念日", "デート", "女子会", "コース料理", "高級店", "デート 飲食店", "プロポーズ", "接待", "宴会", "歓送迎会"]
+    links:
+      - name: "一休.comレストラン — 厳選レストラン予約"
+        url: "${VCM_IKYU_REST_LINK}"
+        description: "平均予約単価14,000円。ディナー1件¥628成果"
+      - name: "OZmall — 女性向けレストラン予約"
+        url: "${VCM_OZMALL_LINK}"
+        description: "デート・記念日に強い、予約完了で¥286"
+      - name: "ホットペッパーグルメ"
+        url: "${VCM_HOTPEPPER_LINK}"
+        description: "宴会・大人数で¥100×人数の累積"
 
   # ゲーム・サーバー系
   gaming:
