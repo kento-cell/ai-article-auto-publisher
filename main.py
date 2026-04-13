@@ -538,11 +538,22 @@ def _fetch_cached_images(sourcer, query: str, count: int) -> list[dict]:
 
 
 def _build_stock_image_block(image: dict, local_path: Path, alt: str) -> str:
-    """Build a Markdown image block (no attribution caption)."""
+    """Build a Markdown image block with both local path and remote URL.
+
+    The remote CDN URL (e.g. ``https://images.unsplash.com/photo-xxx``)
+    is embedded as the markdown title attribute so platforms that can
+    embed external images (note.com via HTML clipboard paste) can swap
+    the local path for the live URL at publish time. Zenn keeps using
+    the git-tracked local path because its publishing model is a git
+    repo of images.
+    """
     rel = local_path.as_posix()
     if "data/images/" not in rel:
         rel = f"data/images/stock/{local_path.name}"
     safe_alt = alt.replace("[", "(").replace("]", ")")
+    remote = (image.get("url") or image.get("download_url") or "").strip()
+    if remote:
+        return f'![{safe_alt}]({rel} "{remote}")\n'
     return f"![{safe_alt}]({rel})\n"
 
 

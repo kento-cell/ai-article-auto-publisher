@@ -42,9 +42,11 @@ _ELEMENT_TIMEOUT_MS: Final[int] = 20_000
 _PUBLISH_TIMEOUT_MS: Final[int] = 60_000
 
 # Matches local image paths such as ![](data/images/xxx.png) or
-# ![alt](./data/images/xxx.png)
+# ![alt](./data/images/xxx.png), with an optional ``"remote_url"``
+# title attribute that survives to the publish step so the local
+# path can be swapped for the CDN-hosted original.
 _LOCAL_IMAGE_RE: Final[re.Pattern[str]] = re.compile(
-    r"!\[[^\]]*\]\(\s*\.?/?((?:data|docs)/images/[^)]+?\.(?:png|jpg|jpeg|gif|svg))\s*\)",
+    r"!\[(?P<alt>[^\]]*)\]\(\s*\.?/?(?P<path>(?:data|docs)/images/[^)\s\"]+?\.(?:png|jpg|jpeg|gif|svg))(?:\s+\"(?P<title>[^\"]*)\")?\s*\)",
     re.IGNORECASE,
 )
 
@@ -100,11 +102,17 @@ class NotePublisher:
         # Convert mermaid → ASCII flowchart (note doesn't render mermaid)
         content = self._mermaid_to_ascii(content)
 
-        # Strip any local image references
+        # Swap local image refs for their CDN URL (when title attr is set)
+        # so note auto-embeds them as hosted images on paste.
         content = self._strip_local_images(content)
 
-        # Convert markdown to plain text (note editor doesn't parse markdown)
-        content = self._markdown_to_plain(content)
+        # Render to HTML — note's ProseMirror parses pasted HTML and
+        # produces real headings, lists, anchors, and inline images.
+        # We deliberately do NOT route through _markdown_to_plain in
+        # this path because it flattens link/image syntax into
+        # ``label (url)`` form, which is exactly what we are trying
+        # to avoid.
+        html = self._markdown_to_html_for_note(content)
 
         self._ensure_started()
         assert self._page is not None
@@ -113,7 +121,7 @@ class NotePublisher:
             self._assert_logged_in()
             self._navigate_to_editor()
             self._input_title(title)
-            self._input_content(content)
+            self._input_content_html(html)
             self._open_publish_settings()
             self._input_tags(tags)
             if price > 0:
@@ -366,6 +374,29 @@ class NotePublisher:
             page.keyboard.type(content, delay=2)
             return
         raise RuntimeError("本文エディタが見つかりません")
+
+    def _input_content_html(self, html: str) -> None:
+        """Focus the body editor and paste *html* via the clipboard.
+
+        Used by both publish and edit flows so headings, lists,
+        anchors and inline images all land as proper ProseMirror
+        nodes instead of plain text.
+        """
+        assert self._page is not None
+        page = self._page
+        body = page.locator(".ProseMirror").first
+        body.wait_for(state="visible", timeout=5_000)
+        body.click()
+        page.wait_for_timeout(400)
+        # Editor is empty on a fresh draft, but we still issue
+        # Ctrl+A/Delete to be safe (idempotent).
+        page.keyboard.press("Control+a")
+        page.wait_for_timeout(150)
+        page.keyboard.press("Delete")
+        page.wait_for_timeout(150)
+        self._paste_html(page, html)
+        page.wait_for_timeout(1000)
+        logger.info("Body input via HTML clipboard paste")
 
     @staticmethod
     def _mermaid_to_ascii(content: str) -> str:
@@ -1474,11 +1505,30 @@ class NotePublisher:
 
     @staticmethod
     def _strip_local_images(content: str) -> str:
-        """Remove local image references and clean up surrounding whitespace."""
+        """Swap local image references for their remote CDN URL when known.
+
+        Generated articles use the markdown title attribute as a side
+        channel: ``![alt](data/images/stock/x.jpg "https://images.unsplash.com/...")``.
+        When a remote URL is present we keep the image visible to readers
+        by rewriting the local path to the live URL — note's HTML clipboard
+        paste then sends a real ``<img src="https://...">`` to the editor,
+        which note auto-embeds as a hosted image.
+
+        Local-only image references (no title URL) are still stripped
+        because note has no way to access them.
+        """
         removed: list[str] = []
+        rewritten: list[str] = []
 
         def _replace(match: re.Match[str]) -> str:
-            removed.append(match.group(1))
+            alt = match.group("alt") or ""
+            path = match.group("path") or ""
+            title = match.group("title") or ""
+            if title and title.startswith("http"):
+                rewritten.append(title)
+                safe_alt = alt.replace("[", "(").replace("]", ")")
+                return f"![{safe_alt}]({title})"
+            removed.append(path)
             return ""
 
         new_content = _LOCAL_IMAGE_RE.sub(_replace, content)
@@ -1488,6 +1538,11 @@ class NotePublisher:
         # Strip trailing whitespace from each line
         new_content = "\n".join(line.rstrip() for line in new_content.split("\n"))
 
+        if rewritten:
+            logger.info(
+                "ローカル画像 %d 件をCDN URLにスワップしました",
+                len(rewritten),
+            )
         if removed:
             logger.warning(
                 "ローカル画像 %d 件を本文から除外しました: %s",
