@@ -1231,10 +1231,22 @@ def publish_approved(
 
         try:
             if platform == "zenn":
-                overall_grade = stored.get("scores", {}).get("overall_grade", "C")
-                if overall_grade == "A":
+                scores = stored.get("scores", {})
+                numeric_score = float(scores.get("numeric_score") or 0)
+                # Threshold: 82.5 — below this a full article feels
+                # undercooked, so fall back to Zenn Scraps which are
+                # explicitly framed as rough notes.
+                if numeric_score >= 82.5:
+                    logger.info(
+                        "[zenn] score=%.1f >= 82.5 → 記事投稿",
+                        numeric_score,
+                    )
                     url = _publish_zenn(article_id, title, content, stored)
                 else:
+                    logger.info(
+                        "[zenn] score=%.1f < 82.5 → スクラップ投稿",
+                        numeric_score,
+                    )
                     url = _save_scrap_draft(article_id, title, content, stored)
             elif platform == "note":
                 # 本人情報登録を回避するため当面は全記事無料公開

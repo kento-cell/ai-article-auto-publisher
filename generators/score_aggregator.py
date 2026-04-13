@@ -18,6 +18,11 @@ SUBJECTIVE_DIMENSIONS = ["originality", "accuracy", "readability", "engagement"]
 # Grade weight for average calculation (A=3, B=2, C=1).
 GRADE_VALUE = {"A": 3, "B": 2, "C": 1}
 
+# Numeric-score mapping used for the 0--100 composite. Tuned so that
+# "all A" == 100, "all B" == 75, "all C" == 50, matching the grading
+# mental model.
+GRADE_NUMERIC = {"A": 100.0, "B": 75.0, "C": 50.0}
+
 # Threshold: average >= 2.5 is "B+" territory.
 B_PLUS_THRESHOLD = 2.5
 
@@ -61,6 +66,7 @@ class ScoreAggregator:
 
         evidence_grade = self._extract_evidence_grade(objective)
         ratio = self._extract_tier12_ratio(objective)
+        numeric_score = self._compute_numeric_score(objective, subjective)
         summary = self._build_summary(overall_grade, blocking, evidence_grade)
 
         sheets = self._build_sheets_dict(
@@ -69,6 +75,7 @@ class ScoreAggregator:
             decision=decision,
             evidence_grade=evidence_grade,
             ratio=ratio,
+            numeric_score=numeric_score,
             objective=objective,
             subjective=subjective,
             summary=summary,
@@ -80,6 +87,7 @@ class ScoreAggregator:
             "blocking_issues": blocking,
             "evidence_level": evidence_grade,
             "tier12_ratio": ratio,
+            "numeric_score": numeric_score,
             "summary": summary,
             "objective_detail": objective,
             "subjective_detail": subjective,
@@ -195,6 +203,43 @@ class ScoreAggregator:
         total = sum(GRADE_VALUE.get(g, 1) for g in grades)
         return total / len(grades)
 
+    @classmethod
+    def _compute_numeric_score(
+        cls,
+        objective: dict,
+        subjective: dict,
+    ) -> float:
+        """Return a 0--100 composite score from objective + subjective grades.
+
+        Each metric/dimension contributes its letter-grade numeric value
+        (A=100, B=75, C=50). Objective and subjective halves are averaged
+        independently so weakness on either side is visible. The two
+        halves are then combined 50/50.
+
+        "All A across the board" → 100. "All B" → 75. "All C" → 50.
+        Mixed grades land linearly in-between.
+        """
+        obj_grades: list[str] = []
+        for metric_data in (objective.get("metrics") or {}).values():
+            if isinstance(metric_data, dict):
+                grade = str(metric_data.get("grade", "")).upper().strip()
+                if grade in GRADE_NUMERIC:
+                    obj_grades.append(grade)
+
+        sub_grades = cls._collect_subjective_grades(subjective)
+
+        if obj_grades:
+            obj_score = sum(GRADE_NUMERIC[g] for g in obj_grades) / len(obj_grades)
+        else:
+            obj_score = GRADE_NUMERIC["C"]
+
+        if sub_grades:
+            sub_score = sum(GRADE_NUMERIC[g] for g in sub_grades) / len(sub_grades)
+        else:
+            sub_score = GRADE_NUMERIC["C"]
+
+        return round(0.5 * obj_score + 0.5 * sub_score, 1)
+
     @staticmethod
     def _all_objective_a(objective: dict) -> bool:
         """Check whether all objective metrics earned grade A.
@@ -296,6 +341,7 @@ class ScoreAggregator:
         decision: str,
         evidence_grade: str,
         ratio: float,
+        numeric_score: float,
         objective: dict,
         subjective: dict,
         summary: str,
@@ -324,6 +370,7 @@ class ScoreAggregator:
             "status": status,
             "evidence_level": evidence_grade,
             "overall_grade": overall_grade,
+            "numeric_score": f"{numeric_score:.1f}",
             "platform": context.get("platform", ""),
             "tier12_ratio": f"{ratio:.0%}",
             "citation_count": (
