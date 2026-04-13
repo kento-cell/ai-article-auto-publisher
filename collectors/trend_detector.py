@@ -26,6 +26,7 @@ SOURCE_AUTHORITY: dict[str, float] = {
     "reddit/r/programming": 0.70,
     "reddit/r/artificial": 0.65,
     "reddit/r/technology": 0.60,
+    "bluesky": 0.70,
 }
 _DEFAULT_AUTHORITY = 0.50
 
@@ -177,12 +178,31 @@ class TrendDetector:
 
     @staticmethod
     def _social_score(article: dict[str, Any]) -> float:
-        """Normalised social signal score.  Returns 0-1."""
-        score = min(article.get("score", 0), _MAX_SCORE)
-        comments = min(article.get("num_comments", 0), _MAX_COMMENTS)
-        # Weighted combination: upvotes matter more than comments.
-        normalised = 0.7 * (score / _MAX_SCORE) + 0.3 * (comments / _MAX_COMMENTS)
-        return normalised
+        """Normalised social signal score. Returns 0-1.
+
+        Source-agnostic: looks for upvote-like and reply-like signals
+        under any of the known per-source key names (Reddit, Bluesky,
+        etc.) so new collectors inherit ranking for free.
+        """
+        upvotes = (
+            article.get("score")
+            or article.get("like_count")  # Bluesky
+            or 0
+        )
+        replies = (
+            article.get("num_comments")
+            or article.get("reply_count")  # Bluesky
+            or article.get("repost_count")  # Bluesky (amplification)
+            or 0
+        )
+        # Log scaling so small-scale signals (Bluesky: tens of likes)
+        # still register meaningfully against large-scale signals
+        # (Reddit: thousands of upvotes). log1p(10_000) ≈ 9.21.
+        upvotes = min(upvotes, _MAX_SCORE)
+        replies = min(replies, _MAX_COMMENTS)
+        up_norm = math.log1p(upvotes) / math.log1p(_MAX_SCORE)
+        re_norm = math.log1p(replies) / math.log1p(_MAX_COMMENTS)
+        return 0.7 * up_norm + 0.3 * re_norm
 
     def _authority_score(self, article: dict[str, Any]) -> float:
         """Source authority lookup.  Returns 0-1."""
