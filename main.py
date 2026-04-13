@@ -216,6 +216,34 @@ def _translate_reasons(reasons_str: str) -> str:
 # Markdown post-processing
 # =====================================================================
 
+_AI_DISCLAIMER_SENTINEL = "<!-- AI_DISCLAIMER -->"
+_AI_DISCLAIMER_BLOCK = f"""
+---
+
+{_AI_DISCLAIMER_SENTINEL}
+## ⚠️ 免責事項
+
+本記事の店舗・施設情報は、執筆時点のGoogle Maps公開データおよび投稿情報をもとにAIが構成しています。営業時間・価格・メニュー等は変更される場合があるため、来店前に公式サイトまたは店舗へ直接ご確認ください。また、本記事は情報提供を目的としており、掲載情報の正確性・完全性を保証するものではありません。ご利用は読者ご自身の判断でお願いいたします。
+"""
+
+
+def _ensure_ai_disclaimer(content: str) -> str:
+    """Append the AI-generated disclaimer if the LLM omitted it.
+
+    Idempotent across re-runs (sentinel check) AND tolerant of the
+    LLM authoring its own disclaimer block (heading-text check) so
+    we never end up with two ⚠️免責事項 sections on one article.
+    """
+    if _AI_DISCLAIMER_SENTINEL in content:
+        return content
+    # LLM-authored disclaimers usually use "免責事項" as the H2.
+    # Allow arbitrary chars (emoji + variation selectors) between ##
+    # and 免責 so we don't end up with two disclaimer sections.
+    if re.search(r"(?m)^#{1,3}.{0,6}免責", content):
+        return content
+    return content.rstrip() + "\n" + _AI_DISCLAIMER_BLOCK
+
+
 def _extract_area_hint(article: dict) -> str:
     """Extract a locality keyword (e.g. "下北沢") from the source article.
 
@@ -705,21 +733,27 @@ def _generate_single_article(
         try:
             from utils.places_verifier import PlacesVerifier
             _verifier = PlacesVerifier()
-            if _verifier.is_available():
-                area_hint = _extract_area_hint(article)
-                content, _places_stats = _verifier.verify_and_fill(
-                    content, area_hint=area_hint
+            # Always call verify_and_fill — it is a no-op when the
+            # content has no STORE_BLOCK sentinels, and runs in
+            # fail-closed scrub mode when the API key is missing.
+            area_hint = _extract_area_hint(article)
+            content, _places_stats = _verifier.verify_and_fill(
+                content, area_hint=area_hint
+            )
+            if any(_places_stats.values()):
+                logger.info(
+                    "[note] Places検証: verified=%d dropped=%d chain=%d scrubbed=%d (area=%s)",
+                    _places_stats["verified"],
+                    _places_stats["dropped"],
+                    _places_stats["chain_filtered"],
+                    _places_stats.get("scrubbed", 0),
+                    area_hint or "-",
                 )
-                if _places_stats["verified"] or _places_stats["dropped"]:
-                    logger.info(
-                        "[note] Places検証: verified=%d dropped=%d chain=%d (area=%s)",
-                        _places_stats["verified"],
-                        _places_stats["dropped"],
-                        _places_stats["chain_filtered"],
-                        area_hint or "-",
-                    )
         except Exception as exc:
             logger.warning("Places検証失敗: %s", exc)
+
+        # Guarantee the AI-disclosure footer even when the LLM omits it.
+        content = _ensure_ai_disclaimer(content)
 
     # --- アフィリエイトリンク自動挿入 ---
     try:
@@ -918,7 +952,28 @@ def generate_and_score(
             skipped = len(ranked.get(platform, [])) - len(candidates)
             logger.info("[%s] 生成済みソースをスキップ: %d件", platform, skipped)
 
-        for article in candidates[:articles_per_week]:
+        # note: Blueskyのローカル/グルメ系ソースを1枠予約する。
+        # Bluesky posts rank lower than Reddit by raw social signal,
+        # but niche locality content is the whole point of including
+        # Bluesky, so we guarantee one slot for it when available.
+        selection = candidates[:articles_per_week]
+        if platform == "note":
+            top_bluesky = next(
+                (a for a in candidates if a.get("source") == "bluesky"),
+                None,
+            )
+            if top_bluesky and top_bluesky not in selection:
+                # Replace the lowest-ranked pick with the Bluesky one.
+                if selection:
+                    selection[-1] = top_bluesky
+                else:
+                    selection = [top_bluesky]
+                logger.info(
+                    "[note] Bluesky枠を確保: %s",
+                    top_bluesky.get("title", "")[:40],
+                )
+
+        for article in selection:
             try:
                 result = _generate_single_article(
                     article, platform, template,
