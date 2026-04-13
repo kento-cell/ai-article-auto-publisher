@@ -788,6 +788,14 @@ def _generate_single_article(
         except Exception as exc:
             logger.warning("Places検証失敗: %s", exc)
 
+        # URL hygiene: shorten duplicated anchors and strip
+        # hallucinated bare URLs that point to domains we do not trust.
+        try:
+            from utils.url_cleaner import clean_article_urls
+            content = clean_article_urls(content)
+        except Exception as exc:
+            logger.warning("URL cleaner failed: %s", exc)
+
         # Guarantee the AI-disclosure footer even when the LLM omits it.
         content = _ensure_ai_disclaimer(content)
 
