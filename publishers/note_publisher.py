@@ -209,17 +209,22 @@ class NotePublisher:
         self._context.add_init_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
-        # Grant clipboard read/write so the link-dialog paste step in
-        # _type_with_embedded_links can populate URLs via Ctrl+V
-        # instead of keyboard.type (which garbles ? & % on non-US
-        # layouts).
-        try:
-            self._context.grant_permissions(
-                ["clipboard-read", "clipboard-write"],
-                origin="https://editor.note.com",
-            )
-        except Exception as exc:
-            logger.debug("clipboard permission grant skipped: %s", exc)
+        # Grant clipboard read/write at every note.com origin the
+        # editor uses (editor.note.com for new + edit pages, plain
+        # note.com for the legacy fallback). Without this the HTML
+        # clipboard paste path silently degrades to keyboard.type and
+        # external <img> elements never reach ProseMirror.
+        for _origin in (
+            "https://editor.note.com",
+            "https://note.com",
+        ):
+            try:
+                self._context.grant_permissions(
+                    ["clipboard-read", "clipboard-write"],
+                    origin=_origin,
+                )
+            except Exception as exc:
+                logger.debug("clipboard permission grant skipped (%s): %s", _origin, exc)
         self._context.set_default_timeout(_ELEMENT_TIMEOUT_MS)
         self._context.set_default_navigation_timeout(_NAV_TIMEOUT_MS)
         self._page = (
@@ -869,6 +874,7 @@ class NotePublisher:
         url: str,
         new_title: str | None = None,
         new_content: str | None = None,
+        inline_image_paths: list[str] | None = None,
     ) -> bool:
         """Edit an existing note article (preserves URL and impressions).
 
@@ -876,6 +882,12 @@ class NotePublisher:
             url: Full note URL (https://note.com/user/n/xxxxx)
             new_title: New title (None = keep existing)
             new_content: New body content (None = keep existing)
+            inline_image_paths: Optional list of local image files to
+                upload inline at the top of the body via note's
+                native ProseMirror paste-image handler. Each file is
+                uploaded after the body paste finishes and before the
+                publish/update click. note then re-hosts the image
+                under assets.st-note.com.
 
         Returns:
             True on success
@@ -959,6 +971,35 @@ class NotePublisher:
                 self._paste_html(page, html)
                 page.wait_for_timeout(1200)
                 logger.info("Body updated via HTML clipboard paste")
+
+            # Upload inline images via the ProseMirror paste-image
+            # handler. We do this AFTER the main body so the cursor
+            # is at the end of the document; pressing Control+Home
+            # moves us to the very top, then Enter creates a fresh
+            # paragraph that the image lands in.
+            if inline_image_paths:
+                logger.info(
+                    "Uploading %d inline image(s) at top of body",
+                    len(inline_image_paths),
+                )
+                body_loc = page.locator(".ProseMirror").first
+                body_loc.click()
+                page.wait_for_timeout(300)
+                page.keyboard.press("Control+Home")
+                page.wait_for_timeout(150)
+                page.keyboard.press("End")
+                page.wait_for_timeout(150)
+                page.keyboard.press("Enter")
+                page.wait_for_timeout(250)
+                for p in inline_image_paths:
+                    try:
+                        self._upload_image(p)
+                        logger.info("inline image uploaded: %s", p)
+                    except Exception as exc:
+                        logger.warning(
+                            "inline image upload failed (%s): %s", p, exc
+                        )
+                page.wait_for_timeout(1500)
 
             # Click 公開に進む / 更新する button
             page.wait_for_timeout(1500)
