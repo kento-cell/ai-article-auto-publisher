@@ -86,7 +86,13 @@ class AffiliateInjector:
             logger.debug("Affiliate sentinel present; skipping inject")
             return content
 
-        genre = self._detect_genre(title + " " + content)
+        # Detect genre from the **editorial** content only. Strip any
+        # previously-attached affiliate footer / 関連リンク section first
+        # so promo keywords ("プログラミング", "Python", etc.) from an
+        # earlier injection do not bias the detector toward tech when
+        # the article is actually about ramen / カフェ / etc.
+        editorial = self._strip_affiliate_section(content)
+        genre = self._detect_genre(title + " " + editorial)
         genre_config = self._config.get("genres", {}).get(genre, {})
         links = genre_config.get("links", [])
 
@@ -127,6 +133,23 @@ class AffiliateInjector:
 
         logger.info("Injected %d affiliate links for genre '%s'", len(links), genre)
         return "\n".join(sections)
+
+    @staticmethod
+    def _strip_affiliate_section(content: str) -> str:
+        """Drop any previously-injected ``## 関連リンク`` footer.
+
+        Used by :meth:`inject` so genre detection only looks at the
+        editorial body. Without this guard, tech promo keywords from
+        a previous injection would bias the detector and a ramen post
+        could end up classified as ``tech``.
+        """
+        if _AFFILIATE_SENTINEL in content:
+            return content.split(_AFFILIATE_SENTINEL, 1)[0]
+        # Fallback: chop at a "## 関連リンク" heading if present.
+        match = re.search(r"(?m)^##\s*関連リンク", content)
+        if match:
+            return content[: match.start()]
+        return content
 
     def _detect_genre(self, text: str) -> str:
         """Match article text against genre keywords and return best match."""
