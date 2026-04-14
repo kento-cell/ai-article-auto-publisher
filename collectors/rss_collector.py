@@ -114,10 +114,11 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
         "name": "GetNavi (トレンドガジェット/ライフスタイル)",
         "target": "note",
     },
-    # --- 有料記事向け（AI最先端・マネタイズ） ---
-    "openai_blog": {
-        "url": "https://openai.com/blog/rss.xml",
-        "name": "OpenAI Blog",
+    # --- 有料記事向け（AI最先端・マネタイズ・株/上場） ---
+    "openai_news": {
+        # /blog/rss.xml は更新停止気味。/news/rss.xml が現行。
+        "url": "https://openai.com/news/rss.xml",
+        "name": "OpenAI News",
         "target": "zenn",
     },
     "the_decoder": {
@@ -128,6 +129,38 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
     "huggingface_blog": {
         "url": "https://huggingface.co/blog/feed.xml",
         "name": "Hugging Face Blog",
+        "target": "zenn",
+    },
+    "techcrunch_ai": {
+        "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "name": "TechCrunch AI",
+        "target": "zenn",
+    },
+    "venturebeat_ai": {
+        "url": "https://venturebeat.com/category/ai/feed/",
+        "name": "VentureBeat AI",
+        "target": "zenn",
+    },
+    "verge_ai": {
+        "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+        "name": "The Verge AI",
+        "target": "zenn",
+    },
+    "semianalysis": {
+        # AIハードウェア/データセンター/株価インパクトの分析記事。
+        "url": "https://semianalysis.com/feed/",
+        "name": "SemiAnalysis (AIインフラ・株式)",
+        "target": "zenn",
+    },
+    "hn_anthropic_claude": {
+        # AnthropicはRSSを公開していないためHN経由で動向を拾う。
+        "url": "https://hnrss.org/newest?q=Anthropic+OR+Claude&points=10",
+        "name": "Hacker News (Anthropic/Claude)",
+        "target": "zenn",
+    },
+    "hn_ipo_stock": {
+        "url": "https://hnrss.org/newest?q=IPO+OR+stock+AI&points=20",
+        "name": "Hacker News (AI IPO/株)",
         "target": "zenn",
     },
     "producthunt": {
