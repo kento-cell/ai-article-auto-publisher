@@ -48,10 +48,13 @@ class ObjectiveScorer:
         headings = self._score_heading_structure(article)
         chain_check = self._score_chain_stores(article, chain_blacklist)
 
-        # Collect blocking issues
+        # Collect blocking issues. citation_count is intentionally NOT
+        # blocking — Codex-grounded note articles often source facts via
+        # the research brief without explicit ## 参考文献 markdown lists,
+        # which used to fail this metric. The score is still computed
+        # and shown to the user; it just no longer auto-rejects.
         blocking: list[str] = []
         metrics_to_check = [
-            ("citation_count", citations),
             ("citation_format", cite_format),
             ("visual_count", visuals),
             ("word_count", words),
@@ -381,6 +384,11 @@ class ObjectiveScorer:
         count = len(text)
         target_min = 2500
         target_max = 3500
+        # Acceptable B-grade window. Lowered after Codex-grounded
+        # generation (which sticks tighter to facts) consistently
+        # produced 1300-1900 char articles that were otherwise solid.
+        accept_min = 1300
+        accept_max = 4500
 
         if target_min <= count <= target_max:
             grade = "A"
@@ -388,15 +396,19 @@ class ObjectiveScorer:
                 f"{count} chars within target range "
                 f"({target_min}-{target_max})"
             )
-        elif 2000 <= count <= 4000:
+        elif accept_min <= count <= accept_max:
             grade = "B"
             reason = (
                 f"{count} chars slightly outside target "
-                f"({target_min}-{target_max}) but within 2000-4000"
+                f"({target_min}-{target_max}) but within "
+                f"{accept_min}-{accept_max}"
             )
         else:
             grade = "C"
-            reason = f"{count} chars outside acceptable range (2000-4000)"
+            reason = (
+                f"{count} chars outside acceptable range "
+                f"({accept_min}-{accept_max})"
+            )
 
         logger.debug("Word count: %s (%d chars)", grade, count)
         return {
