@@ -11,6 +11,7 @@ AI記事自動生成・投稿システム メインスクリプト
 """
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -914,8 +915,13 @@ def _generate_single_article(
         logger.warning("アフィリエイト挿入失敗: %s", exc)
 
     # --- slug生成（図表処理・スコアリングで使用） ---
-    _safe_title = re.sub(r'[\\/:*?"<>|]', '_', article.get('title', 'untitled')[:20])
-    slug = f"{platform}-{_safe_title}"
+    # Short prefix for readability + 8-char hash of the full title to
+    # prevent collisions when two articles share the first 20 chars
+    # (previously caused duplicate publishes, see git history).
+    _raw_title = article.get('title', 'untitled')
+    _safe_title = re.sub(r'[\\/:*?"<>|]', '_', _raw_title[:20])
+    _title_hash = hashlib.sha1(_raw_title.encode('utf-8')).hexdigest()[:8]
+    slug = f"{platform}-{_safe_title}-{_title_hash}"
 
     # --- ストック画像挿入（Unsplash / Pexels） ---
     # noteは特に画像が無いと見栄えが悪いので両プラットフォームで挿入。
@@ -1335,10 +1341,21 @@ def publish_approved(
         logger.info("承認済み記事なし。")
         return results
 
+    seen_ids: set[str] = set()
     for article_data in approved:
         platform = article_data.get("platform", "")
         title = article_data.get("title", "")
         article_id = article_data.get("article_id", "")
+
+        # Guard against duplicate approved rows sharing an article_id.
+        # Root-caused to slug collisions when two titles share the first
+        # 20 chars (see slug construction below, now hash-suffixed).
+        if article_id in seen_ids:
+            logger.warning(
+                "重複 article_id をスキップ: %s", article_id
+            )
+            continue
+        seen_ids.add(article_id)
 
         # Load persisted article content from local store
         store = ArticleStore()
