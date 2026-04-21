@@ -129,6 +129,12 @@ class HashtagGenerator:
             llm_tags = self._llm_generate(title, content[:300], llm_fn)
             tags.extend(llm_tags)
 
+        # Blend in learned high-reach tags from the latest
+        # docs/knowledge/note-trends/*_auto_learning.md. Without this
+        # step hashtag output skews toward niche keyword-map tags and
+        # misses the broad-discovery tags that actually drive views.
+        tags.extend(self._learned_tags_for(tags))
+
         # Deduplicate, preserve order, limit
         seen: set[str] = set()
         unique: list[str] = []
@@ -141,6 +147,73 @@ class HashtagGenerator:
         result = unique[:self.max_tags]
         logger.info("Generated %d hashtags: %s", len(result), result)
         return result
+
+    @staticmethod
+    def _learned_tags_for(existing: list[str]) -> list[str]:
+        """Pick a short list of learned high-reach tags aligned with the
+        topic indicated by *existing* tags. Returns at most 5 tags.
+
+        Mirrors ``scripts/publish_custom_post._blend_learned_tags`` so
+        both the generate pipeline and the hand-authored custom post
+        pipeline converge on the same tag strategy.
+        """
+        import re as _re
+        from pathlib import Path as _P
+
+        topic_pools: dict[str, list[str]] = {
+            "医療|クリニック|皮膚科|エクソソーム|ダーマペン|脱毛":
+                ["美容", "スキンケア", "自分磨き", "ライフスタイル",
+                 "エッセイ", "心理学", "生き方", "毎日note"],
+            "韓国|KPOP|アイドル|BTS|BLACKPINK|NewJeans|韓流":
+                ["韓国", "美容", "スキンケア", "ライフスタイル",
+                 "エッセイ", "自分磨き", "心理学"],
+            "コスメ|美容|メイク|スキンケア|ダイエット|恋愛|ファッション|自分磨き":
+                ["美容", "スキンケア", "ライフスタイル", "自分磨き",
+                 "エッセイ", "心理学", "生き方", "毎日note"],
+            "仕事|副業|ビジネス|マネタイズ|起業|フリーランス|AI|ChatGPT|Claude|人工知能":
+                ["AI", "ChatGPT", "生成AI", "AI活用", "仕事", "ビジネス",
+                 "副業", "フリーランス", "働き方"],
+        }
+        user_blob = "|".join(existing)
+        preferred: list[str] = []
+        for pattern, curated in topic_pools.items():
+            if _re.search(pattern, user_blob, _re.IGNORECASE):
+                preferred = list(curated)
+                break
+
+        learned: set[str] = set()
+        try:
+            root = _P(__file__).resolve().parent.parent
+            knowledge = root / "docs" / "knowledge" / "note-trends"
+            reports = sorted(knowledge.glob("*_auto_learning.md"), reverse=True)
+            if reports:
+                text = reports[0].read_text(encoding="utf-8")
+                in_section = False
+                for line in text.splitlines():
+                    if line.startswith("## タグ分布"):
+                        in_section = True
+                        continue
+                    if in_section:
+                        if line.startswith("## "):
+                            break
+                        m = _re.match(
+                            r"-\s*#?([^\s:：]+)\s*[:：]\s*\d+", line,
+                        )
+                        if m:
+                            learned.add(m.group(1).lstrip("#"))
+        except Exception:
+            pass
+
+        # Intersect preferred with learned to keep only tags that are
+        # both topic-aligned AND actually popular on note. Fallback to
+        # preferred directly if we couldn't load the learned list.
+        if learned:
+            result = [t for t in preferred if t in learned]
+            if not result:
+                result = preferred[:5]
+        else:
+            result = preferred[:5]
+        return result[:5]
 
     def generate_with_prefix(
         self, title: str, content: str, **kwargs

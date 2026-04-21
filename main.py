@@ -29,14 +29,16 @@ import yaml
 from dotenv import load_dotenv
 
 from collectors.arxiv_collector import ArxivCollector
-from collectors.bluesky_collector import BlueskyCollector
+from collectors.google_trends_collector import GoogleTrendsCollector
 from collectors.reddit_collector import RedditCollector
 from collectors.rss_collector import RssCollector
 from collectors.trend_detector import TrendDetector
 from generators.claude_automator import ClaudeAutomator
 from generators.local_llm import LocalLLM
 from generators.regenerator import Regenerator
-from generators.diagram_generator import DiagramGenerator
+# DiagramGenerator was removed: Zenn renders ```mermaid natively and
+# NotePublisher converts mermaid → ASCII at publish time, so the
+# mmdc-backed generate-time conversion was pure overhead.
 from generators.evidence_manager import EvidenceManager
 from generators.hashtag_generator import HashtagGenerator
 from generators.cover_generator import CoverGenerator
@@ -232,6 +234,67 @@ _TITLE_BRACKETS: list[str] = [
 ]
 
 
+_TIER_BY_SOURCE_TYPE = {
+    "arxiv": 1, "rss_jp": 2, "rss_kr": 2,
+    "reddit": 3, "google_trends": 2, "bluesky": 3, "hacker_news": 2,
+}
+
+
+def _normalize_sources_for_scoring(article: dict) -> list[dict]:
+    """Normalise the article's source metadata into the list-of-dicts
+    shape the ObjectiveScorer expects.
+
+    Two shapes flow in:
+      * collector output: ``article["source"] = "arxiv"`` (string) plus
+        a top-level ``url``/``title``.
+      * regenerated articles: ``article["source"] = {"sources": [...]}``
+        (wrapper dict produced by ``ArticleStore``).
+
+    Both get flattened here so regeneration and initial generation
+    exercise the same scorer logic — previously the regen path dropped
+    the top-level URL/source_type and landed on an empty source list,
+    which silently changed the grading baseline.
+    """
+    raw = article.get("source")
+    if raw is None:
+        raw = article.get("sources")
+
+    sources: list[dict] = []
+    if isinstance(raw, list):
+        sources = [s for s in raw if isinstance(s, dict)]
+    elif isinstance(raw, dict):
+        nested = raw.get("sources")
+        if isinstance(nested, list):
+            sources = [s for s in nested if isinstance(s, dict)]
+        else:
+            sources = [raw]
+    elif isinstance(raw, str) and raw:
+        sources = [{
+            "source": raw,
+            "url": article.get("url", ""),
+            "title": article.get("title", ""),
+        }]
+
+    # Infer tier when the collector didn't set one. Only arXiv preprints
+    # qualify as tier 1 primary sources.
+    for s in sources:
+        if s.get("tier"):
+            continue
+        stype = str(s.get("source") or "").lower()
+        if stype in _TIER_BY_SOURCE_TYPE:
+            s["tier"] = _TIER_BY_SOURCE_TYPE[stype]
+            continue
+        url = str(s.get("url") or "").lower()
+        if "arxiv.org" in url:
+            s["tier"] = 1
+        elif "reddit.com" in url or "trends.google" in url:
+            s["tier"] = 3
+        else:
+            s["tier"] = 2
+
+    return sources
+
+
 def _codex_research_brief(article: dict) -> str:
     """Run a Codex web-search research pass and return a prompt block.
 
@@ -265,6 +328,97 @@ def _codex_research_brief(article: dict) -> str:
     except Exception as exc:
         logger.warning("Codex research failed: %s", exc)
         return ""
+
+
+_LEARNED_BLOCK_CACHE: dict[str, str] = {}
+
+
+def _load_learned_block() -> str:
+    """Read the most recent note-trends auto-learning report and build a
+    prompt-injectable block.
+
+    We inject:
+      - TOP10 popular titles (with ♥ counts) — the LLM mimics what works.
+      - Common phrase patterns — tells the LLM which formulas are hot.
+      - Top tags — nudges hashtag-alignment.
+
+    We deliberately skip the "structure analysis" numbers because the
+    scraper only pulls title/likes (no body), so H2/word counts are
+    always zero and would mislead the prompt.
+
+    Cached per-process because this reads the same file for every
+    article in a run.
+    """
+    if "note" in _LEARNED_BLOCK_CACHE:
+        return _LEARNED_BLOCK_CACHE["note"]
+
+    block = ""
+    try:
+        knowledge_dir = Path("docs/knowledge/note-trends")
+        if not knowledge_dir.exists():
+            _LEARNED_BLOCK_CACHE["note"] = ""
+            return ""
+        reports = sorted(
+            knowledge_dir.glob("*_auto_learning.md"),
+            reverse=True,
+        )
+        if not reports:
+            _LEARNED_BLOCK_CACHE["note"] = ""
+            return ""
+        latest = reports[0]
+        text = latest.read_text(encoding="utf-8")
+
+        def _section(marker: str, max_lines: int = 12) -> list[str]:
+            lines = text.splitlines()
+            out: list[str] = []
+            in_sec = False
+            for line in lines:
+                if line.startswith("## "):
+                    if marker in line:
+                        in_sec = True
+                        continue
+                    if in_sec:
+                        break
+                if in_sec and line.strip().startswith(("-", "1.", "2.",
+                        "3.", "4.", "5.", "6.", "7.", "8.", "9.", "10.")):
+                    out.append(line.strip())
+                    if len(out) >= max_lines:
+                        break
+            return out
+
+        top_titles = _section("トップ記事", 10)
+        phrases = _section("よく使われるパターン", 8)
+        tags = _section("タグ分布", 10)
+
+        if not (top_titles or phrases or tags):
+            _LEARNED_BLOCK_CACHE["note"] = ""
+            return ""
+
+        parts = [
+            "\n\n【直近の人気note記事から学習したパターン — 真似すべき成功例】",
+            f"※ {latest.stem} で100件の人気記事をスクレイピングした結果を反映",
+        ]
+        if top_titles:
+            parts.append("\n★ 最近バズったタイトル(♥いいね数付き、参考にせよ):")
+            parts.extend(top_titles[:10])
+        if phrases:
+            parts.append("\n★ 頻出するタイトル型(TOP20で使用されたパターン):")
+            parts.extend(phrases[:5])
+        if tags:
+            parts.append("\n★ 反応の良いタグ:")
+            parts.extend(tags[:8])
+        parts.append(
+            "\n上記のタイトル/フレーズ/タグの「型」を踏襲しつつ、"
+            "記事内容に沿った独自のバリエーションで書くこと。"
+            "単純コピーは避け、構造だけ真似る。"
+        )
+        block = "\n".join(parts) + "\n"
+    except Exception as exc:
+        logger.warning("learned block load failed: %s", exc)
+        block = ""
+
+    _LEARNED_BLOCK_CACHE["note"] = block
+    return block
 
 
 def _pick_title_bracket_hint() -> str:
@@ -318,7 +472,7 @@ _RECENT_AREA_PATH = Path("data/recent_note_areas.json")
 
 
 def _load_recent_note_areas() -> list[str]:
-    """Return the rolling window of recently-used Bluesky note areas."""
+    """Return the rolling window of recently-used note areas."""
     if not _RECENT_AREA_PATH.exists():
         return []
     try:
@@ -349,8 +503,8 @@ def _remember_note_area(area: str) -> None:
 def _area_of_article(article: dict) -> str:
     """Return the normalised area token associated with *article*.
 
-    Prefers the BlueskyCollector's ``query`` field (first token is the
-    area), falls back to :func:`_extract_area_hint` scanning.
+    Prefers a ``query`` field (first token is the area), falls back to
+    :func:`_extract_area_hint` scanning.
     """
     q = article.get("query") or ""
     if q:
@@ -364,8 +518,8 @@ def _extract_area_hint(article: dict) -> str:
     """Extract a locality keyword (e.g. "下北沢") from the source article.
 
     Order of precedence:
-      1. ``article["query"]`` — set by BlueskyCollector, first token is
-         the already-normalised area name (most trustworthy).
+      1. ``article["query"]`` — first token is the already-normalised
+         area name (most trustworthy).
       2. Exact-match against the known-area list (same list the
          collector uses) scanned in title + content.
       3. Regex fallback for explicit locality suffixes (駅/区/市/町/村).
@@ -449,6 +603,7 @@ _THEME_KEYWORDS: list[tuple[str, str]] = [
     ("コーヒー", "coffee"), ("カフェ", "cafe"), ("ランチ", "restaurant food"),
     ("居酒屋", "izakaya japanese bar"), ("グルメ", "food"),
     ("ラーメン", "ramen"), ("寿司", "sushi"), ("スイーツ", "dessert"),
+    ("焼肉", "yakiniku grill"), ("カレー", "curry spice"),
     ("韓国", "korea seoul"), ("美容", "beauty cosmetics"),
     ("コスメ", "cosmetics"), ("ファッション", "fashion"),
     ("旅行", "travel"), ("観光", "travel landmark"),
@@ -456,53 +611,159 @@ _THEME_KEYWORDS: list[tuple[str, str]] = [
     ("Claude", "ai technology"), ("ChatGPT", "ai technology"),
     ("Python", "python code"), ("React", "web development"),
     ("論文", "research paper"), ("機械学習", "machine learning"),
-    ("投資", "finance investment"), ("副業", "business laptop"),
+    ("投資", "finance investment"), ("株価", "stock market finance"),
+    ("副業", "business laptop"),
     ("マネタイズ", "business money"), ("起業", "startup"),
+    ("鉄道", "train railway"), ("地下鉄", "subway tokyo"),
+    ("電車", "train railway"), ("駅", "train station japan"),
+    ("俳優", "actor celebrity"), ("女優", "actress celebrity"),
+    ("歌手", "singer concert"), ("アーティスト", "music concert"),
+    ("政治", "politics government"), ("首相", "politics government"),
+    ("大統領", "politics government"), ("中国", "china beijing"),
+    ("NBA", "basketball nba"), ("バスケ", "basketball"),
+    ("サッカー", "soccer football"), ("野球", "baseball japan"),
+    ("テーマパーク", "theme park ride"), ("ディズニー", "theme park castle"),
+    ("音楽", "music concert stage"), ("ライブ", "live concert"),
 ]
 
 
-def _extract_image_query(title: str) -> str:
-    """Extract a short English-friendly search query from a Japanese title.
+# Tokens that appear in almost every trend article body but make
+# terrible image subjects on their own. Excluded from the body-scan
+# proper-noun heuristic so "Bluesky Twitter SNS" stops winning.
+_IMAGE_QUERY_BLACKLIST: frozenset[str] = frozenset({
+    "bluesky", "twitter", "facebook", "instagram", "tiktok", "reddit",
+    "youtube", "linkedin", "threads", "mastodon", "snapchat",
+    "google", "maps", "map", "apple", "amazon", "microsoft",
+    "note", "zenn", "qiita", "sns", "web", "app", "api",
+    "kento", "username", "userprofile",
+    "http", "https", "www", "com", "org", "net",
+    "the", "and", "for", "with", "this", "that", "from", "you",
+    "your", "are", "was", "has", "have", "can", "will",
+    # Common tail fragments that arise when word-boundary anchors
+    # fail on mixed JP/ASCII text (e.g. "B|luesky|" → "luesky").
+    "luesky", "eddit", "oogle", "witter", "acebook", "nstagram",
+    "iktok", "outube", "inkedin", "hreads", "astodon",
+})
+
+
+def _extract_image_query(title: str, content: str = "") -> str:
+    """Extract a short English-friendly search query from a JP title+body.
 
     Strategy:
-      1. Match known Japanese theme keywords → map to English terms
-         (best signal for image search).
-      2. Extract any ASCII alphanumeric runs (e.g. "Claude", "LLM").
-      3. Fallback to a hard-coded generic term.
+      1. Match known Japanese theme keywords in title → English terms.
+      2. Extract ASCII alphanumeric tokens from title (product names).
+      3. If still empty, scan body for ASCII tokens + theme keywords —
+         pure-JP trending topics (e.g. "森英恵") have no title ASCII but
+         the generated body usually contains proper nouns like "Ulala",
+         "Bluesky", "NBA" that make much better image queries.
+      4. Last resort: domain-guessed fallback.
 
     Unsplash/Pexels handle English far better than Japanese and outright
     reject very long queries, so we cap at ~3 short tokens.
     """
-    if not title:
+    if not title and not content:
         return "technology"
+
+    # Scrub markdown image syntax + Unsplash URL hashes before scanning:
+    # regenerated articles already carry ![alt](data/images/xxx "https://
+    # images.unsplash.com/photo-…?ixid=M3w5MTgxMTd8MHw…") blocks, and the
+    # raw token scan would otherwise harvest `M3w5MTgxMTd8MHw` as a
+    # "proper noun" and pollute the image query.
+    if content:
+        content = re.sub(
+            r"!\[[^\]]*\]\([^)]*\)", " ", content
+        )
+        content = re.sub(r"https?://\S+", " ", content)
 
     keywords: list[str] = []
 
-    # 1. Theme keyword mapping — most reliable.
+    # 1. Theme keyword mapping (title) — most reliable signal.
+    combined_for_theme = f"{title}\n{content[:500]}"
     for jp, en in _THEME_KEYWORDS:
-        if jp.lower() in title.lower() and en not in keywords:
+        if jp.lower() in combined_for_theme.lower() and en not in keywords:
             keywords.append(en)
             if len(keywords) >= 2:
                 break
 
-    # 2. Pull out ASCII tokens (product names, acronyms).
-    for m in re.findall(r"[A-Za-z][A-Za-z0-9+]{1,14}", title):
-        if m.lower() in {"http", "https", "www", "com"}:
+    # 2. Pull out ASCII tokens from title first (more specific).
+    # \b anchors guard against picking up "luesky" as a substring of
+    # Bluesky when scanning lowercase after a blacklisted uppercase hit.
+    for m in re.findall(r"\b[A-Za-z][A-Za-z0-9+]{2,14}\b", title):
+        if m.lower() in _IMAGE_QUERY_BLACKLIST:
             continue
         if m not in keywords:
             keywords.append(m)
         if len(keywords) >= 3:
             break
 
+    # 3. If title did not yield ASCII tokens (pure JP title), scan the
+    # first ~1500 chars of content — LLM body usually cites English
+    # proper nouns (brand names, platforms, artists). Prefer tokens
+    # that appear multiple times so we surface the actual subject
+    # rather than incidental mentions.
+    if len(keywords) < 2 and content:
+        head = content[:2000]
+        from collections import Counter as _Counter
+        # Capitalised tokens first (proper nouns like "Ulala", "NBA").
+        caps = [
+            m for m in re.findall(r"\b[A-Z][A-Za-z0-9+]{2,14}\b", head)
+            if m.lower() not in _IMAGE_QUERY_BLACKLIST
+        ]
+        counts = _Counter(caps)
+        # Sort by frequency desc, then by order of first occurrence.
+        first_idx: dict[str, int] = {}
+        for idx, t in enumerate(caps):
+            first_idx.setdefault(t, idx)
+        for tok, _cnt in sorted(
+            counts.items(), key=lambda kv: (-kv[1], first_idx[kv[0]])
+        ):
+            if tok not in keywords:
+                keywords.append(tok)
+            if len(keywords) >= 3:
+                break
+        # If still short, try lowercase tokens the same way.
+        if len(keywords) < 2:
+            lows = [
+                m for m in re.findall(r"\b[a-z][a-z0-9+]{3,14}\b", head)
+                if m not in _IMAGE_QUERY_BLACKLIST
+            ]
+            lc_counts = _Counter(lows)
+            lc_first: dict[str, int] = {}
+            for idx, t in enumerate(lows):
+                lc_first.setdefault(t, idx)
+            for tok, _cnt in sorted(
+                lc_counts.items(), key=lambda kv: (-kv[1], lc_first[kv[0]])
+            ):
+                if tok not in keywords:
+                    keywords.append(tok)
+                if len(keywords) >= 3:
+                    break
+
     if keywords:
         return " ".join(keywords[:3])
 
-    # 3. Fallback: generic term based on rough domain guess.
-    if any(w in title for w in ("AI", "ＡＩ", "LLM", "モデル", "論文")):
+    # 4. Last resort: domain-guessed fallback from title+content.
+    hay = combined_for_theme
+    if any(w in hay for w in ("AI", "ＡＩ", "LLM", "モデル", "論文")):
         return "technology ai"
-    if any(w in title for w in ("店", "グルメ", "食", "メニュー")):
+    if any(w in hay for w in ("店", "グルメ", "食", "メニュー", "ラーメン")):
         return "food restaurant"
+    if any(w in hay for w in ("韓国", "K-POP", "アイドル")):
+        return "korea seoul city"
+    if any(w in hay for w in ("音楽", "歌", "シンガー", "ライブ")):
+        return "music concert stage"
+    if any(w in hay for w in ("スポーツ", "試合", "選手")):
+        return "sports stadium"
     return "lifestyle"
+
+
+_IMAGE_HOST_ALLOWLIST = {
+    "images.unsplash.com", "plus.unsplash.com",
+    "images.pexels.com", "www.pexels.com",
+    "upload.wikimedia.org",
+}
+_IMAGE_MIME_ALLOWLIST = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_IMAGE_MAX_BYTES = 10 * 1024 * 1024  # 10 MiB is plenty for cover art
 
 
 def _download_image(url: str, dest: Path) -> Path | None:
@@ -512,21 +773,51 @@ def _download_image(url: str, dest: Path) -> Path | None:
     """
     if not url:
         return None
+    from urllib.parse import urlparse as _urlparse
+    parsed = _urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in _IMAGE_HOST_ALLOWLIST:
+        logger.warning(
+            "Image download rejected — host %s not in allowlist", parsed.hostname,
+        )
+        return None
     try:
         import requests as _requests
-        resp = _requests.get(url, timeout=30)
+        resp = _requests.get(url, timeout=30, stream=True)
         resp.raise_for_status()
+        ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype and ctype not in _IMAGE_MIME_ALLOWLIST:
+            logger.warning("Image download rejected — bad content-type %s", ctype)
+            return None
+        # Stream with a hard byte cap so a malicious response can't
+        # fill the disk or RAM.
+        chunks: list[bytes] = []
+        total = 0
+        for chunk in resp.iter_content(chunk_size=65536):
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > _IMAGE_MAX_BYTES:
+                logger.warning("Image download rejected — exceeds %d bytes", _IMAGE_MAX_BYTES)
+                return None
+            chunks.append(chunk)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(resp.content)
+        dest.write_bytes(b"".join(chunks))
         return dest
     except Exception as exc:
         logger.warning("Image download failed (%s): %s", url, exc)
         return None
 
 
-def _fetch_cached_images(sourcer, query: str, count: int) -> list[dict]:
-    """Fetch images from ImageSourcer with per-process caching."""
-    cache_key = f"{query}::{count}"
+def _fetch_cached_images(
+    sourcer, query: str, count: int, cache_salt: str = ""
+) -> list[dict]:
+    """Fetch images from ImageSourcer with per-process caching.
+
+    cache_salt (usually a slug) is included in the cache key so two
+    articles that happen to resolve to the same query (e.g. both fall
+    through to "lifestyle") don't end up with literally the same photos.
+    """
+    cache_key = f"{cache_salt}::{query}::{count}"
     if cache_key in _STOCK_IMAGE_CACHE:
         return _STOCK_IMAGE_CACHE[cache_key]
     try:
@@ -575,9 +866,11 @@ def _insert_stock_images(
     if not content or not title:
         return content
 
-    query = _extract_image_query(title)
+    query = _extract_image_query(title, content)
     total_needed = 1 + section_count
-    images = _fetch_cached_images(sourcer, query, total_needed)
+    images = _fetch_cached_images(
+        sourcer, query, total_needed, cache_salt=slug
+    )
 
     # Filter out placeholder/empty results
     usable = [img for img in images if img.get("url") and img.get("platform") != "Placeholder"]
@@ -741,20 +1034,17 @@ def collect_articles(config: dict) -> dict:
     except Exception as e:
         logger.error("RSS(note)収集エラー: %s", e)
 
-    # Bluesky: hyper-local / niche gourmet / lifestyle posts for note
+    # Google Trends: trending topics in Japan for note
     try:
-        bsky_cfg = config.get("collection", {}).get("bluesky", {}) or {}
-        bsky = BlueskyCollector(
-            queries=bsky_cfg.get("queries") or None,
-            min_likes=bsky_cfg.get("min_likes", 2),
-            limit_per_query=bsky_cfg.get("limit_per_query", 25),
-            max_results=bsky_cfg.get("max_results", 30),
+        gt_cfg = config.get("collection", {}).get("google_trends", {}) or {}
+        gt = GoogleTrendsCollector(
+            max_results=gt_cfg.get("max_results", 30),
         )
-        articles = bsky.collect()
+        articles = gt.collect()
         collected["note"].extend(articles)
-        logger.info("Bluesky: %d件収集", len(articles))
+        logger.info("Google Trends: %d件収集", len(articles))
     except Exception as e:
-        logger.error("Bluesky収集エラー: %s", e)
+        logger.error("Google Trends収集エラー: %s", e)
 
     return collected
 
@@ -800,6 +1090,77 @@ def _init_llm(token_manager: TokenManager):
     return None, local_llm, True
 
 
+def _build_regen_feedback(obj_result: dict, subj_result: dict, final: dict) -> str:
+    """Build a Japanese feedback block to inject into a regen prompt.
+
+    Names the weakest metrics so the LLM knows what to improve on.
+    Used by the borderline-B auto-regen loop (OptiBlogAi pattern).
+    """
+    weak: list[str] = []
+    metric_labels = {
+        "citation_count": "引用数を増やす(最低5件、URL+取得日付き)",
+        "citation_format": "引用ブロックに必ずURLと取得日を併記",
+        "visual_count": "画像/表/コードブロック/Mermaid図を最低5個含める",
+        "evidence_level": "tier1〜2の一次ソースを増やす",
+    }
+    metrics = obj_result.get("metrics") or {}
+
+    # Word count is high-leverage — make the feedback concrete by
+    # including the *actual* current count so the LLM can reason about
+    # how much to add. Gemma3 previously ignored "2500〜3500字" because
+    # it had no measuring reference.
+    wc = metrics.get("word_count") or {}
+    current_chars = wc.get("count", 0)
+    if wc.get("grade") in ("B", "C") or current_chars < 2400:
+        shortfall = max(2800 - current_chars, 500)
+        weak.append(
+            f"- 文字数が{current_chars}字しかない。**最低2800字、目標3200字**まで伸ばす"
+            f"(現在より{shortfall}字以上追加)。以下のいずれかで各H2セクションを厚くする:\n"
+            f"    ・各セクションに固有名詞つきの具体例を2つ以上\n"
+            f"    ・引用ブロック(>)で一次情報を直接引く(最低3箇所)\n"
+            f"    ・数値データ(再生回数/売上/割合)を本文に埋め込む\n"
+            f"    ・読者への問いかけ→回答の往復で1段落追加"
+        )
+
+    for name, data in metrics.items():
+        if name == "word_count":
+            continue
+        if isinstance(data, dict) and data.get("grade") == "B":
+            label = metric_labels.get(name)
+            if label:
+                weak.append(f"- {label}")
+
+    sub_dims = {
+        "originality": "独自視点を強化(他記事との差別化、未報道の角度)",
+        "accuracy": "数値・固有名詞を本文中で根拠リンクと共に再掲",
+        "readability": "見出しを明確化、段落を短く、要点を冒頭に",
+        "engagement": "冒頭フックと具体例(数字・人物・固有名詞)を増やす",
+    }
+    for dim, label in sub_dims.items():
+        d = subj_result.get(dim) or {}
+        if d.get("grade") in ("B", "C"):
+            weak.append(f"- {label}")
+
+    if not weak:
+        weak.append("- 細部の磨き込み(具体例・数字・固有名詞を1.5倍に)")
+
+    return (
+        "\n\n【⚠ 自動再生成モード】\n"
+        f"前回の試行は総合B(numeric={final.get('numeric_score', 0):.1f})でした。\n"
+        "以下を改善した完全版を出力してください:\n"
+        + "\n".join(weak[:6])
+        + "\n再生成では同じ構成・同じトピックを保ちつつ、上記の弱点を解消すること。\n"
+    )
+
+
+# Borderline B band that triggers one auto-regen attempt. Above the
+# ceiling we already have a good article; below the floor it's too
+# weak for regen to rescue cheaply.
+_REGEN_FLOOR = 75.0
+_REGEN_CEILING = 87.5
+_REGEN_MAX_ATTEMPTS = 1
+
+
 def _generate_single_article(
     article: dict,
     platform: str,
@@ -810,6 +1171,9 @@ def _generate_single_article(
     token_manager: TokenManager,
     config: dict,
     prompts: dict | None = None,
+    _regen_attempt: int = 0,
+    _regen_feedback: str = "",
+    _skip_save: bool = False,
 ) -> dict | None:
     """1記事を生成し、2層スコアリングを行う。
 
@@ -842,9 +1206,33 @@ def _generate_single_article(
     # Pre-generation research pass: delegate web search to Codex CLI
     # so Gemma3 has a grounded fact brief to cite from. Only for note
     # — Zenn tech articles are research-light.
+    #
+    # For note, the research brief is load-bearing: without it the LLM
+    # tends to hallucinate store names / prices. A second auto-regen
+    # run (``_regen_feedback`` non-empty) is exempt because by then
+    # Codex already failed once and retrying in-band would just burn
+    # budget — the caller will re-score and decide.
     research_block = ""
     if platform == "note":
         research_block = _codex_research_brief(article)
+        if not research_block and not _regen_feedback:
+            logger.warning(
+                "[note] Codex research brief is empty — rejecting article "
+                "rather than generating ungrounded content. "
+                "Rerun when the Codex CLI / network is available."
+            )
+            return {
+                "rejected": True,
+                "reason": "research brief empty (fail-closed)",
+                "title": article.get("title", ""),
+                "platform": platform,
+                "source": article.get("source", ""),
+            }
+
+    # Inject learned patterns (popular titles / phrases / tags) into the
+    # note prompt. Zenn is tech-focused and does not benefit from
+    # note-trend mimicry. Silent no-op when no learn report exists.
+    learned_block = _load_learned_block() if platform == "note" else ""
 
     # --- 生成 ---
     try:
@@ -853,6 +1241,8 @@ def _generate_single_article(
             + structure_instruction
             + bracket_hint
             + research_block
+            + learned_block
+            + _regen_feedback  # empty unless this is an auto-regen attempt
         )
     except KeyError as e:
         logger.warning("プロンプトテンプレートのキー不足: %s", e)
@@ -936,14 +1326,16 @@ def _generate_single_article(
     except Exception as exc:
         logger.warning("画像挿入失敗: %s", exc)
 
-    # --- 図表処理 ---
-    diagram_gen = DiagramGenerator()
-    content = diagram_gen.embed_diagrams(content, "docs/images", base_name=slug)
+    # NOTE: raw ```mermaid blocks intentionally flow through untouched.
+    # Zenn renders them natively; NotePublisher converts them to ASCII
+    # flow at publish time. A prior generate-time PNG conversion launched
+    # mmdc on every article and produced local paths that neither
+    # platform could serve — see diagram_generator.py removal.
 
     # --- 客観スコア ---
     evidence_mgr = EvidenceManager()
     forbidden = config.get("evidence", {}).get("forbidden_phrases", [])
-    sources = article.get("sources", [])
+    sources = _normalize_sources_for_scoring(article)
 
     chain_blacklist = config.get("evidence", {}).get(
         "gourmet_rules", {}
@@ -954,6 +1346,8 @@ def _generate_single_article(
         "sources": sources,
         "forbidden_phrases": forbidden,
         "chain_blacklist": chain_blacklist,
+        "title": article.get("title", ""),
+        "platform": platform,  # required for first_hand_experience zenn skip
     })
 
     if not obj_result["objective_pass"]:
@@ -993,6 +1387,95 @@ def _generate_single_article(
         },
     )
 
+    # --- 自動再生成ループ (OptiBlogAi pattern) ---
+    # Borderline B articles get one retry with a feedback prompt that
+    # names the weakest metrics. Compare numeric scores and keep the
+    # winner. Stops after one attempt to bound compute + Places API
+    # cost at ~2x for borderline articles.
+    #
+    # NOTE: regen only fires on the local-LLM path because Claude
+    # generation goes through `claude.generate_article(template, article)`
+    # which rebuilds its own prompt and would silently ignore our
+    # feedback hint. Claude is currently disabled in `_init_llm` anyway,
+    # so this guard is also future-proofing.
+    # Regen trigger: borderline-B band (score 75-87.5) OR severely thin
+    # content (<1900 chars). Thin articles slip past the score gate
+    # because they still hit evidence/heading/visual thresholds, but the
+    # reader perceives them as hollow — we want a second pass even if
+    # the numeric score already says "approve".
+    _wc_current = (obj_result.get("metrics", {})
+                   .get("word_count", {}).get("count", 0))
+    _thin_content = _wc_current > 0 and _wc_current < 1900
+    if (
+        use_local
+        and _regen_attempt < _REGEN_MAX_ATTEMPTS
+        and final.get("decision") == "approve"
+        and final.get("overall_grade") in ("A", "B")
+        and (
+            (final.get("overall_grade") == "B"
+             and _REGEN_FLOOR <= final.get("numeric_score", 0) < _REGEN_CEILING)
+            or _thin_content
+        )
+    ):
+        feedback = _build_regen_feedback(obj_result, subj_result, final)
+        logger.info(
+            "[%s] 自動再生成 試行%d (現スコア=%.1f): %s",
+            platform,
+            _regen_attempt + 1,
+            final.get("numeric_score", 0),
+            article["title"][:30],
+        )
+        retry = _generate_single_article(
+            article=article,
+            platform=platform,
+            template=template,
+            claude=claude,
+            local_llm=local_llm,
+            use_local=use_local,
+            token_manager=token_manager,
+            config=config,
+            prompts=prompts,
+            _regen_attempt=_regen_attempt + 1,
+            _regen_feedback=feedback,
+            _skip_save=True,  # outer call owns the save
+        )
+        if (
+            retry
+            and not retry.get("rejected")
+            and retry.get("scores", {}).get("numeric_score", 0)
+            > final.get("numeric_score", 0)
+        ):
+            logger.info(
+                "[%s] 再生成で改善: %.1f → %.1f",
+                platform,
+                final.get("numeric_score", 0),
+                retry["scores"].get("numeric_score", 0),
+            )
+            # Adopt the retry's content/scores wholesale.
+            content = retry["content"]
+            final = retry["scores"]
+            obj_result = retry.get("_obj_result", obj_result)
+            subj_result = retry.get("_subj_result", subj_result)
+            # Structure can re-roll on retry (different bracket hint may
+            # nudge LLM toward another template) — adopt it for diagnostics.
+            if retry.get("structure_type"):
+                structure_name = retry["structure_type"]
+            # The slug stays the same since article identity is unchanged,
+            # but the cover image was regenerated for the retry — adopt it.
+            if retry.get("cover_image"):
+                _retry_cover = retry["cover_image"]
+            else:
+                _retry_cover = None
+        else:
+            logger.info(
+                "[%s] 再生成スキップ(改善なし): keep %.1f",
+                platform,
+                final.get("numeric_score", 0),
+            )
+            _retry_cover = None
+    else:
+        _retry_cover = None
+
     if final["decision"] == "reject":
         logger.info(
             "[%s] 総合C却下: %s — %s",
@@ -1008,12 +1491,17 @@ def _generate_single_article(
         }
 
     # --- カバー画像生成 ---
-    cover_gen = CoverGenerator()
-    cover_path = cover_gen.generate(
-        title=article["title"],
-        platform=platform,
-        slug=slug,
-    )
+    if _retry_cover:
+        # Retry already produced one — reuse it instead of paying the
+        # cover generator twice for the same article identity.
+        cover_path = _retry_cover
+    else:
+        cover_gen = CoverGenerator()
+        cover_path = cover_gen.generate(
+            title=article["title"],
+            platform=platform,
+            slug=slug,
+        )
 
     logger.info(
         "[%s] 生成完了: %s (総合: %s, 証拠Lv: %s)",
@@ -1023,16 +1511,18 @@ def _generate_single_article(
         final["evidence_level"],
     )
 
-    # Save article content for later --publish retrieval
-    store = ArticleStore()
-    store.save(slug, {
-        "title": article["title"],
-        "content": content,
-        "platform": platform,
-        "source": article,
-        "cover_image": cover_path,
-        "scores": final,
-    })
+    # Save article content for later --publish retrieval (the recursive
+    # regen call passes _skip_save=True to let the outer call own this)
+    if not _skip_save:
+        store = ArticleStore()
+        store.save(slug, {
+            "title": article["title"],
+            "content": content,
+            "platform": platform,
+            "source": article,
+            "cover_image": cover_path,
+            "scores": final,
+        })
 
     return {
         "title": article["title"],
@@ -1044,6 +1534,10 @@ def _generate_single_article(
         "structure_type": structure_name,
         "scores": final,
         "generated_at": datetime.now().isoformat(),
+        # Stashed so the outer call (when this is a regen retry) can
+        # pull through obj/subj details if it adopts this content.
+        "_obj_result": obj_result,
+        "_subj_result": subj_result,
     }
 
 
@@ -1108,35 +1602,50 @@ def generate_and_score(
             skipped = len(ranked.get(platform, [])) - len(candidates)
             logger.info("[%s] 生成済みソースをスキップ: %d件", platform, skipped)
 
-        # note: Blueskyのローカル/グルメ系ソースを1枠予約する。
-        # Bluesky posts rank lower than Reddit by raw social signal,
-        # but niche locality content is the whole point of including
-        # Bluesky, so we guarantee one slot for it when available.
-        # Also rotate area coverage: avoid picking a post from an
-        # area we already covered in the last _RECENT_AREA_WINDOW
-        # runs so 下北沢 etc. do not dominate the feed.
+        # note: Google Trendsのトレンド系ソースを1枠予約する。
+        # Google Trends topics surface timely buzz that RSS feeds
+        # may miss, so we guarantee one slot when available.
+        # Diversity strategy: rank candidates by *least recently
+        # used area first, then trend_score*.
         selection = candidates[:articles_per_week]
         if platform == "note":
+            from collections import Counter
             recent_areas = _load_recent_note_areas()
-            bluesky_candidates = [
-                a for a in candidates if a.get("source") == "bluesky"
+            recent_counts = Counter(recent_areas)
+            trends_candidates = [
+                a for a in candidates if a.get("source") == "google_trends"
             ]
-            # Prefer candidates whose area is NOT in the recent window.
-            fresh = [
-                a for a in bluesky_candidates
-                if _area_of_article(a) not in recent_areas
-            ]
-            top_bluesky = (fresh or bluesky_candidates)[0] if (fresh or bluesky_candidates) else None
-            if top_bluesky and top_bluesky not in selection:
+
+            def _area_rank(art: dict) -> tuple[int, float]:
+                # Lower recent_count wins, ties broken by higher trend_score.
+                area = _area_of_article(art)
+                return (
+                    -recent_counts.get(area, 0),
+                    float(art.get("trend_score", 0)),
+                )
+
+            trends_candidates.sort(key=_area_rank, reverse=True)
+
+            # Log topic distribution so we can see why a pick was made.
+            _area_histo = Counter(
+                _area_of_article(a) or "-" for a in trends_candidates[:20]
+            )
+            logger.info(
+                "[note] Google Trends候補分布(top20): %s",
+                ", ".join(f"{k}×{v}" for k, v in _area_histo.most_common(10)),
+            )
+
+            top_trends = trends_candidates[0] if trends_candidates else None
+            if top_trends and top_trends not in selection:
                 if selection:
-                    selection[-1] = top_bluesky
+                    selection[-1] = top_trends
                 else:
-                    selection = [top_bluesky]
-                picked_area = _area_of_article(top_bluesky) or "-"
+                    selection = [top_trends]
+                picked_area = _area_of_article(top_trends) or "-"
                 logger.info(
-                    "[note] Bluesky枠を確保: [%s] %s (recent: %s)",
+                    "[note] Google Trends枠を確保: [%s] %s (recent: %s)",
                     picked_area,
-                    top_bluesky.get("title", "")[:40],
+                    top_trends.get("title", "")[:40],
                     ",".join(recent_areas) or "none",
                 )
                 _remember_note_area(picked_area)
@@ -1148,16 +1657,18 @@ def generate_and_score(
                     claude, local_llm, use_local,
                     token_manager, config, prompts,
                 )
-                # Record source as used regardless of result
-                source_url = article.get("url", "")
-                if source_url:
-                    _save_generated_source(source_url)
-
+                # Record source as used ONLY on successful approval.
+                # Rejected articles stay eligible so a future run (with
+                # fixes / different prompt rotation) can retry them
+                # instead of burning through the candidate pool.
                 if result is None:
                     pass
                 elif result.get("rejected"):
                     rejected.append(result)
                 else:
+                    source_url = article.get("url", "")
+                    if source_url:
+                        _save_generated_source(source_url)
                     approved.append(result)
             except Exception as e:
                 logger.error(
@@ -1376,19 +1887,22 @@ def publish_approved(
             if platform == "zenn":
                 scores = stored.get("scores", {})
                 numeric_score = float(scores.get("numeric_score") or 0)
-                # Threshold: 82.5 — below this a full article feels
-                # undercooked, so fall back to Zenn Scraps which are
-                # explicitly framed as rough notes.
-                if numeric_score >= 82.5:
+                # Threshold: 77.5 — tuned to Gemma3's realistic ceiling
+                # on arXiv/AI topics. The old 82.5 required composite
+                # grade ≈ A- which Gemma3 rarely hits on research papers.
+                # Below 77.5 the article still feels undercooked and
+                # falls back to Zenn Scraps.
+                ZENN_ARTICLE_THRESHOLD = 77.5
+                if numeric_score >= ZENN_ARTICLE_THRESHOLD:
                     logger.info(
-                        "[zenn] score=%.1f >= 82.5 → 記事投稿",
-                        numeric_score,
+                        "[zenn] score=%.1f >= %.1f → 記事投稿",
+                        numeric_score, ZENN_ARTICLE_THRESHOLD,
                     )
                     url = _publish_zenn(article_id, title, content, stored)
                 else:
                     logger.info(
-                        "[zenn] score=%.1f < 82.5 → スクラップ投稿",
-                        numeric_score,
+                        "[zenn] score=%.1f < %.1f → スクラップ投稿",
+                        numeric_score, ZENN_ARTICLE_THRESHOLD,
                     )
                     url = _save_scrap_draft(article_id, title, content, stored)
             elif platform == "note":
@@ -1535,12 +2049,12 @@ def _fetch_topic_cover(title: str) -> Path | None:
         url = results[0].get("url") or results[0].get("download_url")
         if not url:
             return None
-        from urllib.request import Request, urlopen
         safe_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", title)[:40]
         out = Path("data/images/covers") / f"unsplash_{safe_slug}.jpg"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        req = Request(url, headers={"User-Agent": "ai-article-cover/1.0"})
-        out.write_bytes(urlopen(req, timeout=20).read())
+        # Route through the shared allowlisted downloader so the cover
+        # path is not weaker than the rest of the pipeline.
+        if _download_image(url, out) is None:
+            return None
         logger.info("[cover] Unsplash query=%r → %s (%d bytes)", query, out, out.stat().st_size)
         return out
     except Exception as exc:
@@ -1567,6 +2081,22 @@ def _publish_note(
             tags = ["AI", "テクノロジー", "トレンド"]
         logger.info("note ハッシュタグ: %s", tags)
 
+        # Collect existing local stock images so note can re-host them
+        # on its own CDN (assets.st-note.com/production/uploads) rather
+        # than hotlinking Unsplash. Previously we relied on note's
+        # clipboard-paste auto-rehost behaviour, which stopped working
+        # reliably — the resulting body had plain Unsplash URLs only.
+        inline_images: list[str] = []
+        for m in re.finditer(r"!\[[^\]]*\]\((data/images/[^\s)]+)", content):
+            p = Path(m.group(1))
+            if p.exists() and p.stat().st_size > 0:
+                inline_images.append(str(p.resolve()))
+        # Cap to avoid overloading the editor's paste buffer; hero +
+        # first two section images is already visually rich.
+        inline_images = inline_images[:4]
+        if inline_images:
+            logger.info("[note] note CDN にアップロードする画像 %d 件", len(inline_images))
+
         # Topic-themed cover from Unsplash. Falls back to None when
         # Unsplash is unreachable; publish_article will skip the
         # eyecatch step in that case.
@@ -1578,6 +2108,7 @@ def _publish_note(
             tags=tags,
             price=price,
             cover_image_path=str(cover_path) if cover_path else None,
+            inline_image_paths=inline_images or None,
         )
         return url
     except Exception as e:
@@ -1672,13 +2203,13 @@ def _process_regeneration_requests(
                 pass
             continue
 
-        # Run objective scoring on regenerated content
+        # Run objective scoring on regenerated content. Share the
+        # same normalization the initial-generation path uses so the
+        # regen baseline doesn't silently drift (previously we only
+        # looked at ``stored["source"]["sources"]`` and lost the
+        # top-level URL/source_type for string-typed collector output).
         forbidden = config.get("evidence", {}).get("forbidden_phrases", [])
-        sources = stored.get("source", {})
-        if isinstance(sources, dict):
-            sources = sources.get("sources", [])
-        else:
-            sources = []
+        sources = _normalize_sources_for_scoring(stored)
 
         chain_blacklist = config.get("evidence", {}).get(
             "gourmet_rules", {},
@@ -1688,6 +2219,8 @@ def _process_regeneration_requests(
             "sources": sources,
             "forbidden_phrases": forbidden,
             "chain_blacklist": chain_blacklist,
+            "title": stored.get("title", ""),
+            "platform": stored.get("platform", ""),
         })
 
         # Run subjective scoring
@@ -1749,16 +2282,30 @@ def _process_regeneration_requests(
                 "agent_discussion": regen_result.get("agent_discussion", []),
             })
 
-            # Update Sheets row with new scores
+            # Update Sheets row with new scores. Previously we built
+            # ``sheets_data`` but only called ``update_status`` — every
+            # other column (grade, evidence, tier12_ratio, numeric
+            # score, critic summary) stayed pinned to the pre-regen
+            # values. Push the full row now that SheetsManager exposes
+            # ``update_row``.
             sheets_data = final.get("for_sheets", {})
             if sheets_data:
                 sheets_data["status"] = "⏳承認待ち"
                 sheets_data["article_id"] = slug
                 sheets_data["title"] = regen_title
-            try:
-                sheets.update_status(article_id, "⏳承認待ち")
-            except Exception as e:
-                logger.warning("Sheets status update failed: %s", e)
+                try:
+                    sheets.update_row(article_id, sheets_data)
+                except Exception as e:
+                    logger.warning("Sheets row update failed: %s", e)
+                    try:
+                        sheets.update_status(article_id, "⏳承認待ち")
+                    except Exception:
+                        pass
+            else:
+                try:
+                    sheets.update_status(article_id, "⏳承認待ち")
+                except Exception as e:
+                    logger.warning("Sheets status update failed: %s", e)
 
             logger.info(
                 "再生成完了: %s (総合: %s)", regen_title[:30], final["overall_grade"],
@@ -1821,6 +2368,88 @@ def _post_regen_progress_to_slack(
 # メインパイプライン
 # =====================================================================
 
+_PIPELINE_LOCK_PATH = Path("data/.pipeline.lock")
+
+
+def _acquire_pipeline_lock(mode: str) -> bool:
+    """Claim an exclusive pipeline lock.
+
+    Prevents Slack bot and manual CLI runs from racing on the same
+    generate/publish cycle — previously this caused duplicate sheet
+    rows and double-posted articles. Returns True on success.
+
+    Stale locks (owner PID no longer running OR file older than 2h)
+    are automatically reclaimed so a crashed run doesn't wedge the
+    pipeline. `publish` mode is short-lived so it shares the same lock
+    as `generate` — concurrent generate+publish is the main risk.
+    """
+    import os
+    import time
+
+    _PIPELINE_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    def _stale(path: Path) -> bool:
+        import errno
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return True
+        age = time.time() - float(data.get("ts", 0))
+        if age > 7200:  # 2h
+            return True
+        # PID-based check (Windows-friendly)
+        pid = int(data.get("pid", 0))
+        if pid <= 0:
+            return True
+        try:
+            # os.kill with signal 0 raises if the process is gone.
+            os.kill(pid, 0)
+            return False
+        except OSError as exc:
+            # On Windows, kill(pid, 0) raises PermissionError (EPERM)
+            # when the pid belongs to another user or a protected
+            # process — the process exists, so the lock is NOT stale.
+            # ESRCH means the pid really is gone.
+            if exc.errno == errno.EPERM:
+                return False
+            return True
+
+    if _PIPELINE_LOCK_PATH.exists():
+        if not _stale(_PIPELINE_LOCK_PATH):
+            try:
+                info = json.loads(_PIPELINE_LOCK_PATH.read_text(encoding="utf-8"))
+                logger.error(
+                    "パイプラインロック取得失敗: 別実行中 "
+                    "(pid=%s mode=%s started=%s)",
+                    info.get("pid"), info.get("mode"), info.get("started"),
+                )
+            except Exception:
+                logger.error("パイプラインロック取得失敗: ロックファイル読込不可")
+            return False
+        logger.warning("古いロックを検出、回収して継続")
+
+    payload = {
+        "pid": os.getpid(),
+        "mode": mode,
+        "ts": time.time(),
+        "started": datetime.now().isoformat(),
+    }
+    _PIPELINE_LOCK_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False), encoding="utf-8",
+    )
+    return True
+
+
+def _release_pipeline_lock() -> None:
+    """Delete the pipeline lock (safe to call when absent)."""
+    try:
+        _PIPELINE_LOCK_PATH.unlink()
+    except FileNotFoundError:
+        pass
+    except Exception as exc:
+        logger.warning("ロック解放失敗: %s", exc)
+
+
 def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
     """メインパイプラインを実行する。
 
@@ -1829,6 +2458,19 @@ def run_pipeline(config: dict, prompts: dict, mode: str = "generate"):
         prompts: プロンプトテンプレートdict。
         mode: "generate"（生成+登録）or "publish"（承認済み投稿）。
     """
+    if not _acquire_pipeline_lock(mode):
+        # Refuse to start — another run owns the lock. Don't raise so
+        # the Slack bot's error path stays clean; just log + return.
+        return
+
+    try:
+        _run_pipeline_inner(config, prompts, mode)
+    finally:
+        _release_pipeline_lock()
+
+
+def _run_pipeline_inner(config: dict, prompts: dict, mode: str):
+    """Actual pipeline body — wrapped by run_pipeline for lock discipline."""
     logger.info("=" * 50)
     logger.info("AI記事自動生成システム 実行開始 (mode=%s)", mode)
     logger.info("日時: %s", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -1950,6 +2592,14 @@ def main():
         help="Sheetsのフォーマット設定（ドロップダウン、条件付き書式等）",
     )
     parser.add_argument(
+        "--cleanup-sheets", action="store_true",
+        help="古い投稿済み/不合格行を削除してSheetsを整理",
+    )
+    parser.add_argument(
+        "--keep-last", type=int, default=20,
+        help="--cleanup-sheets で残す投稿済み/不合格の件数 (default 20)",
+    )
+    parser.add_argument(
         "--learn", action="store_true",
         help="note人気記事をスクレイピングしてパターン学習",
     )
@@ -1963,7 +2613,17 @@ def main():
         logger.info("=== Note学習モード開始 ===")
         scraper = NoteScraper()
         all_articles = []
-        for category in ["business", "tech", "ai", "money", "lifestyle"]:
+        # Expanded list so we capture the tag distribution for
+        # women-facing topics too — previously only business/tech/ai/
+        # money/lifestyle were scraped, which skewed the learned tag
+        # pool toward finance/tech. Adding K-beauty, K-POP, fashion,
+        # dieting, relationship, self-improvement categories gives the
+        # prompt injection a broader surface for female-audience posts.
+        for category in [
+            "business", "tech", "ai", "money", "lifestyle",
+            "美容", "コスメ", "韓国", "K-POP", "ダイエット",
+            "ファッション", "恋愛", "自分磨き", "スキンケア",
+        ]:
             logger.info("収集中: %s", category)
             articles = scraper.fetch_popular_articles(category, limit=30)
             logger.info("  → %d件取得", len(articles))
@@ -2023,6 +2683,17 @@ def main():
             print("Sheetsフォーマット設定完了。")
         else:
             print("GOOGLE_SHEET_ID が未設定です。")
+        return
+
+    # --- cleanup-sheets ---
+    if args.cleanup_sheets:
+        sheets = SheetsManager()
+        stats = sheets.archive_old_rows(keep_last_n=args.keep_last)
+        print(
+            f"Sheets整理完了: 投稿済み削除={stats['main_deleted']} "
+            f"不合格削除={stats['rejected_deleted']} "
+            f"(各{args.keep_last}件保持)"
+        )
         return
 
     # --- regenerate ---
