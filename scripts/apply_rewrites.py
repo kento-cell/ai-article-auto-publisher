@@ -49,11 +49,13 @@ if sys.platform == "win32" and __name__ == "__main__":
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 
-for _line in (_REPO / ".env").read_text(encoding="utf-8").splitlines():
-    if "=" in _line and not _line.startswith("#"):
-        _k, _v = _line.split("=", 1)
-        import os as _os
-        _os.environ.setdefault(_k.strip(), _v.strip())
+_ENV_FILE = _REPO / ".env"
+if _ENV_FILE.exists():
+    for _line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        if "=" in _line and not _line.startswith("#"):
+            _k, _v = _line.split("=", 1)
+            import os as _os
+            _os.environ.setdefault(_k.strip(), _v.strip())
 
 from publishers.note_publisher import NotePublisher  # noqa: E402
 from scripts.fix_recent_note_images import (  # noqa: E402

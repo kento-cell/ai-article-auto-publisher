@@ -782,24 +782,38 @@ def _download_image(url: str, dest: Path) -> Path | None:
         return None
     try:
         import requests as _requests
-        resp = _requests.get(url, timeout=30, stream=True)
-        resp.raise_for_status()
-        ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-        if ctype and ctype not in _IMAGE_MIME_ALLOWLIST:
-            logger.warning("Image download rejected — bad content-type %s", ctype)
-            return None
-        # Stream with a hard byte cap so a malicious response can't
-        # fill the disk or RAM.
-        chunks: list[bytes] = []
-        total = 0
-        for chunk in resp.iter_content(chunk_size=65536):
-            if not chunk:
-                continue
-            total += len(chunk)
-            if total > _IMAGE_MAX_BYTES:
-                logger.warning("Image download rejected — exceeds %d bytes", _IMAGE_MAX_BYTES)
+        # allow_redirects=False pins the resolved host/scheme check to
+        # the exact URL we validated above. An Unsplash mirror that
+        # happened to 302 to an internal address would otherwise
+        # bypass the allowlist entirely. Use a context manager so an
+        # early-return on content-type/size failure still closes the
+        # connection instead of leaking the TCP socket.
+        with _requests.get(
+            url, timeout=30, stream=True, allow_redirects=False,
+        ) as resp:
+            if 300 <= resp.status_code < 400:
+                logger.warning(
+                    "Image download rejected — refusing redirect to %s",
+                    resp.headers.get("Location", "<unknown>"),
+                )
                 return None
-            chunks.append(chunk)
+            resp.raise_for_status()
+            ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if ctype and ctype not in _IMAGE_MIME_ALLOWLIST:
+                logger.warning("Image download rejected — bad content-type %s", ctype)
+                return None
+            # Stream with a hard byte cap so a malicious response can't
+            # fill the disk or RAM.
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in resp.iter_content(chunk_size=65536):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > _IMAGE_MAX_BYTES:
+                    logger.warning("Image download rejected — exceeds %d bytes", _IMAGE_MAX_BYTES)
+                    return None
+                chunks.append(chunk)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(b"".join(chunks))
         return dest
@@ -2086,11 +2100,30 @@ def _publish_note(
         # than hotlinking Unsplash. Previously we relied on note's
         # clipboard-paste auto-rehost behaviour, which stopped working
         # reliably — the resulting body had plain Unsplash URLs only.
+        # Path-traversal guard: the regex harvests paths from the
+        # LLM-generated body, which a prompt-injection or malformed
+        # source could use to smuggle ``data/images/../../.env`` and
+        # exfiltrate a secret by uploading it to note. Only accept
+        # paths that resolve inside the stock directory AND have an
+        # allowed image extension.
+        _stock_root = (Path.cwd() / "data" / "images" / "stock").resolve()
+        _IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
         inline_images: list[str] = []
         for m in re.finditer(r"!\[[^\]]*\]\((data/images/[^\s)]+)", content):
             p = Path(m.group(1))
-            if p.exists() and p.stat().st_size > 0:
-                inline_images.append(str(p.resolve()))
+            try:
+                resolved = p.resolve()
+            except Exception:
+                continue
+            if _stock_root not in resolved.parents and resolved.parent != _stock_root:
+                logger.warning(
+                    "[note] skipping out-of-root image path: %s", p,
+                )
+                continue
+            if resolved.suffix.lower() not in _IMG_EXT:
+                continue
+            if resolved.exists() and resolved.stat().st_size > 0:
+                inline_images.append(str(resolved))
         # Cap to avoid overloading the editor's paste buffer; hero +
         # first two section images is already visually rich.
         inline_images = inline_images[:4]

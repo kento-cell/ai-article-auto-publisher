@@ -201,8 +201,8 @@ class HashtagGenerator:
                         )
                         if m:
                             learned.add(m.group(1).lstrip("#"))
-        except Exception:
-            pass
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.debug("learned tag load failed: %s", exc)
 
         # Intersect preferred with learned to keep only tags that are
         # both topic-aligned AND actually popular on note. Fallback to

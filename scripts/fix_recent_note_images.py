@@ -54,11 +54,13 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 
 # Load .env so UNSPLASH_ACCESS_KEY etc. are available.
-for _line in (_REPO / ".env").read_text(encoding="utf-8").splitlines():
-    if "=" in _line and not _line.startswith("#"):
-        _k, _v = _line.split("=", 1)
-        import os as _os
-        _os.environ.setdefault(_k.strip(), _v.strip())
+_ENV_FILE = _REPO / ".env"
+if _ENV_FILE.exists():
+    for _line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        if "=" in _line and not _line.startswith("#"):
+            _k, _v = _line.split("=", 1)
+            import os as _os
+            _os.environ.setdefault(_k.strip(), _v.strip())
 
 from generators.image_sourcer import ImageSourcer  # noqa: E402
 from main import _download_image, _extract_image_query  # noqa: E402
@@ -220,13 +222,36 @@ def _build_fresh_body(content: str) -> str:
     return _strip_local_images_markdown(content)
 
 
+_LIVE_BODY_MAX_BYTES = 4 * 1024 * 1024  # 4 MiB cap on scraped HTML
+
+
 def _fetch_live_body(url: str) -> str:
-    """Fallback: scrape the live note article body if no local JSON matches."""
+    """Fallback: scrape the live note article body if no local JSON matches.
+
+    SSRF guard: ``url`` comes from the note v2 creator API response, but
+    that is still attacker-influenced from the perspective of a malicious
+    article-listing crawl — refuse anything that is not ``https://note.com``
+    or a direct note subdomain, and cap the response size.
+    """
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not (
+        parsed.hostname == "note.com"
+        or (parsed.hostname or "").endswith(".note.com")
+    ):
+        logger.warning("  live fetch rejected — host %s", parsed.hostname)
+        return ""
     try:
         req = Request(url, headers={
             "User-Agent": "Mozilla/5.0 fix-note-images/1.0",
         })
-        html = urlopen(req, timeout=30).read().decode("utf-8", errors="replace")
+        with urlopen(req, timeout=30) as resp:
+            raw = resp.read(_LIVE_BODY_MAX_BYTES + 1)
+        if len(raw) > _LIVE_BODY_MAX_BYTES:
+            logger.warning("  live fetch rejected — body > %d bytes",
+                           _LIVE_BODY_MAX_BYTES)
+            return ""
+        html = raw.decode("utf-8", errors="replace")
     except Exception as exc:
         logger.warning("  live fetch failed: %s", exc)
         return ""
