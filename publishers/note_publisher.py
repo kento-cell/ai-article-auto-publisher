@@ -23,7 +23,10 @@ from playwright.sync_api import (
     sync_playwright,
 )
 
-from generators.note_content_converter import NoteContentConverter
+# NOTE: NoteContentConverter was imported for generate-time
+# mermaid→PNG conversion, but the publish pipeline now uses
+# `_mermaid_to_ascii` inline and never instantiates the converter.
+# Keeping the import caused a spurious dependency surface.
 
 logger = logging.getLogger(__name__)
 
@@ -104,9 +107,23 @@ class NotePublisher:
         # Convert mermaid → ASCII flowchart (note doesn't render mermaid)
         content = self._mermaid_to_ascii(content)
 
-        # Swap local image refs for their CDN URL (when title attr is set)
-        # so note auto-embeds them as hosted images on paste.
-        content = self._strip_local_images(content)
+        # Image handling branch:
+        #   • If the caller supplied inline_image_paths, note.com will
+        #     host those for us via `_inject_inline_images`. In that case
+        #     we must DROP every ![alt](data/images/... "url") reference
+        #     from the body — note's ProseMirror refuses to render
+        #     external <img src=...> tags and shows the raw Markdown
+        #     as literal text otherwise (observed 2026-04-18: live
+        #     article displayed `![photo of three women...](https://
+        #     images.unsplash.com/...)` as visible text).
+        #   • Without inline uploads we fall back to the previous
+        #     behaviour of rewriting local paths to their remote CDN
+        #     URL, which at least lets note render hotlinked images in
+        #     the rare clients that accept them.
+        if inline_image_paths:
+            content = self._drop_local_images(content)
+        else:
+            content = self._strip_local_images(content)
 
         # Render to HTML — note's ProseMirror parses pasted HTML and
         # produces real headings, lists, anchors, and inline images.
@@ -965,7 +982,10 @@ class NotePublisher:
                 # try to exit it. HTML-clipboard paste bypasses the
                 # mark-exit problem entirely.
                 new_content = self._mermaid_to_ascii(new_content)
-                new_content = self._strip_local_images(new_content)
+                if inline_image_paths:
+                    new_content = self._drop_local_images(new_content)
+                else:
+                    new_content = self._strip_local_images(new_content)
                 html = self._markdown_to_html_for_note(new_content)
 
                 body = page.locator(".ProseMirror").first
@@ -1324,55 +1344,212 @@ class NotePublisher:
             page.keyboard.type(tail, delay=2)
 
     def _inject_inline_images(self, image_paths: list[str]) -> None:
-        """Park caret at top of body and upload each image inline.
+        """Upload each inline image in front of its own H2 section so the
+        article reads as heading → hero image → prose, rather than one
+        cluster of 4 images right at the top.
 
-        Used by both ``publish_article`` and ``edit_article`` so the
-        cursor-positioning + ProseMirror paste-image handling lives
-        in one place. Caller must have already entered the body
-        content; this method will not save.
+        The previous behaviour — parking the caret at ``blocks[1]`` and
+        uploading every image there — produced a visual stack that the
+        user flagged as "いたずらに連続に配置" and that drew attention
+        to the tiny caption under each photo.
+
+        Algorithm:
+          1. Query ProseMirror for the current H2 block indices.
+          2. Pick up to ``len(image_paths)`` H2 targets, evenly spaced,
+             skipping the very first H2 when there are enough sections
+             (keeps the intro paragraph image-free).
+          3. Process from last target to first — each upload inserts
+             extra blocks above the target H2, so reverse order keeps
+             earlier indices valid. If that fails, re-query.
+          4. Caption after each image is italicised + shortened to
+             "※イメージ画像" so it stays subtle under the photo.
         """
         assert self._page is not None
         page = self._page
         if not image_paths:
             return
-        logger.info("Injecting %d inline image(s) at top of body", len(image_paths))
+
         body_loc = page.locator(".ProseMirror").first
         body_loc.click()
         page.wait_for_timeout(300)
-        page.evaluate(
+
+        # --- Target selection ----------------------------------------
+        h2_indices: list[int] = page.evaluate(
             """() => {
                 const editor = document.querySelector('.ProseMirror');
-                if (!editor) return false;
+                if (!editor) return [];
                 const blocks = Array.from(editor.children);
-                const target = blocks[1] || blocks[0];
-                if (!target) return false;
-                const range = document.createRange();
-                range.setStart(target, 0);
-                range.collapse(true);
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
-                editor.focus();
-                return true;
+                const out = [];
+                blocks.forEach((b, i) => {
+                    if (b && b.tagName === 'H2') out.push(i);
+                });
+                return out;
             }"""
         )
-        page.wait_for_timeout(200)
-        for p in image_paths:
+
+        n_imgs = len(image_paths)
+        if h2_indices:
+            # Skip the very first H2 when we have enough room so the
+            # opening section stays clean.
+            h2_pool = h2_indices[1:] if len(h2_indices) > n_imgs else h2_indices
+            pool_size = len(h2_pool)
+            target_block_idxs: list[int] = []
+            for i in range(n_imgs):
+                # Evenly spaced pick from the pool.
+                idx = int(round(i * pool_size / max(n_imgs, 1)))
+                idx = min(max(idx, 0), pool_size - 1)
+                block_idx = h2_pool[idx]
+                if block_idx in target_block_idxs:
+                    # Avoid collisions when fewer H2s than images —
+                    # push to the next unused slot.
+                    for cand in h2_pool:
+                        if cand not in target_block_idxs:
+                            block_idx = cand
+                            break
+                target_block_idxs.append(block_idx)
+        else:
+            # No H2s found — fall back to the old behaviour so at
+            # least the images land somewhere sensible.
+            target_block_idxs = [1] * n_imgs
+
+        logger.info(
+            "Injecting %d inline image(s) across H2 blocks %s "
+            "(of %d H2s total)",
+            n_imgs, target_block_idxs, len(h2_indices),
+        )
+
+        # --- Upload in reverse so earlier indices stay valid ---------
+        # Process from last H2 target to first: ProseMirror shifts
+        # subsequent block indices downward by +1 or +2 per insertion,
+        # but earlier indices never move, so iterating high→low keeps
+        # the remaining targets stable even without re-querying.
+        pairs = list(zip(image_paths, target_block_idxs))
+        for path, block_idx in sorted(pairs, key=lambda kv: kv[1], reverse=True):
             try:
-                self._upload_image(p)
-                logger.info("inline image uploaded: %s", p)
-                page.keyboard.press("Enter")
-                page.wait_for_timeout(150)
-                page.keyboard.type(
-                    "※画像はイメージです（実際の店舗・施設・商品とは異なります）",
-                    delay=4,
+                # Target the *paragraph directly after* the H2 rather
+                # than the H2 itself. ProseMirror's schema refuses
+                # image figure nodes inside H2 elements, so placing
+                # the caret at position 0 of the H2 made paste silently
+                # drop the image and keep only the caption text —
+                # which is exactly what the user just reported.
+                placed = page.evaluate(
+                    """(h2Idx) => {
+                        const editor = document.querySelector('.ProseMirror');
+                        if (!editor) return {ok: false, reason: 'no-editor'};
+                        const blocks = Array.from(editor.children);
+                        // Prefer the block after the H2 (the first
+                        // paragraph of that section). Fall back to the
+                        // H2 itself if there is no following block.
+                        const after = blocks[h2Idx + 1];
+                        const target = (after && after.tagName !== 'H2')
+                            ? after
+                            : (blocks[h2Idx] || blocks[blocks.length - 1]);
+                        if (!target) return {ok: false, reason: 'no-target'};
+                        // setStart at position 0 inside a paragraph
+                        // node → caret at the very start of the text.
+                        // Paste of an image file then causes ProseMirror
+                        // to insert a figure block *above* the target
+                        // block, so the image lands between the H2 and
+                        // the body paragraph — exactly what we want.
+                        const range = document.createRange();
+                        range.setStart(target, 0);
+                        range.collapse(true);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        editor.focus();
+                        return {
+                            ok: true,
+                            tag: target.tagName,
+                            snippet: (target.textContent || '').slice(0, 40),
+                        };
+                    }""",
+                    block_idx,
+                )
+                if not (placed or {}).get("ok"):
+                    logger.warning(
+                        "caret positioning failed at H2 block %d: %s — "
+                        "skipping this image to avoid mangling layout",
+                        block_idx, placed,
+                    )
+                    continue
+                logger.debug(
+                    "caret set below H2 @ block %d → %s (%r)",
+                    block_idx, placed.get("tag"), placed.get("snippet"),
                 )
                 page.wait_for_timeout(200)
-                page.keyboard.press("Enter")
+
+                self._upload_image(path)
+                logger.info(
+                    "inline image uploaded near H2 block %d: %s",
+                    block_idx, path,
+                )
+                # Caption: note.com strips <em>/<small> on paste and
+                # ignores Ctrl+I, so plain-text attempts render as
+                # normal body-size <p>. The figure node however ships
+                # with an empty <figcaption> slot that note styles as
+                # a small centred italic-like caption natively — focus
+                # that slot and type there.
+                focused = page.evaluate(
+                    """() => {
+                        const caps = document.querySelectorAll(
+                            '.ProseMirror figure figcaption'
+                        );
+                        // Pick the last *empty* figcaption. We upload
+                        // images in reverse document order (high block
+                        // index first), so the newly-created figcaption
+                        // for this upload is the newest empty one but
+                        // is NOT at the end of the document once
+                        // earlier iterations have already populated
+                        // later captions. Filter to empty-only so the
+                        // same slot isn't filled twice.
+                        let target = null;
+                        for (let i = caps.length - 1; i >= 0; i--) {
+                            if (!(caps[i].textContent || '').trim()) {
+                                target = caps[i];
+                                break;
+                            }
+                        }
+                        if (!target) return false;
+                        const range = document.createRange();
+                        range.selectNodeContents(target);
+                        range.collapse(true);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        try { target.focus(); } catch (e) {}
+                        return true;
+                    }"""
+                )
                 page.wait_for_timeout(150)
+                if focused:
+                    page.keyboard.type("※イメージ画像", delay=4)
+                    page.wait_for_timeout(200)
+                    # Leave the figcaption so subsequent uploads don't
+                    # append inside the same caption slot.
+                    page.keyboard.press("ArrowDown")
+                    page.wait_for_timeout(100)
+                else:
+                    # Fall back to the previous plain-text behaviour
+                    # if note's editor changed shape and no figcaption
+                    # is visible — plain caption is ugly but better
+                    # than silent failure.
+                    logger.warning(
+                        "figcaption not found for block %d — "
+                        "caption will render as plain paragraph",
+                        block_idx,
+                    )
+                    page.keyboard.press("Enter")
+                    page.wait_for_timeout(120)
+                    page.keyboard.type("※イメージ画像", delay=4)
+                    page.wait_for_timeout(120)
+                    page.keyboard.press("Enter")
+                    page.wait_for_timeout(150)
             except Exception as exc:
-                logger.warning("inline image upload failed (%s): %s", p, exc)
-        page.wait_for_timeout(1000)
+                logger.warning(
+                    "inline image upload failed (%s): %s", path, exc
+                )
+        page.wait_for_timeout(800)
 
     def _set_eyecatch_on_current_page(self, file_path: str) -> bool:
         """Upload *file_path* as the eyecatch on the currently-open editor.
@@ -1708,5 +1885,31 @@ class NotePublisher:
                 "ローカル画像 %d 件を本文から除外しました: %s",
                 len(removed),
                 ", ".join(removed[:3]) + ("..." if len(removed) > 3 else ""),
+            )
+        return new_content
+
+    @staticmethod
+    def _drop_local_images(content: str) -> str:
+        """Remove every ``![alt](data/images/... "url")`` reference.
+
+        Used when the caller is going to upload the same images inline
+        via note's native paste handler — keeping the Markdown would
+        just show as literal text because note's ProseMirror will not
+        render external ``<img>`` tags.
+        """
+        dropped = 0
+
+        def _replace(match: re.Match[str]) -> str:
+            nonlocal dropped
+            dropped += 1
+            return ""
+
+        new_content = _LOCAL_IMAGE_RE.sub(_replace, content)
+        new_content = re.sub(r"\n{3,}", "\n\n", new_content)
+        new_content = "\n".join(line.rstrip() for line in new_content.split("\n"))
+        if dropped:
+            logger.info(
+                "ローカル画像マークダウン %d 件を削除（インライン経路でアップロード予定）",
+                dropped,
             )
         return new_content
