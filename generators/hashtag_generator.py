@@ -101,7 +101,18 @@ class HashtagGenerator:
     ) -> list[str]:
         """Generate hashtags for an article.
 
-        Combines keyword-based extraction with optional LLM enhancement.
+        Five layers, each contributing distinct value:
+          1. Keyword-map category tags (domain: AI / gourmet / k-beauty …).
+          2. Genre tags from ``_GENRE_TAG_POOLS`` mirroring the image
+             mood rules so cosmetics posts land in #美容note #スキンケア
+             tags that K-beauty readers actually follow.
+          3. Source-based tags (allkpop → 韓流, cosme → 美容 etc).
+          4. LLM-contextual tags (optional, when llm_fn present).
+          5. High-reach learned tags (topic-aligned pool × recent
+             popularity, see ``_learned_tags_for``).
+          6. Specific-entity tags extracted from body — people /
+             brands / places mentioned often enough to be
+             discoverable. Lifts CTR by matching long-tail searches.
 
         Args:
             title: Article title.
@@ -120,20 +131,31 @@ class HashtagGenerator:
         for cat in detected_categories:
             tags.extend(CATEGORY_TAGS.get(cat, []))
 
-        # 2. Source-based tags
+        # 2. Genre tag pools — mirrors ``main._IMAGE_MOOD_RULES`` so
+        # image mood and hashtags stay aligned (cosmetics gets
+        # pastel photos + feminine tags, AI副業 gets neon photos +
+        # 副業/AI tags).
+        tags.extend(self._genre_tags(title, content))
+
+        # 3. Source-based tags
         source_tags = self._source_tags(source)
         tags.extend(source_tags)
 
-        # 3. LLM-enhanced tags (if available)
+        # 4. LLM-enhanced tags (if available)
         if llm_fn:
             llm_tags = self._llm_generate(title, content[:300], llm_fn)
             tags.extend(llm_tags)
 
-        # Blend in learned high-reach tags from the latest
+        # 5. Blend in learned high-reach tags from the latest
         # docs/knowledge/note-trends/*_auto_learning.md. Without this
         # step hashtag output skews toward niche keyword-map tags and
         # misses the broad-discovery tags that actually drive views.
         tags.extend(self._learned_tags_for(tags))
+
+        # 6. Entity extraction — brand names, proper nouns, people.
+        # These add long-tail discovery ("BeautyofJoseon" is a narrow
+        # but highly intent-matched query).
+        tags.extend(self._extract_entity_tags(title, content))
 
         # Deduplicate, preserve order, limit
         seen: set[str] = set()
@@ -147,6 +169,120 @@ class HashtagGenerator:
         result = unique[:self.max_tags]
         logger.info("Generated %d hashtags: %s", len(result), result)
         return result
+
+    @staticmethod
+    def _genre_tags(title: str, content: str) -> list[str]:
+        """Return note-popular tags for the article's genre.
+
+        Keyed off the same patterns as main._IMAGE_MOOD_RULES so the
+        image aesthetic and the tag set describe the same audience.
+        """
+        import re as _re
+        hay = f"{title}\n{content[:800]}"
+        rules: list[tuple[str, list[str]]] = [
+            (r"コスメ|美容|スキンケア|メイク|化粧|保湿|美白",
+             ["美容", "コスメ", "スキンケア", "メイク好き", "韓国コスメ"]),
+            (r"K-?POP|韓国アイドル|BTS|BLACKPINK|NewJeans|aespa|IVE|推し活",
+             ["KPOP", "韓国アイドル", "推し活", "韓流", "エンタメ"]),
+            (r"韓国|韓流|kbeauty",
+             ["韓国", "韓国トレンド", "韓流", "韓国情報"]),
+            (r"ダイエット|垢抜け|ボディメイク|自分磨き",
+             ["ダイエット", "自分磨き", "美意識", "モテ"]),
+            (r"恋愛|婚活|結婚",
+             ["恋愛", "恋愛相談", "婚活", "カップル"]),
+            (r"ファッション|コーデ|アパレル|ブランド",
+             ["ファッション", "コーデ", "ファッション好き", "トレンド"]),
+            (r"焼肉|和牛|ステーキ|肉",
+             ["焼肉", "グルメ", "肉料理", "食べ歩き"]),
+            (r"ラーメン|つけ麺",
+             ["ラーメン", "グルメ", "麺活", "食べ歩き"]),
+            (r"カフェ|コーヒー|喫茶",
+             ["カフェ", "カフェ巡り", "コーヒー", "おしゃれカフェ"]),
+            (r"寿司|和食|懐石",
+             ["寿司", "和食", "グルメ", "食べ歩き"]),
+            (r"スイーツ|パフェ|ケーキ|デザート",
+             ["スイーツ", "甘いもの好き", "カフェ巡り", "グルメ"]),
+            (r"AI副業|マネタイズ|収益化|稼ぐ|副業",
+             ["AI副業", "副業", "マネタイズ", "稼ぐ", "フリーランス"]),
+            (r"AI|ChatGPT|Claude|LLM|機械学習|人工知能",
+             ["AI", "ChatGPT", "生成AI", "AI活用", "テクノロジー"]),
+            (r"エンジニア|プログラミング|コーディング",
+             ["エンジニア", "プログラミング", "開発", "キャリア"]),
+            (r"セキュリティ|サイバー|ハッキング",
+             ["セキュリティ", "情報セキュリティ", "エンジニア"]),
+            (r"投資|株|資産運用|FIRE|仮想通貨|ビットコイン",
+             ["投資", "資産運用", "株", "お金", "FIRE"]),
+            (r"起業|スタートアップ|経営",
+             ["起業", "ビジネス", "経営", "スタートアップ"]),
+            (r"旅行|観光|リゾート|ホテル",
+             ["旅行", "旅行記", "観光", "トラベル"]),
+            (r"NBA|バスケ",
+             ["NBA", "バスケ", "スポーツ"]),
+            (r"野球|MLB",
+             ["野球", "スポーツ", "プロ野球"]),
+            (r"サッカー|フットボール|Jリーグ",
+             ["サッカー", "スポーツ", "Jリーグ"]),
+            (r"政治|選挙|首相|大統領|外交|国際情勢",
+             ["政治", "ニュース", "国際情勢", "時事"]),
+            (r"美容皮膚科|ダーマペン|エクソソーム|HIFU|美容医療",
+             ["美容医療", "美容皮膚科", "美容", "自分磨き", "美意識"]),
+            (r"音楽|ライブ|コンサート|アーティスト",
+             ["音楽", "ライブ", "エンタメ"]),
+            (r"韓ドラ|Netflix|韓国ドラマ",
+             ["韓国ドラマ", "Netflix", "韓流", "エンタメ"]),
+        ]
+        out: list[str] = []
+        for pattern, pool in rules:
+            if _re.search(pattern, hay, _re.IGNORECASE):
+                out.extend(pool)
+                # Don't break — accumulate multiple matching genres so
+                # cross-genre articles ("韓国コスメ×K-POPアイドル")
+                # surface in both audiences.
+        return out
+
+    @staticmethod
+    def _extract_entity_tags(title: str, content: str) -> list[str]:
+        """Pull brand / product / place proper nouns for long-tail tags.
+
+        Looks at (a) ASCII CamelCase / all-caps brand names, plus
+        (b) katakana 3-15 char runs that aren't generic nouns. The
+        returned list is intentionally short — the point is to add 2-3
+        high-intent long-tail tags, not flood the set.
+        """
+        import re as _re
+        from collections import Counter
+
+        hay = f"{title}\n{content[:1200]}"
+
+        # CamelCase / all-caps brands (Anua, BLACKPINK, LG, ChatGPT, etc).
+        caps = [
+            m for m in _re.findall(
+                r"\b[A-Z][A-Za-z0-9]{2,18}\b", hay,
+            )
+            # Reject SNS boilerplate and article-shell words.
+            if m.lower() not in {
+                "bluesky", "twitter", "instagram", "facebook", "tiktok",
+                "threads", "youtube", "linkedin", "reddit", "google",
+                "note", "zenn", "qiita", "apple", "amazon", "the",
+                "and", "for", "with", "this", "that", "kento",
+            }
+        ]
+        cap_counts = Counter(caps)
+        cap_tags = [t for t, c in cap_counts.most_common(3) if c >= 1]
+
+        # Katakana 3-15 char runs (Japanese brand names). Skip
+        # over-generic ones.
+        kata = _re.findall(r"[゠-ヿー]{3,15}", hay)
+        generic_kata = {
+            "シリーズ", "ブランド", "プロジェクト", "コンセプト",
+            "スタイル", "メニュー", "アイテム", "カテゴリー",
+            "タイトル", "コンテンツ", "リスト",
+        }
+        kata_clean = [k for k in kata if k not in generic_kata]
+        kata_counts = Counter(kata_clean)
+        kata_tags = [t for t, c in kata_counts.most_common(2) if c >= 2]
+
+        return cap_tags + kata_tags
 
     @staticmethod
     def _learned_tags_for(existing: list[str]) -> list[str]:
