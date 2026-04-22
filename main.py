@@ -54,6 +54,7 @@ from utils.sheets_manager import SheetsManager
 from utils.token_manager import TokenManager, estimate_tokens
 from utils.feedback_recorder import FeedbackRecorder
 from utils.logger import setup_logger
+from utils.experiments import is_enabled as _xp_enabled
 
 load_dotenv()
 logger = setup_logger(__name__)
@@ -1569,7 +1570,6 @@ def _generate_single_article(
     # note prompt. Zenn is tech-focused and does not benefit from
     # note-trend mimicry. Silent no-op when no learn report exists.
     # Gated on experiments.yaml so A/B runs can compare w/ vs w/o.
-    from utils.experiments import is_enabled as _xp_enabled
     learned_block = ""
     if platform == "note" and _xp_enabled("learn.learned_block"):
         learned_block = _load_learned_block()
@@ -2293,7 +2293,19 @@ def publish_approved(
                 # Below 77.5 the article still feels undercooked and
                 # falls back to Zenn Scraps.
                 ZENN_ARTICLE_THRESHOLD = 77.5
-                if numeric_score >= ZENN_ARTICLE_THRESHOLD:
+                # When publish.zenn_scrap_only is on, route everything
+                # to Zenn Scraps regardless of score. Used while the
+                # Zenn article-publish rate limit / visibility issue
+                # from 2026-04-20 (10-article cap showing newer posts
+                # as 404) is not fully resolved — scraps have no such
+                # cap and still surface in the author's feed.
+                if _xp_enabled("publish.zenn_scrap_only", default=False):
+                    logger.info(
+                        "[zenn] scrap_only=on → score=%.1f でスクラップ投稿",
+                        numeric_score,
+                    )
+                    url = _save_scrap_draft(article_id, title, content, stored)
+                elif numeric_score >= ZENN_ARTICLE_THRESHOLD:
                     logger.info(
                         "[zenn] score=%.1f >= %.1f → 記事投稿",
                         numeric_score, ZENN_ARTICLE_THRESHOLD,
