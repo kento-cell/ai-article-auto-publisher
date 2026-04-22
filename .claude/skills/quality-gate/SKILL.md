@@ -74,7 +74,7 @@ pass = total >= min_quality_score (from settings.yaml)
 - パース失敗時はデフォルト0点（= 不合格）
 - 再生成時はフィードバック内容をプロンプトに追加する
 - 全dimension 5点以上なら引用不備があっても条件付き合格
-- 連続不合格パターンは `docs/knowledges/` に記録する
+- 連続不合格パターンは `docs/knowledge/` に記録する
 
 ---
 

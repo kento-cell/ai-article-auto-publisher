@@ -333,21 +333,163 @@ def _codex_research_brief(article: dict) -> str:
 _LEARNED_BLOCK_CACHE: dict[str, str] = {}
 
 
+_LEARN_MERGE_WINDOW_DAYS = 7
+
+
+def _compute_learn_adoption(content: str) -> dict:
+    """Measure how strongly the generated article adopted the learn
+    block hints.
+
+    Three axes, all computed against the currently-merged learned
+    block (loaded through the normal cache):
+
+      * ``bracket_present``: does the title include the 【...】 bracket
+        form that dominates the learn TOP10? One of the simplest
+        success predictors for note.
+      * ``phrase_hits``: count of "徹底/完全/保存版/解説" style phrase
+        markers that showed up in the recent phrase ranking.
+      * ``tag_coverage_pct``: share of the generator's output
+        (approximated from the article's hashtag section) overlapping
+        with the learned top-tag set.
+
+    Returned values are informational — the caller stores them on the
+    score dict but does not gate accept/reject on them. Used to watch
+    whether learn injection is actually changing the LLM's output.
+    """
+    import re as _re
+
+    first_line = content.splitlines()[0] if content else ""
+    bracket_present = bool(_re.search(r"【[^】]+】", first_line))
+
+    canonical_phrases = [
+        "徹底", "完全", "保存版", "解説", "まとめ", "選",
+        "狂気", "永久", "決定版", "朝メモ", "そもそも",
+        "コアメンバー", "殿堂入り",
+    ]
+    phrase_hits = sum(1 for p in canonical_phrases if p in first_line)
+
+    # Pull the tags line if present (our generator emits a hashtag
+    # section footer); otherwise fall back to 0% coverage.
+    tag_coverage_pct = 0.0
+    learned_tag_set: set[str] = set()
+    try:
+        block = _load_learned_block()
+        for line in block.splitlines():
+            m = _re.match(r"^\s*-\s*#?([^\s:：]+)\s*[:：]\s*\d+", line)
+            if m:
+                learned_tag_set.add(m.group(1).lstrip("#"))
+    except Exception:  # noqa: BLE001
+        pass
+    hashtag_matches = _re.findall(r"#(\w[\w_]{0,30})", content)
+    if learned_tag_set and hashtag_matches:
+        overlap = sum(1 for t in hashtag_matches if t in learned_tag_set)
+        tag_coverage_pct = 100.0 * overlap / len(hashtag_matches)
+
+    return {
+        "bracket_present": bracket_present,
+        "phrase_hits": phrase_hits,
+        "phrase_total": len(canonical_phrases),
+        "tag_coverage_pct": round(tag_coverage_pct, 1),
+    }
+
+
+def _parse_learn_sections(text: str) -> dict[str, list[str]]:
+    """Extract the bullet/numbered items from named sections of a
+    single learn-report markdown.
+
+    Returns a dict with keys ``top_titles``, ``phrases``, ``tags``.
+    """
+    def _section(marker: str, limit: int) -> list[str]:
+        lines = text.splitlines()
+        out: list[str] = []
+        in_sec = False
+        for line in lines:
+            if line.startswith("## "):
+                if marker in line:
+                    in_sec = True
+                    continue
+                if in_sec:
+                    break
+            if in_sec and line.strip().startswith(
+                ("-", "1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.",
+                 "9.", "10.")
+            ):
+                out.append(line.strip())
+                if len(out) >= limit:
+                    break
+        return out
+
+    return {
+        "top_titles": _section("トップ記事", 10),
+        "phrases": _section("よく使われるパターン", 8),
+        "tags": _section("タグ分布", 20),
+    }
+
+
+def _load_failure_patterns(max_chars: int = 900) -> str:
+    """Read ``docs/knowledge/quality_recurring_failures.md`` and return a
+    short prompt-injectable block summarising the failure patterns the
+    pipeline keeps hitting. Silent when the file is missing.
+
+    The LLM sees this as "known traps — avoid these at write time" so
+    the self-improvement log actually feeds back into generation, not
+    just sits on disk for humans.
+    """
+    path = Path("docs/knowledge/quality_recurring_failures.md")
+    if not path.exists():
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.debug("failure pattern read failed: %s", exc)
+        return ""
+
+    # Extract just the "観測:" and "対処候補:" lines of each numbered
+    # section so the prompt stays tight. Skip the stale marker rows.
+    patterns: list[str] = []
+    current_title = ""
+    for line in text.splitlines():
+        if line.startswith("## "):
+            current_title = line.lstrip("# ").strip()
+            continue
+        stripped = line.strip()
+        if stripped.startswith("**観測:**"):
+            obs = stripped.replace("**観測:**", "").strip()
+            if current_title and obs:
+                patterns.append(f"- {current_title}: {obs}")
+        if len(patterns) >= 6:
+            break
+
+    if not patterns:
+        return ""
+
+    block = (
+        "\n\n【過去の不合格・偏りパターン — 今回は避けること】\n"
+        + "\n".join(patterns)
+        + "\n上記のパターンに該当する構成・表現は出力しない。"
+    )
+    if len(block) > max_chars:
+        block = block[:max_chars] + "…\n"
+    return block
+
+
 def _load_learned_block() -> str:
-    """Read the most recent note-trends auto-learning report and build a
+    """Read the last *_LEARN_MERGE_WINDOW_DAYS* learn reports and build a
     prompt-injectable block.
 
-    We inject:
-      - TOP10 popular titles (with ♥ counts) — the LLM mimics what works.
-      - Common phrase patterns — tells the LLM which formulas are hot.
-      - Top tags — nudges hashtag-alignment.
+    Why a rolling window instead of just the newest file:
+      - A single day's scrape is noisy (20 articles × 5 categories ≈
+        1 data point per tag, large variance).
+      - A 7-day merge smooths single-day spikes and surfaces tags that
+        are *consistently* popular.
+      - Newest titles still stay on top (sorted by file date desc) so
+        the LLM sees fresh bait along with the averaged tag pool.
 
-    We deliberately skip the "structure analysis" numbers because the
-    scraper only pulls title/likes (no body), so H2/word counts are
-    always zero and would mislead the prompt.
+    We also append the quality-failure patterns from
+    ``docs/knowledge/quality_recurring_failures.md`` so the LLM learns
+    from past mistakes, not just past successes.
 
-    Cached per-process because this reads the same file for every
-    article in a run.
+    Cached per-process.
     """
     if "note" in _LEARNED_BLOCK_CACHE:
         return _LEARNED_BLOCK_CACHE["note"]
@@ -365,54 +507,85 @@ def _load_learned_block() -> str:
         if not reports:
             _LEARNED_BLOCK_CACHE["note"] = ""
             return ""
-        latest = reports[0]
-        text = latest.read_text(encoding="utf-8")
 
-        def _section(marker: str, max_lines: int = 12) -> list[str]:
-            lines = text.splitlines()
-            out: list[str] = []
-            in_sec = False
-            for line in lines:
-                if line.startswith("## "):
-                    if marker in line:
-                        in_sec = True
-                        continue
-                    if in_sec:
-                        break
-                if in_sec and line.strip().startswith(("-", "1.", "2.",
-                        "3.", "4.", "5.", "6.", "7.", "8.", "9.", "10.")):
-                    out.append(line.strip())
-                    if len(out) >= max_lines:
-                        break
-            return out
+        window = reports[:_LEARN_MERGE_WINDOW_DAYS]
+        latest = window[0]
 
-        top_titles = _section("トップ記事", 10)
-        phrases = _section("よく使われるパターン", 8)
-        tags = _section("タグ分布", 10)
+        # Aggregate titles (dedup, keep newest order) + phrases + tags
+        # (sum counts across files to stabilise the ranking).
+        merged_titles: list[str] = []
+        seen_titles: set[str] = set()
+        merged_phrases: dict[str, int] = {}
+        merged_tag_counts: dict[str, int] = {}
+        import re as _re
+        tag_line_re = _re.compile(r"^-\s*#?([^\s:：]+)\s*[:：]\s*(\d+)")
+        phrase_line_re = _re.compile(r"^-\s*([^:：]+?)\s*[:：]\s*(\d+)")
 
-        if not (top_titles or phrases or tags):
+        for rep in window:
+            try:
+                sections = _parse_learn_sections(
+                    rep.read_text(encoding="utf-8")
+                )
+            except OSError:
+                continue
+            for t in sections["top_titles"]:
+                key = t.split("]")[0] if "[" in t else t
+                if key not in seen_titles:
+                    seen_titles.add(key)
+                    merged_titles.append(t)
+                if len(merged_titles) >= 10:
+                    break
+            for p in sections["phrases"]:
+                m = phrase_line_re.match(p)
+                if m:
+                    name = m.group(1).strip()
+                    merged_phrases[name] = (
+                        merged_phrases.get(name, 0) + int(m.group(2))
+                    )
+            for tg in sections["tags"]:
+                m = tag_line_re.match(tg)
+                if m:
+                    name = m.group(1).strip()
+                    merged_tag_counts[name] = (
+                        merged_tag_counts.get(name, 0) + int(m.group(2))
+                    )
+
+        if not (merged_titles or merged_phrases or merged_tag_counts):
             _LEARNED_BLOCK_CACHE["note"] = ""
             return ""
 
+        phrases_ranked = sorted(
+            merged_phrases.items(), key=lambda kv: -kv[1]
+        )[:5]
+        tags_ranked = sorted(
+            merged_tag_counts.items(), key=lambda kv: -kv[1]
+        )[:10]
+
         parts = [
             "\n\n【直近の人気note記事から学習したパターン — 真似すべき成功例】",
-            f"※ {latest.stem} で100件の人気記事をスクレイピングした結果を反映",
+            f"※ 直近{len(window)}日分の学習レポートを統合 "
+            f"(最新: {latest.stem})",
         ]
-        if top_titles:
+        if merged_titles:
             parts.append("\n★ 最近バズったタイトル(♥いいね数付き、参考にせよ):")
-            parts.extend(top_titles[:10])
-        if phrases:
-            parts.append("\n★ 頻出するタイトル型(TOP20で使用されたパターン):")
-            parts.extend(phrases[:5])
-        if tags:
-            parts.append("\n★ 反応の良いタグ:")
-            parts.extend(tags[:8])
+            parts.extend(merged_titles[:10])
+        if phrases_ranked:
+            parts.append("\n★ 頻出するタイトル型(集計):")
+            for name, cnt in phrases_ranked:
+                parts.append(f"- {name}: {cnt}")
+        if tags_ranked:
+            parts.append("\n★ 反応の良いタグ(集計):")
+            for name, cnt in tags_ranked:
+                parts.append(f"- #{name}: {cnt}")
         parts.append(
             "\n上記のタイトル/フレーズ/タグの「型」を踏襲しつつ、"
             "記事内容に沿った独自のバリエーションで書くこと。"
             "単純コピーは避け、構造だけ真似る。"
         )
         block = "\n".join(parts) + "\n"
+
+        # Append the failure-pattern block so the LLM avoids known traps.
+        block += _load_failure_patterns()
     except Exception as exc:
         logger.warning("learned block load failed: %s", exc)
         block = ""
@@ -1246,7 +1419,11 @@ def _generate_single_article(
     # Inject learned patterns (popular titles / phrases / tags) into the
     # note prompt. Zenn is tech-focused and does not benefit from
     # note-trend mimicry. Silent no-op when no learn report exists.
-    learned_block = _load_learned_block() if platform == "note" else ""
+    # Gated on experiments.yaml so A/B runs can compare w/ vs w/o.
+    from utils.experiments import is_enabled as _xp_enabled
+    learned_block = ""
+    if platform == "note" and _xp_enabled("learn.learned_block"):
+        learned_block = _load_learned_block()
 
     # --- 生成 ---
     try:
@@ -1515,6 +1692,21 @@ def _generate_single_article(
             title=article["title"],
             platform=platform,
             slug=slug,
+        )
+
+    # Measure how much of the learn block this generation actually
+    # adopted. This closes the loop — without measurement, the prompt
+    # injection is a hope, not a feedback signal. Low adoption over
+    # many runs is a prompt-design bug, not a model capacity issue.
+    if platform == "note" and _xp_enabled("learn.track_adoption"):
+        adoption = _compute_learn_adoption(content)
+        final["learn_adoption"] = adoption
+        logger.info(
+            "[%s] learn採用率: brackets=%s phrases=%d/%d tags=%.0f%%",
+            platform,
+            "✓" if adoption["bracket_present"] else "✗",
+            adoption["phrase_hits"], adoption["phrase_total"],
+            adoption["tag_coverage_pct"],
         )
 
     logger.info(
@@ -1867,6 +2059,30 @@ def publish_approved(
         return results
 
     seen_ids: set[str] = set()
+    # Last-line-of-defence deny patterns. Even if a row made it through
+    # bulk_approve, these patterns MUST never hit live — they caused
+    # public retractions in 2026-04 (習近平/妻夫木聡/李在明/メッツ).
+    # Match both the stored title and the Japanese-extracted title
+    # since the extractor can reveal a banned phrase that was shortened
+    # in the sheet title.
+    import re as _re
+    _PUBLISH_DENY_PATTERNS = [
+        _re.compile(r"氏の\s*(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿"),
+        _re.compile(r"さんの\s*(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿"),
+        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿が話題"),
+        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿を徹底"),
+        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿から徹底"),
+        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿から読み解"),
+        _re.compile(r"架空の\s*URL"),
+    ]
+
+    def _deny_reason(txt: str) -> str | None:
+        for pat in _PUBLISH_DENY_PATTERNS:
+            m = pat.search(txt)
+            if m:
+                return m.group(0)
+        return None
+
     for article_data in approved:
         platform = article_data.get("platform", "")
         title = article_data.get("title", "")
@@ -1896,6 +2112,27 @@ def publish_approved(
         if jp_title != title:
             logger.info("日本語タイトル抽出: %s", jp_title[:50])
             title = jp_title
+
+        # Final deny check — refuse to publish when the stored title,
+        # the extracted JP title, or the first 2KB of body matches any
+        # of the hallucination patterns. Flip the sheet row to ❌却下
+        # so the operator sees why it was blocked and does not retry
+        # it blindly.
+        _deny_hit = (
+            _deny_reason(article_data.get("title", ""))
+            or _deny_reason(title)
+            or _deny_reason(content[:2000])
+        )
+        if _deny_hit:
+            logger.warning(
+                "[%s] deny-pattern hit → publish 拒否: %s — matched %r",
+                platform, title[:40], _deny_hit,
+            )
+            try:
+                sheets.update_status(article_id, "❌却下")
+            except Exception as _exc:
+                logger.warning("sheet status update failed: %s", _exc)
+            continue
 
         try:
             if platform == "zenn":
