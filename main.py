@@ -2215,13 +2215,18 @@ def publish_approved(
     # since the extractor can reveal a banned phrase that was shortened
     # in the sheet title.
     import re as _re
+    # Narrow deny list to niche SNS (Bluesky/Threads/Mastodon) where
+    # account verification is weak and fabricated posts dominate.
+    # X/Instagram/Facebook allow post-URL verification so the article
+    # body's forbidden_phrases guard catches hallucinations there
+    # without publish-time over-blocking.
     _PUBLISH_DENY_PATTERNS = [
-        _re.compile(r"氏の\s*(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿"),
-        _re.compile(r"さんの\s*(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿"),
-        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿が話題"),
-        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿を徹底"),
-        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿から徹底"),
-        _re.compile(r"(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\s*投稿から読み解"),
+        _re.compile(r"氏の\s*(?:Bluesky|Threads|Mastodon)\s*投稿"),
+        _re.compile(r"さんの\s*(?:Bluesky|Threads|Mastodon)\s*投稿"),
+        _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿が話題"),
+        _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿を徹底"),
+        _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿から徹底"),
+        _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿から読み解"),
         _re.compile(r"架空の\s*URL"),
     ]
 

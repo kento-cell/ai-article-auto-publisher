@@ -128,12 +128,14 @@ evidence:
     # 一律で落とす。2026-04に習近平/妻夫木聡/李在明/メッツで同一パターンが
     # 発生し、公開→訂正コストが大きかったため禁止フレーズに登録する。
     # フィクション扱いでも note 読者は誤認しやすい。
-    - "氏の\\s*(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\\s*投稿"
-    - "さんの\\s*(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\\s*投稿"
-    - "(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\\s*投稿が話題"
-    - "(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\\s*投稿を徹底"
-    - "(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\\s*投稿から徹底"
-    - "(?:Bluesky|Twitter|X|Instagram|Threads|TikTok)\\s*投稿から読み解"
+    # 招待制・新興SNS (Bluesky/Threads/Mastodon) のみ禁止。
+    # X/Instagram/Facebook は公式認証済みが多く引用検証可能なので除外。
+    - "氏の\\s*(?:Bluesky|Threads|Mastodon)\\s*投稿"
+    - "さんの\\s*(?:Bluesky|Threads|Mastodon)\\s*投稿"
+    - "(?:Bluesky|Threads|Mastodon)\\s*投稿が話題"
+    - "(?:Bluesky|Threads|Mastodon)\\s*投稿を徹底"
+    - "(?:Bluesky|Threads|Mastodon)\\s*投稿から徹底"
+    - "(?:Bluesky|Threads|Mastodon)\\s*投稿から読み解"
     - "架空の\\s*URL"   # 「(架空のURL)」系のAI自白
     - "Dr\\.\\s*X"      # 未同定の引用形式「Dr. X」
     # 架空イベント/架空SNSバズ検知 (2026-04-22 Vogue Korea記事で観測)
