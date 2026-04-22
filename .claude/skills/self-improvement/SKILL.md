@@ -37,10 +37,10 @@ description: Use after pipeline completion or failure to extract learnings, upda
 
 | Category | Storage | Example |
 |----------|---------|---------|
-| 品質パターン | `docs/knowledges/quality_*.md` | 不合格になりやすい記事構成 |
-| トレンド知見 | `docs/knowledges/trend_*.md` | 高スコア記事の共通特徴 |
-| 投稿トラブル | `docs/knowledges/publish_*.md` | UI変更への対処法 |
-| プロンプト改善 | `docs/knowledges/prompt_*.md` | 効果的なプロンプトパターン |
+| 品質パターン | `docs/knowledge/quality_*.md` | 不合格になりやすい記事構成 |
+| トレンド知見 | `docs/knowledge/trend_*.md` | 高スコア記事の共通特徴 |
+| 投稿トラブル | `docs/knowledge/publish_*.md` | UI変更への対処法 |
+| プロンプト改善 | `docs/knowledge/prompt_*.md` | 効果的なプロンプトパターン |
 
 ---
 
@@ -48,7 +48,7 @@ description: Use after pipeline completion or failure to extract learnings, upda
 
 - 毎回実行しない。明確な学習シグナルがある時だけ。
 - タスク固有の詳細は `docs/sessions/` に記録。
-- 安定した再利用可能パターンのみ `docs/knowledges/` に昇格。
+- 安定した再利用可能パターンのみ `docs/knowledge/` に昇格。
 - 既存のknowledgeファイルがあれば更新を優先（新規作成より）。
 - 短く具体的な記録を心がける（長文の振り返りは不要）。
 

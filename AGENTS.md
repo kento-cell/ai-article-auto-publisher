@@ -392,7 +392,7 @@ C: 客観にCあり or 主観平均C → ユーザーに提示しない（自動
 - `utils/` — ユーティリティ
 - `config/` — 設定ファイル
 - `docs/sessions/` — 実行ログ
-- `docs/knowledges/` — 再利用可能な知見
+- `docs/knowledge/` — 再利用可能な知見
 - `docs/context/` — 背景情報・プロトコル
 - `docs/adr/` — アーキテクチャ決定記録
 - `.codex/skills/` — エージェントスキル定義

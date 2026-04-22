@@ -15,16 +15,20 @@ zenn_article_prompt: |
   {content}
 
   【絶対ルール】
-  1. 引用は必ず以下の形式で:
+  1. 引用は必ず以下の形式で（URL と取得日は blockquote 内に必須）:
      > "引用文"
      >
      > 出典: 著者/組織名. "タイトル"
-     > URL
+     > {url}
      > (取得日: YYYY年MM月DD日)
+
+  1-2. ★★★ 最重要: 上記 {url} (元記事URL) は記事本文の引用ブロック内に
+     必ず1回以上そのまま貼り付けること。URL を省略 or 外部に出したら不合格。
+     arXiv論文の場合、abstract のURLはそのまま一次ソースとして引用可。
 
   2. データ・統計は必ず出典明記
   3. 主観的評価は「筆者の意見」と明記
-  4. 参考文献セクションを最後に追加
+  4. 参考文献セクションを最後に追加し、そこにも {url} を再掲する
 
   【このツールの理念】
   タイトルは攻めていい。グレーギリギリでも合法なら構わない。
@@ -465,11 +469,20 @@ note_article_prompt: |
      - Before/After比較（該当時）
 
   【必須出力チェックリスト — これを満たさないと不合格】
-  □ H2見出し(##)を最低4個使うこと
+  □ **全体で最低2800字、目標3200字**。薄い記事はタイトル負け=読者への裏切り。
+  □ H2見出し(##)を最低5個使うこと
+  □ **各H2セクションの本文は最低500字**。短いセクションは不合格。
+    各セクションに以下のいずれか2つ以上を必ず含めること:
+    ・固有名詞つきの具体例(人物/ブランド/場所/数値)
+    ・引用ブロック(>)で一次情報を直接引用(最低3箇所/記事)
+    ・数値データ(再生回数/売上/統計/割合)を本文に埋め込む
+    ・読者への問いかけ→回答の往復で1段落
+    ・賛否が分かれる論点への筆者のポジション表明
   □ H1(#)はタイトルのみ。本文中にH1を使わないこと
-  □ 引用ブロック(>)を最低3箇所使い、各引用に出典を付けること
   □ 図表(Mermaid ```mermaid またはテーブル)を最低1個含めること
   □ 参考文献セクション(## 参考文献)を末尾に配置し、URLリストを載せること
+  □ 「〇〇について解説します」「いかがでしたか」等の空虚な定型文は禁止
+  □ 同じ情報を言い換えただけの水増し段落は禁止(評価減点対象)
 
   【ご当地/グルメ/スポット記事の場合 — 絶対遵守】
   □ タイトルに市区町村名・駅名・エリア名を含める（広域NG）
@@ -669,29 +682,59 @@ article_structures:
       7. プロのコツ（ワンランク上のテクニック）
 
 # 構成パターン選定ルール
+#
+# Matching: _select_structure concatenates `(title + " " + source).lower()`
+# and does substring checks. Keywords are matched case-insensitive so
+# English arXiv titles can hit English cues; Japanese titles still work
+# because lowercasing is a no-op on CJK.
+#
+# 実ソースID: collector 側が渡してくるのは "arxiv" / "rss_jp" / "rss_kr"
+# / "reddit" / "google_trends" / "bluesky" / "hacker_news" / "google_news"
+# など — source_category はこの文字列も拾えるように拡張する。
 structure_selection:
   zenn:
-    # 技術記事の構成は記事内容で判定
     rules:
-      - keyword: ["入門", "始め方", "チュートリアル", "getting started"]
+      # Japanese cues
+      - keyword: ["入門", "始め方", "チュートリアル", "tutorial", "getting started", "how to"]
         structure: tutorial
-      - keyword: ["比較", "vs", "選び方", "おすすめ"]
+      - keyword: ["比較", "vs", " vs ", "選び方", "おすすめ", "benchmark", "comparison"]
         structure: comparison
-      - keyword: ["仕組み", "内部", "原理", "アーキテクチャ"]
+      - keyword: ["仕組み", "内部", "原理", "アーキテクチャ", "architecture", "inside", "under the hood", "analysis"]
         structure: deep_dive
-      - keyword: ["FAQ", "質問", "疑問"]
+      - keyword: ["FAQ", "質問", "疑問", "q&a"]
         structure: qa
+      # English arXiv signals — deep_dive fits most research papers
+      # better than the generic standard template.
+      - keyword: ["arxiv", "paper", "model", "detection", "learning",
+                  "training", "inference", "dataset", "framework",
+                  "survey", "evaluation"]
+        structure: deep_dive
       - default: standard
 
   note:
-    # note記事の構成はソースカテゴリで判定
     rules:
-      - source_category: ["gourmet", "coffee", "izakaya"]
+      # Gourmet / coffee / izakaya cues (Japanese + English synonyms)
+      - source_category: ["gourmet", "ラーメン", "カレー", "居酒屋",
+                          "食堂", "定食", "ランチ", "隠れ名店", "coffee",
+                          "cafe", "カフェ", "izakaya"]
         structure: listicle
-      - source_category: ["korean", "kbeauty", "ktrend"]
+      # Korean / beauty / trend cues — trend_report is best for the
+      # "what's happening right now" angle note readers expect.
+      - source_category: ["korean", "韓国", "k-pop", "kpop", "kbeauty",
+                          "ktrend", "k-culture", "鬼滅"]
         structure: trend_report
-      - source_category: ["beauty", "selfcare", "coffee"]
+      - source_category: ["beauty", "selfcare", "美容", "自分磨き",
+                          "バリスタ", "淹れ方", "手入れ"]
         structure: howto
-      - source_category: ["tech", "ai", "llm"]
-        structure: standard
+      # Celebrity / entertainment / breaking — use trend_report so the
+      # article foregrounds recency and sourcing rather than a generic
+      # "intro → overview → details" shape.
+      - source_category: ["google_trends", "bluesky", "twitter",
+                          "ニュース", "速報", "引退", "逮捕", "結婚",
+                          "発表", "受賞", "記者会見"]
+        structure: trend_report
+      # AI / tech (reddit/hn/arxiv routed into note for general audience)
+      - source_category: ["arxiv", "reddit", "hacker_news", "ai", "llm",
+                          "gpt", "claude", "openai", "anthropic", "tech"]
+        structure: deep_dive
       - default: standard

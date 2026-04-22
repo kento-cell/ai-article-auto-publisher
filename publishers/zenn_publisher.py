@@ -88,6 +88,17 @@ class ZennPublisher:
         # (e.g. D[出力 (3D)] — parens inside brackets break the parser)
         content = self._sanitize_mermaid_labels(content)
 
+        # Localise inline stock photos: copy each referenced image
+        # into the Zenn content repo under ``images/<slug>/`` and
+        # rewrite the markdown to use ``/images/<slug>/…``. Zenn
+        # silently replaces external (non-repo) image URLs with
+        # ``error.svg``, so this repo-hosted path is the only way the
+        # image actually renders on zenn.dev. Uses the slug about to
+        # be generated below; re-compute it here so we have it before
+        # writing the file.
+        _slug_preview = self._generate_slug(title)
+        content = self._localize_stock_images_for_zenn(content, _slug_preview)
+
         slug = self._generate_slug(title)
         trimmed_topics = topics[:_MAX_TOPICS]
         frontmatter = self._build_frontmatter(
@@ -138,6 +149,12 @@ class ZennPublisher:
 
         try:
             self._run_git("add", str(file_path))
+            # Also stage any inline images this article copied into the
+            # Zenn repo under images/<slug>/ — create_article's
+            # _localize_stock_images_for_zenn placed them there.
+            images_slug_dir = Path(self.repo_path) / "images" / slug
+            if images_slug_dir.exists():
+                self._run_git("add", str(images_slug_dir))
             self._run_git(
                 "commit", "-m", f"publish: {slug}"
             )
@@ -199,6 +216,158 @@ class ZennPublisher:
             return fence_start + body + fence_end
 
         return mermaid_re.sub(_fix_block, content)
+
+    _STOCK_IMG_RE = re.compile(
+        r'!\[([^\]]*)\]\(\s*(data/images/[^\s)]+)'
+        r'(?:\s+"([^"]+)")?\s*\)',
+    )
+
+    def _localize_stock_images_for_zenn(
+        self, content: str, slug: str
+    ) -> str:
+        """Copy Unsplash-origin stock photos into the Zenn content repo
+        and rewrite markdown to use the repo-relative path.
+
+        Zenn refuses external image URLs in markdown (they get replaced
+        by ``error.svg`` server-side). Zenn does support images hosted
+        inside the content repo at ``images/<slug>/filename.jpg``
+        referenced as ``/images/<slug>/filename.jpg`` in the markdown.
+        This helper:
+
+          1. Walks every ``![alt](data/images/stock/x.jpg "https://…")``
+             in *content*.
+          2. For each match, downloads the title-attribute URL to
+             ``<zenn_repo>/images/<slug>/<basename>`` (falls back to a
+             local copy of the existing ``data/images/stock/...`` file
+             if the URL is unreachable).
+          3. Rewrites the markdown to ``![alt](/images/<slug>/<basename>)``.
+          4. Returns the rewritten content. The caller still needs to
+             ``git add images/<slug>/`` so the binary lands on the push.
+        """
+        import shutil as _shutil
+        import requests as _requests
+        from pathlib import Path as _Path
+        from urllib.parse import urlparse as _urlparse
+
+        # Allowlist mirrors ``main._IMAGE_HOST_ALLOWLIST`` — we refuse
+        # to fetch from anywhere else because the URL comes from the
+        # LLM-authored markdown (which an upstream prompt injection
+        # could swing at an internal SSRF target).
+        _HOST_ALLOW = {
+            "images.unsplash.com", "plus.unsplash.com",
+            "images.pexels.com", "www.pexels.com",
+            "upload.wikimedia.org",
+        }
+        _MIME_ALLOW = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+        _MAX_BYTES = 10 * 1024 * 1024
+        _EXT_ALLOW = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+        repo_root = _Path(self.repo_path)
+        images_dir = (repo_root / "images" / slug).resolve()
+        images_dir.mkdir(parents=True, exist_ok=True)
+
+        # Pre-compute stock root once so each rewrite iteration can
+        # validate the fallback candidate without re-resolving the
+        # pipeline's CWD every call.
+        _stock_root = (_Path.cwd() / "data" / "images" / "stock").resolve()
+
+        def _download(url: str, dest: _Path) -> bool:
+            parsed = _urlparse(url)
+            if parsed.scheme != "https" or parsed.hostname not in _HOST_ALLOW:
+                logger.warning(
+                    "Zenn image download rejected — host %s not allowed",
+                    parsed.hostname,
+                )
+                return False
+            try:
+                with _requests.get(
+                    url, timeout=30, stream=True, allow_redirects=False,
+                ) as resp:
+                    if 300 <= resp.status_code < 400:
+                        logger.warning(
+                            "Zenn image download rejected — refusing redirect to %s",
+                            resp.headers.get("Location", "<unknown>"),
+                        )
+                        return False
+                    resp.raise_for_status()
+                    ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+                    if ctype and ctype not in _MIME_ALLOW:
+                        logger.warning(
+                            "Zenn image download rejected — bad content-type %s", ctype,
+                        )
+                        return False
+                    total = 0
+                    chunks: list[bytes] = []
+                    for chunk in resp.iter_content(65536):
+                        if not chunk:
+                            continue
+                        total += len(chunk)
+                        if total > _MAX_BYTES:
+                            logger.warning(
+                                "Zenn image download rejected — exceeds %d bytes", _MAX_BYTES,
+                            )
+                            return False
+                        chunks.append(chunk)
+                dest.write_bytes(b"".join(chunks))
+                return True
+            except Exception as exc:
+                logger.warning("Unsplash download failed (%s): %s", url, exc)
+                return False
+
+        def _rewrite(m: re.Match[str]) -> str:
+            alt = m.group(1)
+            local_path = m.group(2)
+            url = (m.group(3) or "").strip()
+            src_basename = _Path(local_path).name
+            # Guard: basename must contain no directory components and
+            # have an allowed extension. Defends against an LLM-emitted
+            # reference like ``data/images/../../.env`` which would
+            # otherwise produce a ``dest`` outside ``images_dir``.
+            if "/" in src_basename or "\\" in src_basename or ".." in src_basename:
+                return ""
+            if _Path(src_basename).suffix.lower() not in _EXT_ALLOW:
+                return ""
+            dest = (images_dir / src_basename).resolve()
+            if images_dir not in dest.parents and dest.parent != images_dir:
+                logger.warning(
+                    "Zenn image dest escapes images_dir: %s", dest,
+                )
+                return ""
+
+            landed = False
+            if url:
+                landed = _download(url, dest)
+            if not landed:
+                # Fallback to the local stock file — but only if the
+                # resolved source is inside the stock root and has an
+                # image extension. A malicious reference to
+                # ``data/images/../../.env`` would resolve outside and
+                # be skipped here.
+                try:
+                    cand = (_Path.cwd() / local_path).resolve()
+                except Exception:
+                    cand = None
+                if (
+                    cand is not None
+                    and (_stock_root in cand.parents or cand.parent == _stock_root)
+                    and cand.suffix.lower() in _EXT_ALLOW
+                    and cand.exists()
+                    and cand.stat().st_size > 0
+                ):
+                    _shutil.copyfile(cand, dest)
+                    landed = True
+            if not landed:
+                logger.warning(
+                    "Could not localise image for %s — dropping reference", slug,
+                )
+                return ""
+
+            safe_alt = alt.replace("[", "(").replace("]", ")")
+            return f"![{safe_alt}](/images/{slug}/{src_basename})"
+
+        rewritten = self._STOCK_IMG_RE.sub(_rewrite, content)
+        rewritten = re.sub(r"\n{3,}", "\n\n", rewritten)
+        return rewritten
 
     @staticmethod
     def _generate_slug(title: str) -> str:

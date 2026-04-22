@@ -72,6 +72,15 @@ class NoteScraper:
         if not articles:
             articles = self._fetch_via_html(category, limit)
 
+        # The v3/searches endpoint does not return hashtags in the list
+        # payload — every item comes back with tags:[]. Hashtags are only
+        # exposed on the per-article v3 detail endpoint. Enrich the top
+        # results here so PatternExtractor._tag_distribution has data to
+        # work with. We limit enrichment to the top items we actually
+        # learn from (performance top_n=20) to keep the request volume
+        # manageable.
+        self._enrich_hashtags(articles[:20])
+
         # Cache results
         if articles:
             cache_path.write_text(
@@ -81,6 +90,42 @@ class NoteScraper:
             logger.info("Cached %d articles for %s", len(articles), category)
 
         return articles
+
+    def _enrich_hashtags(self, articles: list[dict[str, Any]]) -> None:
+        """Populate each article's ``tags`` list using the v3 detail API.
+
+        The search listing returns hashtags as an empty array; the
+        detail endpoint returns ``hashtag_notes: [{hashtag: {name}}]``.
+        Mutates *articles* in place so the caller does not need to
+        re-assign. Silent on individual failures — a missing tag is not
+        fatal for the learn pipeline.
+        """
+        for art in articles:
+            url = art.get("url", "")
+            # Extract the slug key from the URL — /nXXXXXXXX at the tail.
+            import re as _re
+            m = _re.search(r"/n/(n[a-zA-Z0-9]+)", url)
+            if not m:
+                continue
+            key = m.group(1)
+            try:
+                self._wait()
+                resp = self._session.get(
+                    f"https://note.com/api/v3/notes/{key}", timeout=12,
+                )
+                if resp.status_code != 200:
+                    continue
+                data = (resp.json().get("data") or {})
+                tags = [
+                    ((h.get("hashtag") or {}).get("name") or "").lstrip("#")
+                    for h in (data.get("hashtag_notes") or [])
+                ]
+                tags = [t for t in tags if t]
+                if tags:
+                    art["tags"] = tags
+            except Exception as exc:
+                logger.debug("tag enrich failed for %s: %s", key, exc)
+                continue
 
     def _fetch_via_api(self, category: str, limit: int) -> list[dict[str, Any]]:
         """Fetch via note v3 search API."""
