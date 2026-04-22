@@ -23,7 +23,7 @@ description: Use when starting a new task or pipeline run. Establish minimal con
    - 現在の収集・生成・投稿設定を確認
 
 4. Load additional context ONLY when necessary:
-   - `docs/knowledges/*` — 過去の品質パターン
+   - `docs/knowledge/*` — 過去の品質パターン
    - `docs/context/*` — 背景情報
 
 ---

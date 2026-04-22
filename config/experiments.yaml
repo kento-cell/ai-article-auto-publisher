@@ -1,0 +1,49 @@
+# A/B-test flags for self-learning pipeline features.
+#
+# Each flag controls whether a piece of the self-improvement loop is
+# active. Off → the existing baseline behaviour runs. On → the
+# improvement kicks in. We log which variant each article used
+# (``experiment_variant`` field on the article dict) so later analysis
+# can compare scores / views / likes across variants.
+#
+# When adding a flag:
+#   1. Name it ``group_name.feature_name``.
+#   2. Reference it from code via ``utils.experiments.is_enabled(...)``.
+#   3. Default to ``true`` only for features that already passed
+#      smoke testing.
+#
+# Do NOT flip production features off without checking the matching
+# code path — some flags are joint (e.g. turning off learn_block also
+# neuters hashtag blending).
+
+learn:
+  # Inject the 7-day merged learn report into the note generation
+  # prompt. Default on — tested 2026-04-22.
+  learned_block: true
+
+  # Append known-failure patterns from
+  # quality_recurring_failures.md so the LLM avoids historical traps.
+  failure_patterns: true
+
+  # Score how well each generated article adopted the learn-block
+  # hints (bracket titles, recommended tags). Stores the ratio on the
+  # article dict for later analysis. No effect on accept/reject.
+  track_adoption: true
+
+hashtag:
+  # Blend learned top tags into the hashtag output.
+  blend_learned: true
+
+regen:
+  # Fire a second LLM pass when grade=B + numeric_score in the
+  # borderline band, or when content is <1900 chars.
+  thin_content_retry: true
+
+  # On retry, include current char count in the feedback prompt so
+  # Gemma3 has a concrete numeric target to beat.
+  char_count_feedback: true
+
+image:
+  # Pass the article body into _extract_image_query alongside the
+  # title so pure-JP titles still yield topical Unsplash queries.
+  body_fallback_query: true
