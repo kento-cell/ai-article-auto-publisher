@@ -335,6 +335,38 @@ _LEARNED_BLOCK_CACHE: dict[str, str] = {}
 
 _LEARN_MERGE_WINDOW_DAYS = 7
 
+_THUMBNAIL_LOG_PATH = Path("data/thumbnail_log.jsonl")
+
+
+def _log_thumbnail_choice(title: str, query: str, path: str) -> None:
+    """Append a single line to the thumbnail-choice JSONL so we can
+    later correlate image queries with view / like counts.
+
+    Not read by generation — this is the *data collection* half of
+    the thumbnail-CTR learning loop. A future ``--learn`` run can
+    cross-reference Sheets view/like stats against this log to
+    surface which mood modifiers (pastel/neon/cinematic/…) drive
+    the highest CTR per genre.
+
+    Kept as JSONL (one record per line, no load/rewrite cycle) so
+    concurrent generate runs don't race.
+    """
+    import json as _json
+    from datetime import datetime as _dt
+
+    record = {
+        "ts": _dt.now().isoformat(),
+        "title": title[:120],
+        "image_query": query,
+        "cover_path": path,
+    }
+    try:
+        _THUMBNAIL_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(_THUMBNAIL_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(_json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        logger.debug("thumbnail log append failed: %s", exc)
+
 
 def _compute_learn_adoption(content: str) -> dict:
     """Measure how strongly the generated article adopted the learn
@@ -772,6 +804,114 @@ _JP_STOPWORDS = frozenset({
 })
 
 
+# ---------------------------------------------------------------------------
+# Image mood modifiers — "eye-catching image" aesthetic per genre
+# ---------------------------------------------------------------------------
+# Unsplash / Pexels return very different photos for
+# "k-pop idol" vs "k-pop idol stage glamour"; the modifier is where
+# CTR lives. We stamp a mood tag onto every query based on the
+# article's detected genre so cosmetics posts get soft pastel shots,
+# AI sidegigs get sleek futuristic shots, and male-targeted finance /
+# gadget posts get bold cinematic shots.
+#
+# Each entry: (regex on title+body, mood modifier appended to query).
+# First match wins, ordered most specific → most general.
+_IMAGE_MOOD_RULES: list[tuple[str, str]] = [
+    # Female-targeted aesthetics — cosmetics, K-beauty, K-POP idol,
+    # femaleinterest lifestyle, dieting / self-care.
+    (r"コスメ|美容|スキンケア|メイク|化粧|美白|保湿|美活",
+     "aesthetic soft pastel feminine"),
+    (r"K-?POP|韓国アイドル|BTS|BLACKPINK|NewJeans|aespa|IVE|ITZY",
+     "glamour stage lights pastel"),
+    (r"韓国|韓流|kbeauty|k-?beauty",
+     "seoul pastel aesthetic neon"),
+    (r"ダイエット|自分磨き|垢抜け|ボディメイク",
+     "wellness aesthetic pastel soft"),
+    (r"恋愛|婚活|結婚",
+     "romantic couple soft pastel"),
+    (r"ファッション|コーデ|アパレル",
+     "fashion magazine editorial pastel"),
+    (r"ネイル|ヘアケア|まつエク",
+     "pastel aesthetic beauty close-up"),
+
+    # Food & gourmet — bright, high-appetite appeal.
+    (r"焼肉|和牛|ステーキ",
+     "cinematic close-up sizzling warm"),
+    (r"ラーメン|つけ麺|担々麺",
+     "noodle bowl steam moody lighting"),
+    (r"カフェ|コーヒー|喫茶",
+     "aesthetic morning light cozy"),
+    (r"寿司|和食|懐石",
+     "minimal elegant japanese plating"),
+    (r"スイーツ|パフェ|ケーキ",
+     "dessert pastel cute studio lighting"),
+    (r"カレー|スパイス",
+     "warm curry spice market"),
+
+    # Tech / AI / engineering — male-targeted, bold, futuristic.
+    (r"AI副業|マネタイズ|収益化|稼ぐ|副業",
+     "laptop neon night entrepreneur"),
+    (r"AI|ChatGPT|Claude|LLM|機械学習",
+     "futuristic neon dark tech"),
+    (r"エンジニア|プログラミング|コード",
+     "dark ide monitor glow"),
+    (r"ガジェット|レビュー|デバイス",
+     "product cinematic studio lighting"),
+    (r"セキュリティ|ハッキング|サイバー",
+     "dark hacker code green matrix"),
+    (r"クラウド|AWS|GCP|Azure",
+     "datacenter blue server rack"),
+
+    # Finance / business — aspirational, serious.
+    (r"投資|株|資産|不動産|仮想通貨|ビットコイン",
+     "bull market skyscraper dusk"),
+    (r"起業|スタートアップ|経営",
+     "executive office cinematic city"),
+
+    # Politics / international.
+    (r"政治|選挙|首相|大統領|外交",
+     "newsroom professional serious"),
+    (r"中国|北京|習近平",
+     "beijing cityscape dusk"),
+    (r"韓国|ソウル|大統領",
+     "seoul hanok modern mix"),
+
+    # Sports.
+    (r"NBA|バスケ|バスケット",
+     "basketball arena stage lights"),
+    (r"サッカー|フットボール",
+     "stadium night floodlight"),
+    (r"野球|MLB|ベースボール",
+     "baseball stadium evening"),
+
+    # Travel / cityscape.
+    (r"旅行|観光|ホテル|リゾート",
+     "travel golden hour cinematic"),
+
+    # Music / entertainment (non-KPOP fallback).
+    (r"音楽|ライブ|コンサート|歌手",
+     "concert stage spotlights moody"),
+
+    # Medical / clinic.
+    (r"美容皮膚科|ダーマペン|エクソソーム|HIFU|美容医療",
+     "clinic aesthetic soft premium"),
+    (r"病院|診療|医療|クリニック",
+     "medical clean white minimal"),
+]
+
+
+def _image_mood_modifier(title: str, content: str = "") -> str:
+    """Return an Unsplash-friendly mood phrase based on the article's
+    detected genre. Empty string when no rule matches; caller appends
+    it to the base topical query.
+    """
+    hay = f"{title}\n{content[:600]}"
+    for pattern, mood in _IMAGE_MOOD_RULES:
+        if re.search(pattern, hay, re.IGNORECASE):
+            return mood
+    return ""
+
+
 _THEME_KEYWORDS: list[tuple[str, str]] = [
     ("コーヒー", "coffee"), ("カフェ", "cafe"), ("ランチ", "restaurant food"),
     ("居酒屋", "izakaya japanese bar"), ("グルメ", "food"),
@@ -912,22 +1052,31 @@ def _extract_image_query(title: str, content: str = "") -> str:
                 if len(keywords) >= 3:
                     break
 
+    # Compose the topic keywords, then append a genre-aware mood phrase
+    # so Unsplash / Pexels return *eye-catching* shots instead of
+    # generic stock. Rules live in ``_IMAGE_MOOD_RULES`` — cosmetics
+    # gets soft/pastel, AI sidegig gets neon/dark, K-POP gets
+    # glamour/stage-lights, etc.
+    mood = _image_mood_modifier(title, content)
+
     if keywords:
-        return " ".join(keywords[:3])
+        base = " ".join(keywords[:3])
+        return f"{base} {mood}".strip() if mood else base
 
     # 4. Last resort: domain-guessed fallback from title+content.
     hay = combined_for_theme
+    fallback = "lifestyle"
     if any(w in hay for w in ("AI", "ＡＩ", "LLM", "モデル", "論文")):
-        return "technology ai"
-    if any(w in hay for w in ("店", "グルメ", "食", "メニュー", "ラーメン")):
-        return "food restaurant"
-    if any(w in hay for w in ("韓国", "K-POP", "アイドル")):
-        return "korea seoul city"
-    if any(w in hay for w in ("音楽", "歌", "シンガー", "ライブ")):
-        return "music concert stage"
-    if any(w in hay for w in ("スポーツ", "試合", "選手")):
-        return "sports stadium"
-    return "lifestyle"
+        fallback = "technology ai"
+    elif any(w in hay for w in ("店", "グルメ", "食", "メニュー", "ラーメン")):
+        fallback = "food restaurant"
+    elif any(w in hay for w in ("韓国", "K-POP", "アイドル")):
+        fallback = "korea seoul city"
+    elif any(w in hay for w in ("音楽", "歌", "シンガー", "ライブ")):
+        fallback = "music concert stage"
+    elif any(w in hay for w in ("スポーツ", "試合", "選手")):
+        fallback = "sports stadium"
+    return f"{fallback} {mood}".strip() if mood else fallback
 
 
 _IMAGE_HOST_ALLOWLIST = {
@@ -2282,17 +2431,23 @@ def _publish_zenn(
     return None
 
 
-def _fetch_topic_cover(title: str) -> Path | None:
+def _fetch_topic_cover(title: str, content: str = "") -> Path | None:
     """Download an Unsplash photo themed to *title* for the eyecatch.
 
     Falls through to ``None`` so the caller can decide whether to
     fall back to the PIL KENTO mascot (NoteCoverGenerator) or skip
     the cover entirely.
+
+    Accepts optional *content* so the genre-aware mood modifier
+    (``_IMAGE_MOOD_RULES``) fires on cover images too. Cover CTR is
+    the single biggest lever on list-page click-through on note, so
+    picking a cosmetics-looking shot for a cosmetics post — not a
+    generic "lifestyle" shot — is worth the extra scan.
     """
     try:
         from generators.image_sourcer import ImageSourcer
         sourcer = ImageSourcer()
-        query = _extract_image_query(title)
+        query = _extract_image_query(title, content)
         results = sourcer.find_images(query, count=1)
         if not results:
             logger.info("[cover] no Unsplash result for %r", query)
@@ -2307,6 +2462,13 @@ def _fetch_topic_cover(title: str) -> Path | None:
         if _download_image(url, out) is None:
             return None
         logger.info("[cover] Unsplash query=%r → %s (%d bytes)", query, out, out.stat().st_size)
+        # Log the cover's image query + slug so the thumbnail-CTR
+        # tracker can later correlate "which image queries drove the
+        # most views". Silent on failure; logging is best-effort.
+        try:
+            _log_thumbnail_choice(title=title, query=query, path=str(out))
+        except Exception as _exc:
+            logger.debug("thumbnail log failed: %s", _exc)
         return out
     except Exception as exc:
         logger.warning("[cover] fetch failed: %s", exc)
@@ -2369,8 +2531,9 @@ def _publish_note(
 
         # Topic-themed cover from Unsplash. Falls back to None when
         # Unsplash is unreachable; publish_article will skip the
-        # eyecatch step in that case.
-        cover_path = _fetch_topic_cover(title)
+        # eyecatch step in that case. Pass body content so the mood
+        # modifier (pastel/cinematic/neon) picks the right aesthetic.
+        cover_path = _fetch_topic_cover(title, content)
 
         url = note_pub.publish_article(
             title=title,
