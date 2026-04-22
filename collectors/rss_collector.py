@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 # File that tracks already-collected article URLs to prevent duplicates.
 _SEEN_URLS_PATH = Path(__file__).resolve().parent.parent / "data" / "seen_urls.json"
 
+# File that persists per-feed failure counts so chronically broken
+# sources (403 / 502 / DNS failures) stop being hammered on every run.
+_FEED_FAILURE_PATH = Path(__file__).resolve().parent.parent / "data" / "rss_feed_failures.json"
+
+# After this many consecutive failures a feed is muted until the cooldown
+# expires — long enough to skip the next few scheduled runs but short
+# enough that a real outage recovers on its own.
+_FEED_FAILURE_THRESHOLD = 3
+_FEED_COOLDOWN_SECONDS = 6 * 60 * 60  # 6 hours
+
 # Pre-configured Japanese RSS sources
 DEFAULT_FEEDS: dict[str, dict[str, str]] = {
     # --- note向け（一般） ---
@@ -76,6 +86,70 @@ DEFAULT_FEEDS: dict[str, dict[str, str]] = {
     "wwdjapan": {
         "url": "https://www.wwdjapan.com/feed",
         "name": "WWD JAPAN (ファッション・ビューティ)",
+        "target": "note",
+    },
+    # --- 女性誌オンライン・美容/ライフスタイルメディア ---
+    # 狙い: 「あのインフルエンサー/モデルが愛用」型のトレンドを
+    # 拾うためのソース群。Google Trends の芸能人/くじ系ノイズに
+    # 比べて、掲載時点で編集者のファクトチェックが入っているので
+    # Gemma3 が安全に書ける具体的ブランド/商品/人物固有名詞が
+    # 常時流れてくる。
+    "voce": {
+        "url": "https://i-voce.jp/feed/",
+        "name": "VOCE (コスメ・美容マガジン)",
+        "target": "note",
+    },
+    "oggi": {
+        "url": "https://oggi.jp/feed",
+        "name": "Oggi (30代女性・ファッション)",
+        "target": "note",
+    },
+    "hanako": {
+        "url": "https://hanako.tokyo/feed/",
+        "name": "Hanako (東京トレンド女性誌)",
+        "target": "note",
+    },
+    "precious": {
+        "url": "https://precious.jp/feed",
+        "name": "Precious.jp (40代ハイエンド女性誌)",
+        "target": "note",
+    },
+    "ldk_beauty": {
+        "url": "https://the360.life/feed",
+        "name": "the360.life (LDK忖度なしコスメ/ガジェット)",
+        "target": "note",
+    },
+    "elle_japan": {
+        "url": "https://www.elle.com/jp/rss/all.xml/",
+        "name": "ELLE Japan (ハイファッション)",
+        "target": "note",
+    },
+    "25ans": {
+        "url": "https://www.25ans.jp/rss/all.xml/",
+        "name": "25ans (エレガンス女性誌)",
+        "target": "note",
+    },
+    "domani": {
+        "url": "https://domani.shogakukan.co.jp/feed",
+        "name": "Domani (30代後半女性・ライフスタイル)",
+        "target": "note",
+    },
+    "mi_mollet": {
+        "url": "https://mi-mollet.com/feed",
+        "name": "mi-mollet (40代大人女性)",
+        "target": "note",
+    },
+    # --- K-POP/韓国インフルエンサー網 ---
+    "allkpop": {
+        "url": "https://www.allkpop.com/feed",
+        "name": "allkpop (K-POP速報・アイドル愛用品)",
+        "target": "note",
+    },
+    # Kstyle は公式RSSが 2026-04 時点で 404 — 代替に Wow!Korea
+    # の美容カテゴリフィード追加。
+    "wowkorea_beauty": {
+        "url": "https://news.wowkorea.jp/rss/idol.xml",
+        "name": "WoW!Korea 美容・アイドル",
         "target": "note",
     },
     # --- note向け（コーヒー・グルメ・ライフスタイル） ---
@@ -249,6 +323,26 @@ class RssCollector(BaseCollector):
             encoding="utf-8",
         )
 
+    @staticmethod
+    def _load_feed_failures() -> dict[str, dict[str, Any]]:
+        """Load the per-feed failure bookkeeping, creating on first run."""
+        if _FEED_FAILURE_PATH.exists():
+            try:
+                data = json.loads(_FEED_FAILURE_PATH.read_text(encoding="utf-8"))
+                return data if isinstance(data, dict) else {}
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("rss_feed_failures.json corrupted; starting fresh")
+        return {}
+
+    @staticmethod
+    def _save_feed_failures(failures: dict[str, dict[str, Any]]) -> None:
+        """Persist per-feed failure bookkeeping."""
+        _FEED_FAILURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _FEED_FAILURE_PATH.write_text(
+            json.dumps(failures, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
     # ------------------------------------------------------------------
     # Main collection entry point
     # ------------------------------------------------------------------
@@ -265,7 +359,22 @@ class RssCollector(BaseCollector):
         seen_urls = self._load_seen_urls()
         articles: list[dict[str, Any]] = []
 
+        failures = self._load_feed_failures()
+        import time as _time
+        now = _time.time()
+
         for feed_id, feed_config in self.feeds.items():
+            state = failures.get(feed_id, {})
+            streak = int(state.get("streak", 0))
+            last_fail = float(state.get("last_fail", 0.0))
+            if streak >= _FEED_FAILURE_THRESHOLD and (now - last_fail) < _FEED_COOLDOWN_SECONDS:
+                cooldown_left = int((_FEED_COOLDOWN_SECONDS - (now - last_fail)) / 60)
+                logger.info(
+                    "%s 一時ミュート (%d回連続失敗, 残り%d分)",
+                    feed_config["name"], streak, cooldown_left,
+                )
+                continue
+
             try:
                 feed_articles = self._fetch_feed(
                     feed_config["url"],
@@ -275,10 +384,21 @@ class RssCollector(BaseCollector):
                 logger.info(
                     "%s: %d件取得", feed_config["name"], len(feed_articles)
                 )
+                # Success — clear the failure history so a one-off blip
+                # doesn't permanently bias the cooldown logic.
+                if feed_id in failures:
+                    failures.pop(feed_id, None)
             except Exception as e:
                 logger.error(
                     "%s 取得エラー: %s", feed_config["name"], e
                 )
+                failures[feed_id] = {
+                    "streak": streak + 1,
+                    "last_fail": now,
+                    "last_error": str(e)[:200],
+                }
+
+        self._save_feed_failures(failures)
 
         # Deduplicate: drop articles whose URL was already collected
         new_articles = []
@@ -294,9 +414,14 @@ class RssCollector(BaseCollector):
         if dupes_removed:
             logger.info("重複記事スキップ: %d件", dupes_removed)
 
-        # Persist updated seen-URL set (cap at 10,000 to avoid unbounded growth)
+        # Persist updated seen-URL set (cap at 10,000 to avoid unbounded
+        # growth). The previous `sorted()` cap kept the alphabetically
+        # last 5000 URLs — effectively random wrt recency, so old
+        # articles squatted and new ones got re-fetched. Prefer the
+        # most recently seen 5000 instead, preserving iteration order
+        # under Python 3.7+ dict insertion semantics.
         if len(seen_urls) > 10_000:
-            seen_urls = set(sorted(seen_urls)[-5_000:])
+            seen_urls = set(list(seen_urls)[-5_000:])
         self._save_seen_urls(seen_urls)
 
         new_articles.sort(
@@ -311,7 +436,8 @@ class RssCollector(BaseCollector):
         self, url: str, source_name: str
     ) -> list[dict[str, Any]]:
         """Fetch and parse a single RSS feed."""
-        self._wait_for_rate_limit()
+        # Rate-limiting already happens inside _fetch_url; the second
+        # call we had here doubled every fetch interval for no benefit.
         response = self._fetch_url(url)
         feed = feedparser.parse(response.text)
 
