@@ -150,7 +150,15 @@ class HashtagGenerator:
         # docs/knowledge/note-trends/*_auto_learning.md. Without this
         # step hashtag output skews toward niche keyword-map tags and
         # misses the broad-discovery tags that actually drive views.
-        tags.extend(self._learned_tags_for(tags))
+        # Gated via experiments.yaml so an A/B run can isolate the
+        # contribution of learned blending from raw keyword maps.
+        try:
+            from utils.experiments import is_enabled as _xp_enabled
+            _blend_on = _xp_enabled("hashtag.blend_learned")
+        except Exception:  # noqa: BLE001
+            _blend_on = True
+        if _blend_on:
+            tags.extend(self._learned_tags_for(tags))
 
         # 6. Entity extraction — brand names, proper nouns, people.
         # These add long-tail discovery ("BeautyofJoseon" is a narrow
@@ -180,6 +188,16 @@ class HashtagGenerator:
         import re as _re
         hay = f"{title}\n{content[:800]}"
         rules: list[tuple[str, list[str]]] = [
+            # Entertainment / comedy / voice actor — high priority so
+            # LLM-smuggled 美容室/コスメ text in a 令和ロマン / 花澤香菜
+            # article doesn't pollute the tag set with K-beauty tags.
+            # The hashtag output is capped at max_tags, so putting
+            # entertainment first means it WINS the slots.
+            (r"お笑い|漫才|コント|芸人|M-?1|R-?1|キングオブコント|"
+             r"令和ロマン|霜降り明星|ミルクボーイ|錦鯉|ランジャタイ",
+             ["お笑い", "芸人", "エンタメ", "漫才", "バラエティ"]),
+            (r"声優|アニメ|ラノベ|劇場版|映画|ドラマ|俳優|女優",
+             ["エンタメ", "アニメ", "声優", "ドラマ", "映画"]),
             (r"コスメ|美容|スキンケア|メイク|化粧|保湿|美白",
              ["美容", "コスメ", "スキンケア", "メイク好き", "韓国コスメ"]),
             (r"K-?POP|韓国アイドル|BTS|BLACKPINK|NewJeans|aespa|IVE|推し活",
