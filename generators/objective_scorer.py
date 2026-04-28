@@ -41,24 +41,51 @@ class ObjectiveScorer:
 
         evidence = self._score_evidence_level(sources)
         citations = self._score_citation_count(article)
-        cite_format = self._score_citation_format(article)
+        cite_format = self._score_citation_format(article, sources)
         visuals = self._score_visual_count(article)
         words = self._score_word_count(article)
-        forbidden_result = self._score_forbidden_phrases(article, forbidden)
+        # Scan title+body together so patterns like
+        # "〇〇氏のBluesky投稿から徹底" that appear in the title still
+        # register as a forbidden hit. Previously title text was
+        # invisible to the scorer and a banned premise could sneak
+        # through on cosmetic grounds (content happened to paraphrase
+        # the banned phrase in the body).
+        _title_for_scan = context.get("title", "") or ""
+        _scan_text = f"{_title_for_scan}\n{article}" if _title_for_scan else article
+        forbidden_result = self._score_forbidden_phrases(_scan_text, forbidden)
         headings = self._score_heading_structure(article)
         chain_check = self._score_chain_stores(article, chain_blacklist)
+        trend = self._score_trend_alignment(article, context)
+        first_hand = self._score_first_hand_experience(article, context)
 
-        # Collect blocking issues. citation_count is intentionally NOT
-        # blocking — Codex-grounded note articles often source facts via
-        # the research brief without explicit ## 参考文献 markdown lists,
-        # which used to fail this metric. The score is still computed
-        # and shown to the user; it just no longer auto-rejects.
+        # Collect blocking issues. citation_count was previously not
+        # blocking because Codex-grounded note articles can source facts
+        # without an explicit ## 参考文献 list; however CLAUDE.md's spec
+        # treats citation_count C as a hard fail. We honour the spec but
+        # still skip the metric when the article comes from a source
+        # type that legitimately has no citable material (Google Trends
+        # keywords, raw Reddit posts) — otherwise trending-topic notes
+        # would always block.
         blocking: list[str] = []
-        metrics_to_check = [
+        metrics_to_check: list[tuple[str, dict]] = [
             ("citation_format", cite_format),
             ("visual_count", visuals),
             ("word_count", words),
         ]
+        _source_types = {str(s.get("source", "")).lower() for s in sources}
+        _citation_exempt = {"google_trends", "bluesky", "reddit"}
+        # 2026-04-27: note向けの一般読み物 (体験談 / 比較 / ハウツー) は
+        # 引用URLが少ないのが普通。Zennの技術記事と同基準で弾くと、
+        # 7連続却下の構造的な詰まりが発生していた (Opus/GPT比較、
+        # Zapier/Make/n8n、AIツールスタック等)。ユーザーの方針に従い
+        # noteプラットフォームは citation_count を非ブロッキング化
+        # (グレード自体は計測してSheetsに記録し続ける、却下条件から除外)。
+        _platform = str(context.get("platform", "")).lower()
+        if (
+            _platform != "note"
+            and (not _source_types or not (_source_types & _citation_exempt))
+        ):
+            metrics_to_check.insert(0, ("citation_count", citations))
         # Only check evidence_level when source data is actually available
         if sources:
             metrics_to_check.insert(0, ("evidence_level", evidence))
@@ -70,7 +97,52 @@ class ObjectiveScorer:
                 )
 
         if forbidden_result["grade"] == "Fail":
-            blocking.append(f"forbidden_phrases: {forbidden_result['hits']}")
+            # 2026-04-27: noteの体験談/比較/ハウツー記事は「ツールA: / ツールB:」
+            # のような空欄バレットを許容したい (公式URLが書けない正当な
+            # 比較記事を弾いてしまうため)。ハルシネ系・架空SNS系・チェーン店
+            # 系といった「事実精度に直結するforbidden」はそのまま残し、
+            # 「構造的テンプレ系」のみ note では非ブロッキング化する。
+            #
+            # 構造的テンプレ判定:
+            #  (a) 既知マーカー文字列 (公式サイト, ここに入力, ...)
+            #  (b) 「* Label: \n * Label: \n」のような空欄バレット
+            #      (2行以上連続、各バレットがコロン直後改行で値を持たない)
+            _structural_template_markers = (
+                "公式サイト", "ここに入力", "URLは記載しません", "実際には"
+            )
+            _hits_str = " ".join(str(h) for h in forbidden_result["hits"])
+            _empty_bullet_re = re.compile(
+                r"(?:\*|-)\s+[^*:\n]{2,60}:\s*\n.*(?:\*|-)\s+[^*:\n]{2,60}:\s*\n",
+                re.DOTALL,
+            )
+            _has_known_marker = any(
+                m in _hits_str for m in _structural_template_markers
+            )
+            _looks_like_empty_bullet_template = bool(
+                _empty_bullet_re.search(_hits_str)
+            )
+            _is_only_template = (
+                _platform == "note"
+                and (_has_known_marker or _looks_like_empty_bullet_template)
+                and not any(
+                    danger in _hits_str
+                    for danger in (
+                        "Bluesky", "Threads", "Mastodon",
+                        "トレンド入り", "話題を呼んで", "議論を呼んで",
+                        "架空", "Dr. X", "〇〇", "◯◯", "○○",
+                    )
+                )
+            )
+            if _is_only_template:
+                logger.info(
+                    "[note] forbidden_phrases に構造的テンプレ系のみ検出 "
+                    "→ 非ブロッキング化: %s",
+                    forbidden_result["hits"][:2],
+                )
+            else:
+                blocking.append(
+                    f"forbidden_phrases: {forbidden_result['hits']}"
+                )
         if headings["grade"] == "Fail":
             blocking.append(f"heading_structure: {headings['issues']}")
         if chain_check["grade"] == "Fail":
@@ -86,7 +158,12 @@ class ObjectiveScorer:
             len(blocking),
         )
 
-        return {
+        # Surface metrics under "metrics" too — score_aggregator's
+        # numeric composite reads from there. trend_alignment is
+        # bonus-only: include it ONLY when it earned grade A so it can
+        # boost the average, but never penalize an otherwise-strong
+        # article for failing to ride note.com vocabulary.
+        metrics = {
             "evidence_level": evidence,
             "citation_count": citations,
             "citation_format": cite_format,
@@ -95,6 +172,17 @@ class ObjectiveScorer:
             "forbidden_phrases": forbidden_result,
             "heading_structure": headings,
             "chain_stores": chain_check,
+        }
+        if trend.get("grade") == "A":
+            metrics["trend_alignment"] = trend
+        if first_hand.get("grade") == "A":
+            metrics["first_hand_experience"] = first_hand
+
+        return {
+            **metrics,
+            "trend_alignment": trend,  # always exposed at top-level
+            "first_hand_experience": first_hand,
+            "metrics": metrics,
             "objective_pass": objective_pass,
             "blocking_issues": blocking,
         }
@@ -194,26 +282,37 @@ class ObjectiveScorer:
 
         count = len(blockquote_hits) + ref_links
 
+        # CLAUDE.md spec: A(5+) / B(2-4) / C(0-1).
         if count >= 5:
             grade = "A"
             reason = f"{count} citations found (>= 5)"
-        elif count >= 1:
+        elif count >= 2:
             grade = "B"
-            reason = f"{count} citations found (1-4 range)"
+            reason = f"{count} citations found (2-4 range)"
         else:
             grade = "C"
-            reason = f"no citations found"
+            reason = f"{count} citation(s) found (<= 1)"
 
         logger.debug("Citation count: %s (%d)", grade, count)
         return {"grade": grade, "count": count, "reason": reason}
 
-    def _score_citation_format(self, article: str) -> dict:
+    def _score_citation_format(
+        self, article: str, sources: list[dict] | None = None,
+    ) -> dict:
         """Check citation formatting compliance.
 
         Each citation should include a URL and an access date.
 
+        When `sources` is provided, citations that reference an arXiv
+        abstract (by URL or paper title appearing in the article body)
+        are auto-credited as URL-bearing even if the blockquote itself
+        lacks the URL. The abstract IS the primary source — the LLM just
+        forgot to paste the URL inside the quote block.
+
         Args:
             article: Full markdown text.
+            sources: Optional list of source dicts (each with `url` and
+                `title` keys) from the article collector.
 
         Returns:
             Dict with grade, compliance_rate, with_url, with_date,
@@ -268,6 +367,33 @@ class ObjectiveScorer:
                 compliant += 1
 
         total = len(citation_blocks)
+
+        # Auto-credit arXiv abstracts — the abstract is a legitimate
+        # primary source. When the pipeline tells us the article was
+        # built FROM an arXiv source, we credit the existing citation
+        # blocks as URL-backed even if the LLM paraphrased the title
+        # and forgot to paste the URL inside the quote block. This is
+        # exactly the "アブストはエビ扱い" policy the user approved.
+        #
+        # Guard: only auto-credit up to *one* citation per arXiv source
+        # — multiple unrelated citation blocks still need their own URLs.
+        auto_credited = 0
+        for src in (sources or []):
+            if not isinstance(src, dict):
+                continue
+            url = str(src.get("url") or "")
+            if "arxiv.org" in url:
+                auto_credited += 1
+
+        # Only promote `with_url`. Don't touch `compliant`/`with_date`
+        # — the access-date requirement still has to be met manually
+        # for the citation to count toward grade A. arXiv auto-credit
+        # rescues the URL half only, so blocked-by-no-URL articles can
+        # at least reach grade B instead of grade C.
+        if auto_credited > 0 and with_url < total:
+            promote = min(auto_credited, total - with_url)
+            with_url += promote
+
         # Count URL-only compliance (date is nice-to-have for local LLM)
         url_rate = with_url / total if total > 0 else 0.0
         rate = compliant / total if total > 0 else 0.0
@@ -298,6 +424,109 @@ class ObjectiveScorer:
             "reason": reason,
         }
 
+    def _score_trend_alignment(
+        self, article: str, context: dict | None,
+    ) -> dict:
+        """Score how well the article rides current note.com trends.
+
+        Two-axis grading via TrendMatcher: "hot" (already trending) and
+        "emerging" (new vocabulary appearing only in the freshest learn
+        slice). Either axis alone can earn A — gatsuri-trend mo
+        potential-waku mo dochira mo hirou.
+
+        Title is required as the dominant signal. If the caller doesn't
+        provide one in context, falls back to the first H1 heading.
+        """
+        try:
+            from generators.trend_matcher import TrendMatcher
+        except Exception as exc:
+            logger.warning("trend_matcher unavailable: %s", exc)
+            return {"grade": "B", "reason": "trend matcher unavailable"}
+
+        title = ""
+        if context:
+            title = str(context.get("title") or "").strip()
+        if not title:
+            m = re.search(r"^#\s+(.+)$", article, re.MULTILINE)
+            if m:
+                title = m.group(1).strip()
+
+        if not title:
+            return {"grade": "B", "reason": "no title to analyze — neutral B"}
+
+        # Optional summary signal: first paragraph after the title.
+        summary = ""
+        first_para = re.search(r"^[^#>\n].{20,200}$", article, re.MULTILINE)
+        if first_para:
+            summary = first_para.group(0)
+
+        try:
+            return TrendMatcher.get().score(title, summary)
+        except Exception as exc:
+            logger.warning("trend_alignment failed: %s", exc)
+            return {"grade": "B", "reason": f"error: {exc}"}
+
+    # E-E-A-T "Experience" markers: phrases that signal the author
+    # actually used / visited / tried the thing they're writing about.
+    # Past-tense + first-person framing only — present tense ("使ってみる")
+    # and bare past ("買った") are too generic and bait false positives
+    # in instructional or general content.
+    _FIRST_HAND_PATTERNS = [
+        r"行ってきた", r"訪れてきた", r"訪問した",
+        r"食べてみた", r"食べてきた", r"飲んでみた", r"試してみた",
+        r"使ってみた", r"買ってみた",
+        r"体験してきた", r"体験してみた",
+        r"実際に[^\s。、]{0,15}(?:してみた|食べてきた|行ってきた|訪れた|試してみた)",
+        r"自分で[^\s。、]{0,10}(?:してみた|やってみた|作ってみた)",
+        r"私[はがも][^\s。、]{0,10}(?:してきた|してみた|行ってきた|訪れた|来た)",
+        r"[0-9]+(?:回|度)[^\s。、]{0,10}(?:訪れ|通っ|行っ|食べ|使っ)",
+    ]
+
+    def _score_first_hand_experience(
+        self, article: str, context: dict | None,
+    ) -> dict:
+        """Detect first-hand experience markers (E-E-A-T Experience).
+
+        Bonus-only metric, mirroring trend_alignment semantics: A boosts
+        the composite, B is the floor (no penalty). Only meaningful for
+        lifestyle/gourmet content — for tech articles (zenn) we just
+        return B without scanning, since "I tried Claude Code" markers
+        live in different vocabulary and would generate noise.
+        """
+        platform = ""
+        if context:
+            platform = str(context.get("platform") or "").lower()
+        if platform == "zenn":
+            return {
+                "grade": "B",
+                "hits": 0,
+                "matched": [],
+                "reason": "skipped (tech platform)",
+            }
+
+        # Dedupe within article — the same templated phrase repeated
+        # (e.g. a copy-pasted disclaimer) should NOT count multiple times.
+        # Distinct phrases each contribute 1.
+        matched_set: set[str] = set()
+        for pat in self._FIRST_HAND_PATTERNS:
+            for m in re.finditer(pat, article):
+                matched_set.add(m.group(0))
+                if len(matched_set) >= 20:
+                    break
+            if len(matched_set) >= 20:
+                break
+
+        matched = sorted(matched_set)
+        n = len(matched)
+        if n >= 3:
+            grade = "A"
+            reason = f"{n} distinct first-hand markers (e.g. {matched[:3]})"
+        else:
+            grade = "B"
+            reason = f"{n} distinct first-hand markers — neutral B"
+
+        return {"grade": grade, "hits": n, "matched": matched, "reason": reason}
+
     def _score_visual_count(self, article: str) -> dict:
         """Count visual elements in the article.
 
@@ -327,15 +556,16 @@ class ObjectiveScorer:
 
         total = images + mermaid + tables + code_blocks
 
+        # CLAUDE.md spec: A(5+) / B(2-4) / C(0-1).
         if total >= 5:
             grade = "A"
             reason = f"{total} visual elements found (>= 5)"
-        elif total >= 1:
+        elif total >= 2:
             grade = "B"
-            reason = f"{total} visual elements found (1-4 range)"
+            reason = f"{total} visual elements found (2-4 range)"
         else:
             grade = "C"
-            reason = f"no visual elements found"
+            reason = f"{total} visual element(s) found (<= 1)"
 
         logger.debug("Visual count: %s (%d total)", grade, total)
         return {

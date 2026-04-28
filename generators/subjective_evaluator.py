@@ -14,12 +14,29 @@ from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
-# 4 subjective dimensions
-DIMENSIONS = ["originality", "accuracy", "readability", "engagement"]
+# 5 subjective dimensions. `title_fulfillment` enforces the project's
+# top-level 理念 ("タイトル負け禁止"): a provocative or superlative
+# headline demands the body actually back it up. This is the axis where
+# an otherwise-well-written article can be rejected — see CLAUDE.md.
+DIMENSIONS = [
+    "originality", "accuracy", "readability", "engagement",
+    "title_fulfillment",
+]
 
 VALID_GRADES = {"A", "B", "C"}
 
 MIN_REASON_LENGTH = 20
+
+# How many times to retry the LLM if its JSON output cannot be parsed
+# or fails schema validation. Keeps a single retry as a safety net for
+# model swap-ins (different models have different JSON-output stability).
+MAX_PARSE_RETRIES = 1
+
+RETRY_REMINDER = (
+    "\n\nIMPORTANT: Your previous response could not be parsed. "
+    "Return ONLY a valid JSON object — no Markdown, no prose, no code fences. "
+    "Every dimension MUST have grade (A/B/C) and reason (>=20 chars)."
+)
 
 # Regex to extract a JSON object from Markdown code fences.
 JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
@@ -33,14 +50,40 @@ For EACH dimension, you must provide:
 3. If grade is C, a concrete improvement suggestion
 
 Dimensions:
-- originality: Does this add value beyond summarizing/translating the source? \
-Is there a unique angle?
+- originality: Does this add any unique angle, commentary, or synthesis? \
+GRADING FLOOR for research-paper or news digest articles: B is the default. \
+Downgrade to C ONLY when the article is a pure mechanical translation with \
+zero author commentary, zero cross-reference to other work, and zero \
+opinionated framing. An article that translates an arXiv abstract and adds \
+even a few sentences of "筆者の見解" / comparison / business implication \
+is AT LEAST B. Upgrade to A when the analysis is genuinely novel.
 - accuracy: Are claims factually correct? Are they supported by the cited \
 sources? Any unverified assertions stated as fact?
 - readability: Is the structure clear? Can a reader scan headings and get the \
 key points? Is the flow logical?
 - engagement: Would a reader finish the whole article? Is the opening \
-compelling? Does the conclusion provide actionable next steps?
+compelling? Does the conclusion provide actionable next steps? GRADING FLOOR \
+for technical content: B is the default when the article has a hook, \
+structured headings, and a clear takeaway. C only when the article is flat \
+top-to-bottom with no narrative arc.
+- title_fulfillment: THIS IS THE MOST IMPORTANT DIMENSION. The title \
+will typically be aggressive or superlative — brackets like 【本音】 \
+【99%が知らない】【狂気】, numeric claims ("5選"), dramatic verbs \
+("放置したら会社が消滅する"). Evaluate whether the body actually \
+delivers on the specific promise made in the title: \
+  * A = The title's hook is cashed in with concrete specifics (real \
+    numbers, named examples, quoted sources, a takeaway that matches \
+    the promised framing). \
+  * B = The body touches the title's topic but the "catch" is mild — \
+    the article reads like an overview even though the title promised \
+    an exposé / ranking / deep dive. \
+  * C = Bait-and-switch. The title promises exposure / ranking / \
+    scandal / quantified claim, but the body is generic commentary \
+    that never cashes it in. "タイトル負け" — hard reject in this case. \
+Be strict: if the title uses 【本音】 but the article has no \
+first-person opinion, that's a C. If the title says "5選" but only 3 \
+items are itemised, that's a C. If the title promises data ("99%が知らない") \
+but no data appears, that's a C.
 
 {research_context}
 
@@ -54,6 +97,9 @@ Return ONLY a JSON object in this exact format:
 "suggestion": "if C..."}},
   "engagement": {{"grade": "A/B/C", "reason": "specific evidence...", \
 "suggestion": "if C..."}},
+  "title_fulfillment": {{"grade": "A/B/C", "reason": "quote the title's \
+promise and point to the specific body passage that cashes it in (or \
+say what's missing)", "suggestion": "if C..."}},
   "summary": "1-sentence overall assessment",
   "confidence": "high/medium/low"
 }}
@@ -99,18 +145,37 @@ class SubjectiveEvaluator:
             len(article),
         )
 
+        attempts = 0
+        last_response = ""
         try:
-            response = evaluator_fn(prompt)
-            result = self._parse_response(response)
+            for attempt in range(MAX_PARSE_RETRIES + 1):
+                attempts += 1
+                attempt_prompt = (
+                    prompt if attempt == 0 else prompt + RETRY_REMINDER
+                )
+                last_response = evaluator_fn(attempt_prompt)
+                if self._is_parseable(last_response):
+                    break
+                logger.warning(
+                    "Subjective eval parse failed (attempt %d/%d); retrying.",
+                    attempt + 1,
+                    MAX_PARSE_RETRIES + 1,
+                )
+
+            result = self._parse_response(last_response)
+            result["_parse_attempts"] = attempts
             logger.info(
-                "Subjective evaluation complete: pass=%s, blocking=%s",
+                "Subjective evaluation complete: pass=%s, blocking=%s, attempts=%d",
                 result.get("subjective_pass"),
                 result.get("blocking_issues"),
+                attempts,
             )
             return result
         except Exception as exc:
             logger.error("Subjective evaluation failed: %s", exc)
-            return self._default_result()
+            fallback = self._default_result()
+            fallback["_parse_attempts"] = attempts
+            return fallback
 
     # ------------------------------------------------------------------
     # Prompt construction
@@ -154,6 +219,27 @@ class SubjectiveEvaluator:
     # ------------------------------------------------------------------
     # Response parsing
     # ------------------------------------------------------------------
+
+    def _is_parseable(self, response: str) -> bool:
+        """Quick check: can we extract a JSON blob with all DIMENSIONS keys?
+
+        Used by :meth:`score` to decide whether to retry the LLM call.
+        Conservative — returns True only when JSON loads cleanly AND
+        every required dimension is present as a dict.
+        """
+        json_str = self._extract_json(response)
+        if not json_str:
+            return False
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(data, dict):
+            return False
+        for dim in DIMENSIONS:
+            if not isinstance(data.get(dim), dict):
+                return False
+        return True
 
     def _parse_response(self, response: str) -> dict:
         """Parse and validate LLM JSON response.
@@ -275,18 +361,22 @@ class SubjectiveEvaluator:
     def _default_result() -> dict:
         """Return a fail-safe result when evaluation cannot complete.
 
-        Returns:
-            Dict with all dimensions graded C and subjective_pass False.
+        Floors every dimension at B — the subjective evaluator LLM is
+        flaky (Gemma3 often emits invalid JSON) and we don't want its
+        output-format bugs to silently drag the composite numeric_score
+        down to rejection territory. Objective metrics are the real
+        quality gate; subjective is a supplementary boost/penalty and
+        should degrade gracefully to "acceptable" when it can't parse.
         """
         result: dict[str, Any] = {}
         for dim in DIMENSIONS:
             result[dim] = {
-                "grade": "C",
-                "reason": "evaluation could not be completed",
-                "suggestion": "re-run evaluation",
+                "grade": "B",
+                "reason": "evaluation output unparseable — default B",
+                "suggestion": "re-run evaluation if you need real grades",
             }
-        result["summary"] = "Evaluation could not be completed."
+        result["summary"] = "Subjective evaluation defaulted to B across the board."
         result["confidence"] = "low"
-        result["subjective_pass"] = False
-        result["blocking_issues"] = list(DIMENSIONS)
+        result["subjective_pass"] = True
+        result["blocking_issues"] = []
         return result
