@@ -1757,18 +1757,34 @@ def _generate_single_article(
     if platform == "note":
         research_block = _codex_research_brief(article)
         if not research_block and not _regen_feedback:
-            logger.warning(
-                "[note] Codex research brief is empty — rejecting article "
-                "rather than generating ungrounded content. "
-                "Rerun when the Codex CLI / network is available."
-            )
-            return {
-                "rejected": True,
-                "reason": "research brief empty (fail-closed)",
-                "title": article.get("title", ""),
-                "platform": platform,
-                "source": article.get("source", ""),
-            }
+            # Fail-closed when Codex grounding is unavailable: original
+            # purpose was to keep gourmet/spot articles from naming
+            # made-up stores. But Codex is currently unreliable on this
+            # box (Windows sandbox CreateProcessAsUserW errors), and
+            # AI/tech note articles don't need store verification at
+            # all. Allow opt-out via env var so the user can ship
+            # AI notes during Codex outages.
+            allow_no_brief = os.environ.get(
+                "NOTE_ALLOW_NO_CODEX_BRIEF", ""
+            ).strip().lower() in {"1", "true", "yes", "on"}
+            if allow_no_brief:
+                logger.warning(
+                    "[note] Codex brief empty — proceeding anyway "
+                    "(NOTE_ALLOW_NO_CODEX_BRIEF=1)"
+                )
+            else:
+                logger.warning(
+                    "[note] Codex research brief is empty — rejecting "
+                    "article rather than generating ungrounded content. "
+                    "Set NOTE_ALLOW_NO_CODEX_BRIEF=1 to bypass."
+                )
+                return {
+                    "rejected": True,
+                    "reason": "research brief empty (fail-closed)",
+                    "title": article.get("title", ""),
+                    "platform": platform,
+                    "source": article.get("source", ""),
+                }
 
     # Inject learned patterns (popular titles / phrases / tags) into the
     # note prompt. Zenn is tech-focused and does not benefit from
