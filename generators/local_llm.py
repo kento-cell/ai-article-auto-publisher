@@ -50,6 +50,18 @@ class LocalLLM:
             or os.getenv("OLLAMA_API_URL")
             or DEFAULT_OLLAMA_URL
         ).rstrip("/")
+        # Restrict the Ollama endpoint to loopback/private hosts so a
+        # tampered .env can't point the article pipeline at cloud
+        # metadata endpoints (SSRF) or exfiltrate prompts to an
+        # attacker-controlled server.
+        from urllib.parse import urlparse as _urlparse
+        _u = _urlparse(self.base_url)
+        _safe_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
+        if _u.scheme not in {"http", "https"} or (_u.hostname or "") not in _safe_hosts:
+            raise ValueError(
+                f"Refusing unsafe OLLAMA_API_URL={self.base_url!r}: "
+                "only http(s)://localhost / 127.0.0.1 are allowed."
+            )
         self.default_model = default_model
         self.timeout = timeout
         logger.info(
