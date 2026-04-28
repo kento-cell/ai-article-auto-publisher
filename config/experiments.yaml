@@ -30,6 +30,13 @@ learn:
   # article dict for later analysis. No effect on accept/reject.
   track_adoption: true
 
+  # Append the auto-generated ``docs/knowledge/quality_successes.md``
+  # (produced by ``scripts/analyze_performance.py`` every ``--learn``
+  # run) as a "match these proven shapes" block in the note prompt.
+  # Closes the self-improvement loop: scrape performance → rank →
+  # emit success patterns → inject next generation.
+  success_patterns: true
+
 hashtag:
   # Blend learned top tags into the hashtag output.
   blend_learned: true
@@ -47,3 +54,15 @@ image:
   # Pass the article body into _extract_image_query alongside the
   # title so pure-JP titles still yield topical Unsplash queries.
   body_fallback_query: true
+
+publish:
+  # Route every Zenn post to Scraps instead of Articles regardless of
+  # score. 2026-04-24: tried flipping to false to resume Articles
+  # publication, but 3 new commits pushed to origin/main were NOT
+  # indexed by Zenn — individual URLs 404, and the articles API still
+  # caps at 12. The 2026-04-20 visibility issue is unresolved: Zenn's
+  # GitHub integration silently drops new-slug articles past some
+  # author-level cap. Until this is fixed on Zenn's side (manual
+  # dashboard check + support ticket), keep every Zenn post as a
+  # Scrap — they surface correctly in the feed.
+  zenn_scrap_only: false  # 2026-04-28: user requested article-mode for next batch (scraps piling up)
