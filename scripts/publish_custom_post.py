@@ -155,6 +155,15 @@ logging.basicConfig(
 logger = logging.getLogger("publish_custom_post")
 
 
+# Image-cascade helpers moved to generators/chatgpt_batch_helper.py
+# so main.py's _publish_note can share the exact same logic. Local
+# wrapper preserves the old call sites in this file.
+from generators.chatgpt_batch_helper import (
+    chatgpt_image_batch as _chatgpt_image_batch,
+    is_brave_running as _is_brave_running,  # noqa: F401  (legacy alias)
+)
+
+
 def _download_images(query: str, slug: str, count: int) -> list[Path]:
     sourcer = ImageSourcer()
     results = sourcer.find_images(query, count=count * 2)  # over-fetch for safety
@@ -202,15 +211,66 @@ def main() -> int:
     logger.info("Title: %s", title[:80])
     logger.info("Image query: %r (cover: %r)", query, cover_query)
 
-    inline_paths = _download_images(query, f"{slug_hint}_inline", args.inline_count)
-    logger.info("Inline images ready: %d", len(inline_paths))
+    # ----------------------------------------------------------------
+    # Image cascade: ChatGPT (default ON, set USE_CHATGPT_IMAGES=0 to
+    # disable) → Unsplash → fail
+    # ----------------------------------------------------------------
+    cover: str | None = None
+    inline_paths: list[Path] = []
+    from generators.chatgpt_batch_helper import is_chatgpt_image_gen_enabled
+    use_chatgpt = is_chatgpt_image_gen_enabled()
+
+    if use_chatgpt:
+        chatgpt_cover, chatgpt_inline = _chatgpt_image_batch(
+            title=title,
+            content=content,
+            inline_count=args.inline_count,
+            slug_hint=slug_hint,
+            genre_hint=spec.get("image_query", "general tech / lifestyle"),
+        )
+        if chatgpt_cover and len(chatgpt_inline) >= args.inline_count:
+            cover = str(chatgpt_cover.resolve())
+            inline_paths = chatgpt_inline
+            logger.info("✓ Using ChatGPT-generated images (full set).")
+        else:
+            logger.warning(
+                "ChatGPT image gen incomplete (cover=%s, inline=%d/%d); "
+                "falling back to Unsplash for missing slots.",
+                bool(chatgpt_cover), len(chatgpt_inline), args.inline_count,
+            )
+            # Reuse what ChatGPT did produce, fill rest from Unsplash.
+            inline_paths = list(chatgpt_inline)
+            if chatgpt_cover:
+                cover = str(chatgpt_cover.resolve())
+
+    # Inline fallback / fill — Unsplash.
+    if len(inline_paths) < args.inline_count:
+        missing = args.inline_count - len(inline_paths)
+        logger.info("Topping up %d inline slot(s) from Unsplash.", missing)
+        unsplash_inline = _download_images(
+            query, f"{slug_hint}_inline", missing,
+        )
+        inline_paths.extend(unsplash_inline)
     if not inline_paths:
-        logger.error("No inline images downloaded — abort")
+        logger.error("No inline images obtained — abort")
         return 1
 
-    cover_paths = _download_images(cover_query, f"{slug_hint}_cover", 1)
-    cover = str(cover_paths[0].resolve()) if cover_paths else None
-    logger.info("Cover image: %s", cover)
+    # Cover handling: explicit path > ChatGPT > Unsplash.
+    override = spec.get("cover_image_path")
+    if override:
+        override_path = Path(override)
+        if override_path.exists():
+            cover = str(override_path.resolve())
+            logger.info("Cover image (explicit): %s", cover)
+        else:
+            logger.warning(
+                "cover_image_path points to missing file, falling back: %s",
+                override,
+            )
+    if not cover:
+        cover_paths = _download_images(cover_query, f"{slug_hint}_cover", 1)
+        cover = str(cover_paths[0].resolve()) if cover_paths else None
+        logger.info("Cover image (Unsplash fallback): %s", cover)
 
     pub = NotePublisher(headless=False)
     try:
