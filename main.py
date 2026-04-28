@@ -35,6 +35,7 @@ from collectors.rss_collector import RssCollector
 from collectors.trend_detector import TrendDetector
 from generators.claude_automator import ClaudeAutomator
 from generators.local_llm import LocalLLM
+from generators.llm_config import get_llm
 from generators.regenerator import Regenerator
 # DiagramGenerator was removed: Zenn renders ```mermaid natively and
 # NotePublisher converts mermaid → ASCII at publish time, so the
@@ -55,6 +56,7 @@ from utils.token_manager import TokenManager, estimate_tokens
 from utils.feedback_recorder import FeedbackRecorder
 from utils.logger import setup_logger
 from utils.experiments import is_enabled as _xp_enabled
+from utils.experiments import record_variant as _xp_record_variant
 
 load_dotenv()
 logger = setup_logger(__name__)
@@ -333,6 +335,12 @@ def _codex_research_brief(article: dict) -> str:
 
 _LEARNED_BLOCK_CACHE: dict[str, str] = {}
 
+# Parallel cache holding the *structured* learn stats so
+# ``_compute_learn_adoption`` can measure against the exact same set of
+# top tags/phrases the prompt saw. Populated as a side-effect of
+# ``_load_learned_block`` so the parsing cost is paid once.
+_LEARN_STATS_CACHE: dict[str, dict] = {}
+
 
 _LEARN_MERGE_WINDOW_DAYS = 7
 
@@ -369,59 +377,92 @@ def _log_thumbnail_choice(title: str, query: str, path: str) -> None:
         logger.debug("thumbnail log append failed: %s", exc)
 
 
-def _compute_learn_adoption(content: str) -> dict:
+def _compute_learn_adoption(
+    content: str,
+    tags: list[str] | None = None,
+) -> dict:
     """Measure how strongly the generated article adopted the learn
     block hints.
 
-    Three axes, all computed against the currently-merged learned
-    block (loaded through the normal cache):
+    Three axes, all computed against the currently-merged learn
+    statistics (loaded through ``_LEARN_STATS_CACHE``):
 
       * ``bracket_present``: does the title include the 【...】 bracket
-        form that dominates the learn TOP10? One of the simplest
-        success predictors for note.
-      * ``phrase_hits``: count of "徹底/完全/保存版/解説" style phrase
-        markers that showed up in the recent phrase ranking.
-      * ``tag_coverage_pct``: share of the generator's output
-        (approximated from the article's hashtag section) overlapping
-        with the learned top-tag set.
+        form that dominates the learn TOP10?
+      * ``phrase_hits``: count of learn-report phrase markers (top-5
+        ranked by real usage, with a 13-word canonical floor so a
+        brand-new learn report with sparse phrase data still produces
+        a non-degenerate metric). Sourced dynamically from the parsed
+        learn stats instead of a hardcoded list.
+      * ``tag_coverage_pct``: share of the *generated hashtags*
+        overlapping with the learned top-tag set. Hashtags are taken
+        from *tags* when supplied (the HashtagGenerator preview) —
+        previously the code scanned the article body for ``#tags``,
+        but note bodies carry no inline hashtags (note stores them on
+        the article object), so the metric was stuck at 0.0%. When
+        *tags* is None, falls back to body scan for backward compat.
 
     Returned values are informational — the caller stores them on the
-    score dict but does not gate accept/reject on them. Used to watch
-    whether learn injection is actually changing the LLM's output.
+    score dict but does not gate accept/reject on them.
     """
     import re as _re
 
     first_line = content.splitlines()[0] if content else ""
     bracket_present = bool(_re.search(r"【[^】]+】", first_line))
 
-    canonical_phrases = [
+    # Ensure stats cache is primed (no-op on second call). The learn
+    # block is also what the prompt saw, so adoption is measured
+    # against the very same data the LLM was steered by.
+    _load_learned_block()
+
+    stats = _LEARN_STATS_CACHE.get("note", {})
+    learned_phrase_raw = stats.get("top_phrases", [])
+    learned_tag_set = set(stats.get("top_tags", []))
+
+    # Learn reports encode phrase patterns as category labels such as
+    # "まとめ・選" or "解説系". Normalize into searchable tokens by
+    # splitting on common delimiters and stripping the "系" suffix so
+    # ``in first_line`` actually matches. Keeps the metric honest when
+    # the learn schema evolves: if future reports emit clean tokens,
+    # this normalization is a no-op.
+    import re as _re2
+    _learned_phrase_tokens: set[str] = set()
+    for raw in learned_phrase_raw:
+        for tok in _re2.split(r"[・/,、\s]+", raw.strip()):
+            tok = tok.rstrip("系").strip()
+            if 1 <= len(tok) <= 8:
+                _learned_phrase_tokens.add(tok)
+
+    # Canonical floor: keep always-useful markers in the denominator so
+    # a brand-new learn report with zero-parse phrases still produces
+    # a meaningful ratio.
+    canonical_floor = {
         "徹底", "完全", "保存版", "解説", "まとめ", "選",
         "狂気", "永久", "決定版", "朝メモ", "そもそも",
         "コアメンバー", "殿堂入り",
-    ]
-    phrase_hits = sum(1 for p in canonical_phrases if p in first_line)
+    }
+    phrase_universe = _learned_phrase_tokens | canonical_floor
+    phrase_hits = sum(1 for p in phrase_universe if p in first_line)
 
-    # Pull the tags line if present (our generator emits a hashtag
-    # section footer); otherwise fall back to 0% coverage.
+    # Tag coverage: prefer generator output, fall back to body scan.
     tag_coverage_pct = 0.0
-    learned_tag_set: set[str] = set()
-    try:
-        block = _load_learned_block()
-        for line in block.splitlines():
-            m = _re.match(r"^\s*-\s*#?([^\s:：]+)\s*[:：]\s*\d+", line)
-            if m:
-                learned_tag_set.add(m.group(1).lstrip("#"))
-    except Exception:  # noqa: BLE001
-        pass
-    hashtag_matches = _re.findall(r"#(\w[\w_]{0,30})", content)
-    if learned_tag_set and hashtag_matches:
-        overlap = sum(1 for t in hashtag_matches if t in learned_tag_set)
-        tag_coverage_pct = 100.0 * overlap / len(hashtag_matches)
+    if tags:
+        clean_tags = [t.lstrip("#").strip() for t in tags if t]
+        if clean_tags and learned_tag_set:
+            overlap = sum(1 for t in clean_tags if t in learned_tag_set)
+            tag_coverage_pct = 100.0 * overlap / len(clean_tags)
+    else:
+        hashtag_matches = _re.findall(r"#(\w[\w_]{0,30})", content)
+        if learned_tag_set and hashtag_matches:
+            overlap = sum(
+                1 for t in hashtag_matches if t in learned_tag_set
+            )
+            tag_coverage_pct = 100.0 * overlap / len(hashtag_matches)
 
     return {
         "bracket_present": bracket_present,
         "phrase_hits": phrase_hits,
-        "phrase_total": len(canonical_phrases),
+        "phrase_total": len(phrase_universe),
         "tag_coverage_pct": round(tag_coverage_pct, 1),
     }
 
@@ -431,13 +472,20 @@ def _parse_learn_sections(text: str) -> dict[str, list[str]]:
     single learn-report markdown.
 
     Returns a dict with keys ``top_titles``, ``phrases``, ``tags``.
+
+    Accepts either H2 (``## ``) or H3 (``### ``) as the section
+    boundary — learn reports put ``よく使われるパターン`` under H3 while
+    ``トップ記事`` / ``タグ分布`` live at H2, and we want both.
     """
+    def _is_heading(line: str) -> bool:
+        return line.startswith(("## ", "### "))
+
     def _section(marker: str, limit: int) -> list[str]:
         lines = text.splitlines()
         out: list[str] = []
         in_sec = False
         for line in lines:
-            if line.startswith("## "):
+            if _is_heading(line):
                 if marker in line:
                     in_sec = True
                     continue
@@ -457,6 +505,73 @@ def _parse_learn_sections(text: str) -> dict[str, list[str]]:
         "phrases": _section("よく使われるパターン", 8),
         "tags": _section("タグ分布", 20),
     }
+
+
+def _load_success_patterns(max_chars: int = 900) -> str:
+    """Read ``docs/knowledge/quality_successes.md`` (auto-generated by
+    ``scripts/analyze_performance.py``) and return a prompt-injectable
+    block listing the high-engagement title/structure patterns.
+
+    Complementary to :func:`_load_failure_patterns` — same pipeline,
+    opposite polarity. Together they form the self-improving quality
+    loop: scrape performance → rank → emit success/failure patterns →
+    inject into the note prompt on the next generation cycle.
+    """
+    path = Path("docs/knowledge/quality_successes.md")
+    if not path.exists():
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.debug("success pattern read failed: %s", exc)
+        return ""
+
+    # Extract two key sections from the auto-generated file:
+    #   "## 採用すべきタイトル型" and "## 採用すべき具体タイトル例".
+    # We skip "last updated" / comment lines so the prompt stays tight.
+    parts: list[str] = [
+        "\n\n【エンゲージメント実績ベース — 真似すべき成功型】",
+    ]
+    in_shape = False
+    in_examples = False
+    bullet_count = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("## 採用すべきタイトル型"):
+            in_shape = True
+            in_examples = False
+            bullet_count = 0
+            parts.append("\n★ 実績上位で多いタイトル型:")
+            continue
+        if stripped.startswith("## 採用すべき具体タイトル例"):
+            in_shape = False
+            in_examples = True
+            bullet_count = 0
+            parts.append("\n★ 実績上位の具体タイトル例:")
+            continue
+        if stripped.startswith("## "):
+            in_shape = False
+            in_examples = False
+            continue
+        if (in_shape or in_examples) and stripped.startswith("- "):
+            parts.append(stripped)
+            bullet_count += 1
+            if bullet_count >= 6:
+                if in_shape:
+                    in_shape = False
+                else:
+                    in_examples = False
+
+    if len(parts) == 1:
+        return ""  # Nothing useful found
+
+    parts.append(
+        "\n上記の型を踏襲しつつ、今回の記事内容に沿ったバリエーションで書くこと。"
+    )
+    block = "\n".join(parts) + "\n"
+    if len(block) > max_chars:
+        block = block[:max_chars] + "…\n"
+    return block
 
 
 def _load_failure_patterns(max_chars: int = 900) -> str:
@@ -617,8 +732,27 @@ def _load_learned_block() -> str:
         )
         block = "\n".join(parts) + "\n"
 
-        # Append the failure-pattern block so the LLM avoids known traps.
-        block += _load_failure_patterns()
+        # Stash the parsed stats alongside the formatted block so
+        # ``_compute_learn_adoption`` can measure against the same
+        # top-phrase / top-tag set the prompt saw.
+        _LEARN_STATS_CACHE["note"] = {
+            "top_phrases": [p for p, _ in phrases_ranked],
+            "top_tags": [t for t, _ in tags_ranked],
+            "top_titles": merged_titles[:10],
+        }
+
+        # Append the failure-pattern block so the LLM avoids known
+        # traps. Gated so A/B runs can isolate its contribution.
+        if _xp_enabled("learn.failure_patterns"):
+            block += _load_failure_patterns()
+
+        # Append the success-pattern block — closes the quality loop
+        # added 2026-04-23 (scripts/analyze_performance.py). LLM gets
+        # both "avoid these traps" (failures) and "match these shapes"
+        # (successes) so the next generation converges toward proven
+        # engagement patterns.
+        if _xp_enabled("learn.success_patterns"):
+            block += _load_success_patterns()
     except Exception as exc:
         logger.warning("learned block load failed: %s", exc)
         block = ""
@@ -818,6 +952,16 @@ _JP_STOPWORDS = frozenset({
 # Each entry: (regex on title+body, mood modifier appended to query).
 # First match wins, ordered most specific → most general.
 _IMAGE_MOOD_RULES: list[tuple[str, str]] = [
+    # Entertainment / comedy / voice actor / celebrity — high priority
+    # so an LLM hallucination that smuggles "美容室" or "コスメ" into a
+    # 令和ロマン / 花澤香菜 article doesn't make the image query bleed
+    # into K-beauty territory (see 2026-04-23 incident).
+    (r"お笑い|漫才|コント|芸人|M-?1|R-?1|キングオブコント|"
+     r"令和ロマン|霜降り明星|ミルクボーイ|錦鯉|ランジャタイ",
+     "comedy stage spotlight crowd"),
+    (r"声優|アニメ|ラノベ|劇場版|映画|ドラマ|俳優|女優",
+     "studio microphone cinematic spotlight"),
+
     # Female-targeted aesthetics — cosmetics, K-beauty, K-POP idol,
     # femaleinterest lifestyle, dieting / self-care.
     (r"コスメ|美容|スキンケア|メイク|化粧|美白|保湿|美活",
@@ -1247,34 +1391,58 @@ def _insert_stock_images(
         for img, path in downloaded[1:]
     ]
 
-    # Insert into markdown
+    # Insert into markdown.
+    #
+    # LLM (Gemma3) frequently demotes body sections to ``### 1.`` /
+    # ``### 2.`` H3s even when the prompt asks for H2s. Articles with
+    # only 2-3 literal ``##`` headings (福岡市/ノジマ電気 2026-04-23)
+    # ended up with just 2 images because the old loop only counted
+    # H2s. Treat H3 numbered list sections as structural H2 for the
+    # purpose of image placement so inline image count stays healthy.
     lines = content.split("\n")
     out: list[str] = []
-    h2_seen = 0
+    section_seen = 0
     hero_inserted = False
     section_idx = 0
+    _numbered_h3_re = re.compile(r"^###\s+\d+[\.\s]")
 
     for line in lines:
         is_h2 = line.startswith("## ")
-        if is_h2:
-            h2_seen += 1
-            # Insert section image BEFORE every 2nd H2 (but not the first)
-            if h2_seen >= 3 and (h2_seen % 2) == 1 and section_idx < len(section_blocks):
+        is_numbered_h3 = bool(_numbered_h3_re.match(line))
+        is_section = is_h2 or is_numbered_h3
+        if is_section:
+            section_seen += 1
+            # Insert section image BEFORE every other section past the
+            # first (greedier than the old "every 2nd H2 starting at #3"
+            # rule — the old rule needed ≥7 H2s to place all 3 images).
+            if (
+                section_seen >= 2
+                and (section_seen % 2) == 0
+                and section_idx < len(section_blocks)
+            ):
                 out.append("")
                 out.append(section_blocks[section_idx])
                 section_idx += 1
             out.append(line)
-            # Insert hero image AFTER first H2
-            if not hero_inserted and h2_seen == 1:
+            # Insert hero image AFTER first section heading.
+            if not hero_inserted and section_seen == 1:
                 out.append("")
                 out.append(hero_block)
                 hero_inserted = True
         else:
             out.append(line)
 
-    # If no H2 found at all, prepend hero at the top
+    # If no section heading was found at all, prepend hero at the top.
     if not hero_inserted:
         out = [hero_block, ""] + out
+
+    # Flush any remaining section images at the end so the article
+    # doesn't get shortchanged on inline images just because the LLM
+    # produced few structural headings.
+    while section_idx < len(section_blocks):
+        out.append("")
+        out.append(section_blocks[section_idx])
+        section_idx += 1
 
     return "\n".join(out)
 
@@ -1371,17 +1539,49 @@ def collect_articles(config: dict) -> dict:
     except Exception as e:
         logger.error("RSS(note)収集エラー: %s", e)
 
-    # Google Trends: trending topics in Japan for note
-    try:
-        gt_cfg = config.get("collection", {}).get("google_trends", {}) or {}
-        gt = GoogleTrendsCollector(
-            max_results=gt_cfg.get("max_results", 30),
+    # Google Trends: disabled as a note source (2026-04-23).
+    # Rationale: owner's editorial direction is self-help / knowledge
+    # sharing — not breaking news. Trends fed raw celebrity names
+    # (花澤香菜, 令和ロマン, ソフトバンク株価, サンケイビル) that the LLM
+    # could not responsibly write about without fact base, producing
+    # hallucinated placeholder text. Knowledge topic pool (see
+    # ``data/knowledge_topics.json`` + ``KnowledgeTopicsCollector``)
+    # replaces this feeding. Gated so it can be re-enabled for
+    # experiments by flipping ``collection.google_trends_enabled`` in
+    # experiments.yaml.
+    if _xp_enabled("collection.google_trends_enabled", default=False):
+        try:
+            gt_cfg = (
+                config.get("collection", {}).get("google_trends", {}) or {}
+            )
+            gt = GoogleTrendsCollector(
+                max_results=gt_cfg.get("max_results", 30),
+            )
+            articles = gt.collect()
+            collected["note"].extend(articles)
+            logger.info("Google Trends: %d件収集", len(articles))
+        except Exception as e:
+            logger.error("Google Trends収集エラー: %s", e)
+    else:
+        logger.info(
+            "Google Trends: DISABLED (knowledge-topics driven strategy)",
         )
-        articles = gt.collect()
-        collected["note"].extend(articles)
-        logger.info("Google Trends: %d件収集", len(articles))
-    except Exception as e:
-        logger.error("Google Trends収集エラー: %s", e)
+
+    # Knowledge topics: CLAUDE.md の5 pillar (韓国美容 / 隠れた名店 /
+    # コーヒー / 自分磨き / AI副業) を evergreen topic pool から供給。
+    # noteは自己啓発/ナレッジの場であるという編集方針に沿う。
+    try:
+        from collectors.knowledge_topics_collector import (
+            KnowledgeTopicsCollector,
+        )
+        kt = KnowledgeTopicsCollector()
+        kt_articles = kt.collect()
+        collected["note"].extend(kt_articles)
+        logger.info("Knowledge topics: %d件収集", len(kt_articles))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "Knowledge topics収集スキップ (%s) — pool未設定?", e,
+        )
 
     return collected
 
@@ -1407,8 +1607,12 @@ def rank_articles(collected: dict) -> dict:
 # =====================================================================
 
 def _init_llm(token_manager: TokenManager):
-    """LLMバックエンドを初期化する。(claude or local)"""
-    local_llm = LocalLLM()
+    """LLMバックエンドを初期化する。(claude or local)
+
+    Uses the model configured for the ``writer`` task — falls back to
+    ``gemma3:12b`` unless ``LLM_MODEL_WRITER`` env var overrides it.
+    """
+    local_llm = get_llm("writer")
     use_local = not token_manager.is_within_budget()
 
     if use_local:
@@ -1574,6 +1778,40 @@ def _generate_single_article(
     if platform == "note" and _xp_enabled("learn.learned_block"):
         learned_block = _load_learned_block()
 
+    # Knowledge-topic injection — when the seed came from the evergreen
+    # pool, pass the structured persona/pain/promise/outline to the LLM
+    # so it writes to a real reader-pain brief instead of improvising
+    # around a bare title. This is what replaces the news-driven Google
+    # Trends flow (pivot 2026-04-23 after the 花澤香菜 / 令和ロマン
+    # hallucination incidents).
+    knowledge_block = ""
+    kt = article.get("knowledge_topic")
+    if kt and isinstance(kt, dict):
+        outline = kt.get("outline", "")
+        prohibited = kt.get("prohibited_angles") or []
+        evidence_required = kt.get("evidence_required") or []
+        parts = [
+            "\n\n【この記事の設計書 — 必ず従うこと】",
+            f"ペルソナ: {kt.get('persona', '')}",
+            f"読者の課題: {kt.get('pain', '')}",
+            f"約束する価値: {kt.get('promise', '')}",
+            f"構成の骨子: {outline}",
+        ]
+        if evidence_required:
+            parts.append(
+                "必要な一次ソース: " + " / ".join(evidence_required),
+            )
+        if prohibited:
+            parts.append(
+                "書いてはいけない角度: " + " / ".join(prohibited),
+            )
+        parts.append(
+            "骨子の各セクションは最低 500 字、全体 2800 字以上。"
+            "根拠のない固有名詞/URL/ブランド名を創作してはいけない。"
+            "参考リンクに placeholder (『ここに入力』『実際には〜URLを』) を残すと不合格。",
+        )
+        knowledge_block = "\n".join(parts) + "\n"
+
     # --- 生成 ---
     try:
         prompt = (
@@ -1582,6 +1820,7 @@ def _generate_single_article(
             + bracket_hint
             + research_block
             + learned_block
+            + knowledge_block
             + _regen_feedback  # empty unless this is an auto-regen attempt
         )
     except KeyError as e:
@@ -1598,6 +1837,16 @@ def _generate_single_article(
 
     # --- Markdown構造補正（Gemma3が見出しを省略する問題の対策） ---
     content = _fix_markdown_structure(content)
+
+    # --- LLM出力アーティファクトのsanitize（架空のURL等のplaceholder、
+    #     空欄バレット連続を除去） — 客観/主観スコアより前。両プラットフォーム共通 ---
+    from generators.content_sanitizer import sanitize as _sanitize_llm_output
+    content, _stripped = _sanitize_llm_output(content)
+    if _stripped:
+        logger.info(
+            "[%s] content sanitizer: %d artifact(s) removed",
+            platform, len(_stripped),
+        )
 
     # --- Google Places API によるスポット検証（note グルメ/地域記事のみ） ---
     # LLMが書いた店名を Google Places で検証し、実在しない店は丸ごと削除、
@@ -1705,8 +1954,11 @@ def _generate_single_article(
         }
 
     # --- 主観スコア ---
+    # Scorer uses a separately-configured LLM (env: LLM_MODEL_SCORER) to
+    # avoid writer→scorer self-grading bias when both run the same model.
+    _scorer_llm = get_llm("scorer")
     eval_fn = (
-        local_llm.generate if use_local
+        _scorer_llm.generate if use_local
         else lambda p: claude.send_prompt(p)
     )
     subj_evaluator = SubjectiveEvaluator()
@@ -1848,15 +2100,44 @@ def _generate_single_article(
     # injection is a hope, not a feedback signal. Low adoption over
     # many runs is a prompt-design bug, not a model capacity issue.
     if platform == "note" and _xp_enabled("learn.track_adoption"):
-        adoption = _compute_learn_adoption(content)
+        # Preview-generate the hashtag set the publish flow will emit
+        # so tag_coverage_pct reflects what readers actually see. Old
+        # path scanned the body for inline #tags, but note bodies
+        # don't carry hashtags — stats were structurally stuck at 0%.
+        try:
+            _preview_hashtags = HashtagGenerator(max_tags=10).generate(
+                title=article["title"],
+                content=content,
+                source=article.get("source", ""),
+            )
+        except Exception as _exc:  # noqa: BLE001
+            logger.debug("hashtag preview failed: %s", _exc)
+            _preview_hashtags = []
+        adoption = _compute_learn_adoption(content, tags=_preview_hashtags)
         final["learn_adoption"] = adoption
         logger.info(
-            "[%s] learn採用率: brackets=%s phrases=%d/%d tags=%.0f%%",
+            "[%s] learn採用率: brackets=%s phrases=%d/%d tags=%.0f%% (preview-tags=%d)",
             platform,
             "✓" if adoption["bracket_present"] else "✗",
             adoption["phrase_hits"], adoption["phrase_total"],
             adoption["tag_coverage_pct"],
+            len(_preview_hashtags),
         )
+
+    # Record which A/B flags were active for this generation so later
+    # analysis can compare score / view distributions across variants.
+    # Lands on both the scores dict (so ArticleStore persists it) and
+    # the return dict (for direct callers).
+    _xp_record_variant(final, [
+        "learn.learned_block",
+        "learn.failure_patterns",
+        "learn.track_adoption",
+        "hashtag.blend_learned",
+        "regen.thin_content_retry",
+        "regen.char_count_feedback",
+        "image.body_fallback_query",
+        "publish.zenn_scrap_only",
+    ])
 
     logger.info(
         "[%s] 生成完了: %s (総合: %s, 証拠Lv: %s)",
@@ -1957,13 +2238,14 @@ def generate_and_score(
             skipped = len(ranked.get(platform, [])) - len(candidates)
             logger.info("[%s] 生成済みソースをスキップ: %d件", platform, skipped)
 
-        # note: Google Trendsのトレンド系ソースを1枠予約する。
-        # Google Trends topics surface timely buzz that RSS feeds
-        # may miss, so we guarantee one slot when available.
-        # Diversity strategy: rank candidates by *least recently
-        # used area first, then trend_score*.
+        # note: Google Trends枠予約ロジックを廃止 (2026-04-23)。
+        # noteのfeeding戦略が news → evergreen knowledge topics に移行
+        # したため、Trends枠の保留は不要。残す場合はfallbackとして
+        # experiments.yaml::collection.google_trends_enabled を True に。
         selection = candidates[:articles_per_week]
-        if platform == "note":
+        if platform == "note" and _xp_enabled(
+            "collection.google_trends_enabled", default=False,
+        ):
             from collections import Counter
             recent_areas = _load_recent_note_areas()
             recent_counts = Counter(recent_areas)
@@ -1972,7 +2254,6 @@ def generate_and_score(
             ]
 
             def _area_rank(art: dict) -> tuple[int, float]:
-                # Lower recent_count wins, ties broken by higher trend_score.
                 area = _area_of_article(art)
                 return (
                     -recent_counts.get(area, 0),
@@ -1980,16 +2261,6 @@ def generate_and_score(
                 )
 
             trends_candidates.sort(key=_area_rank, reverse=True)
-
-            # Log topic distribution so we can see why a pick was made.
-            _area_histo = Counter(
-                _area_of_article(a) or "-" for a in trends_candidates[:20]
-            )
-            logger.info(
-                "[note] Google Trends候補分布(top20): %s",
-                ", ".join(f"{k}×{v}" for k, v in _area_histo.most_common(10)),
-            )
-
             top_trends = trends_candidates[0] if trends_candidates else None
             if top_trends and top_trends not in selection:
                 if selection:
@@ -1998,10 +2269,8 @@ def generate_and_score(
                     selection = [top_trends]
                 picked_area = _area_of_article(top_trends) or "-"
                 logger.info(
-                    "[note] Google Trends枠を確保: [%s] %s (recent: %s)",
-                    picked_area,
-                    top_trends.get("title", "")[:40],
-                    ",".join(recent_areas) or "none",
+                    "[note] Google Trends枠(legacy): [%s] %s",
+                    picked_area, top_trends.get("title", "")[:40],
                 )
                 _remember_note_area(picked_area)
 
@@ -2024,6 +2293,21 @@ def generate_and_score(
                     source_url = article.get("url", "")
                     if source_url:
                         _save_generated_source(source_url)
+                    # Knowledge-topic cooldown: record the topic id on
+                    # the cooldown log so it's skipped until the
+                    # ``cooldown_days`` window elapses. Gated on actual
+                    # success so a rejected article still lets us
+                    # retry the topic on a future run.
+                    kt = article.get("knowledge_topic") or {}
+                    kt_id = kt.get("id") if isinstance(kt, dict) else None
+                    if kt_id:
+                        try:
+                            from collectors.knowledge_topics_collector import (
+                                record_topic_used,
+                            )
+                            record_topic_used(kt_id)
+                        except Exception:  # noqa: BLE001
+                            pass
                     approved.append(result)
             except Exception as e:
                 logger.error(
@@ -2230,11 +2514,35 @@ def publish_approved(
         _re.compile(r"架空の\s*URL"),
     ]
 
+    # Codex Q2 (2026-04-23): the publish-time deny list above only
+    # catches the Bluesky/架空URL patterns — it didn't see the new
+    # forbidden_phrases (placeholder text, empty-URL bullets, 〇〇
+    # placeholders) so today's 5 broken note articles slipped past.
+    # Extend the deny check by also loading the scorer's
+    # forbidden_phrases at publish time. Compiled once per pipeline
+    # run for speed.
+    _SETTINGS_FORBIDDEN: list[_re.Pattern[str]] = []
+    try:
+        _settings = config.get("evidence", {}) or {}
+        for _raw in _settings.get("forbidden_phrases") or []:
+            try:
+                _SETTINGS_FORBIDDEN.append(_re.compile(
+                    _raw, _re.MULTILINE | _re.DOTALL,
+                ))
+            except _re.error as _exc:
+                logger.warning(
+                    "publish-deny: 不正な正規表現をスキップ: %r (%s)",
+                    _raw, _exc,
+                )
+    except Exception as _exc:  # noqa: BLE001
+        logger.warning("publish-deny: settings 読込失敗: %s", _exc)
+    _ALL_PUBLISH_DENY = _PUBLISH_DENY_PATTERNS + _SETTINGS_FORBIDDEN
+
     def _deny_reason(txt: str) -> str | None:
-        for pat in _PUBLISH_DENY_PATTERNS:
+        for pat in _ALL_PUBLISH_DENY:
             m = pat.search(txt)
             if m:
-                return m.group(0)
+                return m.group(0)[:60]
         return None
 
     for article_data in approved:
@@ -2268,14 +2576,17 @@ def publish_approved(
             title = jp_title
 
         # Final deny check — refuse to publish when the stored title,
-        # the extracted JP title, or the first 2KB of body matches any
-        # of the hallucination patterns. Flip the sheet row to ❌却下
-        # so the operator sees why it was blocked and does not retry
-        # it blindly.
+        # the extracted JP title, the head OR the tail of the body
+        # matches any of the hallucination/placeholder patterns. The
+        # tail is critical because 参考リンク placeholders and
+        # empty-URL bullets (はしか/サンケイビル 2026-04-23 events)
+        # live at the bottom of the article. Flip the sheet row to ❌
+        # 却下 so the operator sees why it was blocked.
         _deny_hit = (
             _deny_reason(article_data.get("title", ""))
             or _deny_reason(title)
-            or _deny_reason(content[:2000])
+            or _deny_reason(content[:2500])
+            or _deny_reason(content[-2500:])
         )
         if _deny_hit:
             logger.warning(
@@ -2343,6 +2654,25 @@ def publish_approved(
                         "structure_type", "standard"
                     ),
                 )
+                # Persist the published URL back onto the stored
+                # article so `scripts/analyze_performance.py` can
+                # join performance rows (which know the noteUrl) to
+                # the scores dict without relying on 39% fuzzy title
+                # matching (Codex review 2026-04-23).
+                # Cross-check note: log at WARNING (not debug) so a
+                # silent persist failure can't quietly break the
+                # quality loop's exact-join improvement.
+                try:
+                    store = ArticleStore()
+                    stored = store.load(article_id) or {}
+                    stored["published_url"] = url
+                    stored["published_at"] = datetime.now().isoformat()
+                    store.save(article_id, stored)
+                except Exception as _exc:  # noqa: BLE001
+                    logger.warning(
+                        "published_url 永続化失敗 (id=%s url=%s): %s",
+                        article_id, url, _exc,
+                    )
                 logger.info("[%s] 投稿完了: %s", platform, title[:40])
 
         except Exception as e:
@@ -2546,11 +2876,52 @@ def _publish_note(
         if inline_images:
             logger.info("[note] note CDN にアップロードする画像 %d 件", len(inline_images))
 
-        # Topic-themed cover from Unsplash. Falls back to None when
-        # Unsplash is unreachable; publish_article will skip the
-        # eyecatch step in that case. Pass body content so the mood
-        # modifier (pastel/cinematic/neon) picks the right aesthetic.
-        cover_path = _fetch_topic_cover(title, content)
+        # Image cascade (2026-04-28): ChatGPT Ghibli-style first
+        # (default ON), then existing Unsplash flow. The cascade is
+        # owned by chatgpt_batch_helper which short-circuits when
+        # Brave is running or USE_CHATGPT_IMAGES=0 is set, so the old
+        # behaviour stays the fallback path — degradation only when
+        # ChatGPT is opted out, never silently changes.
+        cover_path: Path | str | None = None
+        try:
+            from generators.chatgpt_batch_helper import (
+                chatgpt_image_batch,
+                is_chatgpt_image_gen_enabled,
+            )
+            if is_chatgpt_image_gen_enabled():
+                cgpt_cover, cgpt_inline = chatgpt_image_batch(
+                    title=title,
+                    content=content,
+                    inline_count=4,
+                    slug_hint=re.sub(r"[^a-zA-Z0-9_-]", "_", title)[:40],
+                    genre_hint=source or "general tech / lifestyle",
+                )
+                if cgpt_cover:
+                    cover_path = cgpt_cover
+                # Use ChatGPT inline images when produced; if partial,
+                # we keep what we got and let the body-harvested
+                # inline_images stay as the rest. Caps at 4 by note's
+                # editor-paste rules.
+                if cgpt_inline:
+                    chatgpt_inline_strs = [
+                        str(p.resolve()) for p in cgpt_inline
+                    ]
+                    if not inline_images:
+                        inline_images = chatgpt_inline_strs[:4]
+                    else:
+                        # Prepend ChatGPT images so they render first.
+                        inline_images = (
+                            chatgpt_inline_strs + inline_images
+                        )[:4]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[note] ChatGPT image batch failed (%s); "
+                "falling back to Unsplash cover.", exc,
+            )
+
+        # Existing Unsplash fallback for the cover.
+        if cover_path is None:
+            cover_path = _fetch_topic_cover(title, content)
 
         url = note_pub.publish_article(
             title=title,
@@ -2673,8 +3044,8 @@ def _process_regeneration_requests(
             "platform": stored.get("platform", ""),
         })
 
-        # Run subjective scoring
-        eval_fn = local_llm.generate
+        # Run subjective scoring (separate scorer model — see LLM_MODEL_SCORER)
+        eval_fn = get_llm("scorer").generate
         subj_evaluator = SubjectiveEvaluator()
         subj_result = subj_evaluator.score(content, eval_fn, {
             "research_brief": "",
@@ -3087,6 +3458,32 @@ def main():
         sg_path = updater.suggest_prompt_improvements(patterns)
         logger.info("ナレッジ更新: %s", kb_path)
         logger.info("プロンプト改善案: %s", sg_path)
+
+        # --- Self-improving quality loop (added 2026-04-23) ---
+        # Pipeline stage (3/3): scrape own-article performance →
+        # cross-join with experiment_variant / learn_adoption → emit
+        # quality_successes.md which _load_learned_block will inject
+        # into the next generation's note prompt. Failures here are
+        # swallowed — the core learn report was already written above.
+        import subprocess as _sp
+        for _script in (
+            "scripts/scrape_note_performance.py",
+            "scripts/analyze_performance.py",
+        ):
+            try:
+                _rc = _sp.call(
+                    [sys.executable, "-X", "utf8", _script],
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                )
+                if _rc != 0:
+                    logger.warning(
+                        "quality loop step %s exited rc=%d", _script, _rc,
+                    )
+            except Exception as _exc:  # noqa: BLE001
+                logger.warning(
+                    "quality loop step %s failed: %s", _script, _exc,
+                )
+
         logger.info("=== 学習完了: %d件のサンプルから学習 ===", len(all_articles))
         return
 
