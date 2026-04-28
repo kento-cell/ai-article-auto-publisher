@@ -59,7 +59,11 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
-ALLOWED_CHANNEL = os.getenv("SLACK_CHANNEL_NAME", "ai-publisher")
+ALLOWED_CHANNELS = frozenset(
+    name.strip()
+    for name in os.getenv("SLACK_CHANNEL_NAME", "ai-publisher").split(",")
+    if name.strip()
+)
 ALLOWED_USER_IDS = set(
     filter(None, os.getenv("SLACK_ALLOWED_USERS", "").split(","))
 )
@@ -92,7 +96,7 @@ def _is_authorized(event: dict) -> bool:
 
     channel_name = _get_channel_name(event.get("channel", ""))
 
-    if channel_name != ALLOWED_CHANNEL:
+    if channel_name not in ALLOWED_CHANNELS:
         return False
 
     # Fail-closed: an empty whitelist must NOT authorise everyone in
@@ -141,9 +145,25 @@ _current_label: str = ""
 _is_running: bool = False
 
 
+_ALLOWED_MODES = frozenset({
+    "generate", "publish", "collect-only", "dry-run",
+    "regenerate", "setup-sheets", "cleanup-sheets", "learn",
+})
+
+
 def _run_pipeline_sync(say, mode: str, label: str):
     """Run main.py and post progress to Slack."""
     global _current_process, _current_label, _is_running
+
+    # Defence in depth: only documented flags are allowed, even though
+    # the current dispatch table hands in trusted constants. This keeps
+    # a future Slack payload or Bolt bug from smuggling arbitrary argv
+    # (e.g. "--help" is fine, "foo; rm" would not be — but Popen's
+    # list form already blocks shell metas; the allowlist blocks the
+    # argparse-level surface).
+    if mode not in _ALLOWED_MODES:
+        say(f"⚠️ 未知のモード: `{mode}`")
+        return
 
     # Atomic check-and-set under lock to prevent race condition
     with _process_lock:
@@ -366,6 +386,8 @@ def handle_message(event: dict, say):
         _cmd_regenerate(say)
     elif text == "learn":
         _cmd_learn(say)
+    elif text == "catchup":
+        _cmd_catchup(say)
     elif text == "stop":
         _cmd_stop(say)
     elif text == "status":
@@ -398,7 +420,12 @@ def _cmd_help(say):
                         "`collect` — 収集+ランク付けのみ（トークン消費なし）\n"
                         "`dryrun` — 生成+スコアまで（投稿なし）\n\n"
                         "*📤 投稿*\n"
-                        "`publish` — Sheetsで承認済みの記事を投稿\n\n"
+                        "`publish` — Sheetsで承認済みの記事を投稿\n"
+                        "`edit <URL>` — 投稿済み記事の本文を再適用\n\n"
+                        "*🌅 情報キャッチアップ*\n"
+                        "`catchup` — 西海岸AI情報を取得→Gemma3要約→`#ai-catchup`へ投稿\n\n"
+                        "*📚 学習*\n"
+                        "`learn` — note記事メトリクスを収集→ナレッジ更新\n\n"
                         "*🔧 管理*\n"
                         "`status` — 現在の状態確認\n"
                         "`stop` — 実行中のタスクを停止\n"
@@ -461,6 +488,39 @@ def _cmd_learn(say):
         daemon=True,
     )
     thread.start()
+
+
+def _cmd_catchup(say):
+    """Pull AI news from free sources, summarise with Gemma3, post digest.
+
+    Lightweight (1–3 min, brief GPU use); runs in a thread without
+    touching the main pipeline lock so it won't block generate/publish.
+    """
+    def _do_catchup():
+        say("📡 *AI Catchup* を取得中… (RSS / HN / Reddit / arXiv)")
+        try:
+            proc = subprocess.run(
+                [PYTHON, "scripts/run_catchup.py"],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=600,
+            )
+            if proc.returncode == 0:
+                # Digest already posted to Slack by the script itself.
+                last = (proc.stdout or "").strip().splitlines()[-1:] or [""]
+                say(f"✅ catchup 完了: `{last[0]}`")
+            else:
+                err = (proc.stderr or proc.stdout or "").strip()[-500:]
+                say(f"❌ catchup 失敗 (exit {proc.returncode})\n```\n{err}\n```")
+        except subprocess.TimeoutExpired:
+            say("⏱️ catchup タイムアウト (10分超)")
+        except Exception as exc:
+            say(f"❌ catchup 実行エラー: `{exc}`")
+
+    threading.Thread(target=_do_catchup, daemon=True).start()
 
 
 def _cmd_edit(say, url: str):
@@ -662,7 +722,7 @@ def main():
         sys.exit(1)
 
     print("Slack Bot starting...", flush=True)
-    print(f"  Channel: #{ALLOWED_CHANNEL}", flush=True)
+    print(f"  Channels: {', '.join('#' + c for c in sorted(ALLOWED_CHANNELS))}", flush=True)
     print(f"  Allowed users: {ALLOWED_USER_IDS or 'all'}", flush=True)
 
     handler = SocketModeHandler(app, APP_TOKEN)
