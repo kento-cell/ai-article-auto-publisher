@@ -98,7 +98,15 @@ class TrendDetector:
     ) -> list[dict[str, Any]]:
         """Sort *articles* by trend score descending.
 
-        Each article dict is augmented with a ``trend_score`` key.
+        Each article dict is augmented with a ``trend_score`` key —
+        UNLESS the source already set one deliberately (e.g. the
+        ``knowledge_topics`` collector pins 95.0 to ensure its
+        evergreen seeds win over RSS spikes). Prior to 2026-04-23 this
+        method unconditionally overwrote, collapsing the evergreen
+        topics to ~12.5 because they have no date/social signal — so
+        the whole knowledge-topics pivot silently didn't work and
+        news feeds kept winning the note slot. Treat any existing
+        ``trend_score`` as an editorial hint and leave it alone.
 
         Args:
             articles: List of article dicts.
@@ -107,10 +115,19 @@ class TrendDetector:
             New list sorted by ``trend_score`` (highest first).
         """
         for article in articles:
-            article["trend_score"] = self.calculate_score(article)
+            existing = article.get("trend_score")
+            # Codex cross-check (2026-04-23): if a collector sets a
+            # non-numeric ``trend_score`` (e.g. an LLM roundtrip left
+            # it as a string), the sort below would crash. Treat
+            # anything non-float/int as missing and recompute.
+            if not isinstance(existing, (int, float)):
+                article["trend_score"] = self.calculate_score(article)
+            # else: keep editorial/pinned score verbatim.
 
         ranked = sorted(
-            articles, key=lambda a: a["trend_score"], reverse=True
+            articles,
+            key=lambda a: float(a.get("trend_score") or 0),
+            reverse=True,
         )
         logger.info("Ranked %d articles by trend score", len(ranked))
         return ranked
