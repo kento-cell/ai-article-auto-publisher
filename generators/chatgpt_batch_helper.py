@@ -138,6 +138,7 @@ def chatgpt_image_batch(
     gen = ChatGPTImageGenerator(headless=False)
     results = gen.generate_batch(
         prompts=all_prompts, size="landscape", out_paths=out_paths,
+        topic=title,
     )
 
     def _is_valid(p: Path | None) -> bool:

@@ -104,6 +104,26 @@ _NAV_TIMEOUT: Final[int] = 60_000
 # Image generation takes 30-90s typically. Cap at 4min to recover.
 _IMAGE_WAIT_TIMEOUT: Final[int] = 240_000
 
+# Text-reply waiting (used by Vision evaluation). ChatGPT typically
+# answers a 2-line scoring prompt in 5-15s; cap at 60s.
+_TEXT_WAIT_TIMEOUT: Final[int] = 60_000
+
+# Vision-evaluation thresholds. The evaluator asks ChatGPT to score the
+# just-generated image 1-10 against the article topic. Below cutoff →
+# regenerate once. Default cutoff is forgiving (6/10) so the retry
+# fires only on clear topic-drift, not stylistic preferences.
+_VISION_EVAL_CUTOFF: Final[int] = 6
+# Max retries per image. Hard-coded to 1 to bound latency: a flaky
+# generation can already happen, doubling that without limit would
+# triple per-batch wall time on bad days.
+_VISION_EVAL_MAX_RETRIES: Final[int] = 1
+
+
+def _vision_eval_enabled() -> bool:
+    """``CHATGPT_VISION_EVAL`` toggle. Default off (opt-in)."""
+    val = os.environ.get("CHATGPT_VISION_EVAL", "").strip().lower()
+    return val in {"1", "true", "yes", "on"}
+
 Size = Literal["landscape", "portrait", "square"]
 _SIZE_PHRASE: Final[dict[Size, str]] = {
     "landscape": "16:9 横長 (1792×1024 ピクセル)",
@@ -132,6 +152,7 @@ class ChatGPTImageGenerator:
         prompts: list[str],
         size: Size = "landscape",
         out_paths: Optional[list[Path]] = None,
+        topic: str = "",
     ) -> list[Optional[Path]]:
         """Generate multiple images in a single ChatGPT session.
 
@@ -165,6 +186,7 @@ class ChatGPTImageGenerator:
 
         results: list[Optional[Path]] = [None] * len(prompts)
         seen_urls: set[str] = set()
+        eval_on = _vision_eval_enabled()
         try:
             self._open_browser()
             for i, (prompt, dest) in enumerate(zip(prompts, out_paths)):
@@ -179,10 +201,6 @@ class ChatGPTImageGenerator:
                 )
                 try:
                     self._send_prompt(full_prompt)
-                    # In batch mode, the previous image is still in DOM.
-                    # ``_wait_for_image`` would short-circuit on it. Pass
-                    # the seen-set so polling skips known URLs and waits
-                    # for a genuinely new one.
                     img_url = self._wait_for_image(skip_urls=seen_urls)
                     if not img_url:
                         logger.error("batch %d: no image found", i + 1)
@@ -190,6 +208,38 @@ class ChatGPTImageGenerator:
                     seen_urls.add(img_url)
                     self._download_via_browser(img_url, dest)
                     results[i] = dest
+
+                    if eval_on and topic:
+                        kind = "サムネ" if is_cover else "インライン"
+                        if not self._image_passes_vision_eval(
+                            topic=topic, kind=kind,
+                        ):
+                            # One retry: ask for a fresh image with
+                            # explicit "前回はズレていた" feedback so the
+                            # model adjusts. The skip_urls guard ensures
+                            # we wait for a new URL, not the rejected one.
+                            logger.warning(
+                                "batch %d vision-eval failed; "
+                                "regenerating once", i + 1,
+                            )
+                            retry_prompt = self._build_retry_prompt(
+                                prompt, size, is_cover, topic,
+                            )
+                            try:
+                                self._send_prompt(retry_prompt)
+                                new_url = self._wait_for_image(
+                                    skip_urls=seen_urls,
+                                )
+                                if new_url:
+                                    seen_urls.add(new_url)
+                                    self._download_via_browser(new_url, dest)
+                                    results[i] = dest
+                            except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                                logger.warning(
+                                    "batch %d retry failed: %s — "
+                                    "keeping original",
+                                    i + 1, exc,
+                                )
                 except (PlaywrightTimeoutError, PlaywrightError) as exc:
                     logger.error("batch %d failed: %s", i + 1, exc)
                     continue
@@ -203,6 +253,118 @@ class ChatGPTImageGenerator:
         finally:
             self._close_browser()
         return results
+
+    # ------------------------------------------------------------------
+    # Vision evaluation (opt-in via CHATGPT_VISION_EVAL=1)
+    # ------------------------------------------------------------------
+
+    def _image_passes_vision_eval(self, topic: str, kind: str) -> bool:
+        """Ask ChatGPT to score the most-recent image vs the article topic.
+
+        Sends a short scoring prompt, waits for the text reply, parses
+        the SCORE: <n> line, and returns True iff n >= cutoff. Any
+        failure (timeout, parse miss, browser error) returns True so
+        we don't tank a perfectly fine generation on infrastructure
+        flake — Vision eval is supplementary, not load-bearing.
+        """
+        try:
+            eval_prompt = (
+                "いま生成した画像について評価してください。\n"
+                f"記事テーマ: 『{topic[:120]}』\n"
+                f"用途: {kind}画像\n\n"
+                "以下のフォーマットで1行ずつ返答:\n"
+                "SCORE: <1-10の整数。記事内容との合致度+ジブリ風品質>\n"
+                "REASON: <1行、なぜその点数か>\n\n"
+                "余計な前置き・後置きは不要。"
+            )
+            self._send_prompt(eval_prompt)
+            reply = self._wait_for_text_reply()
+            if not reply:
+                logger.info("vision-eval: no reply parseable; pass-through")
+                return True
+            score = self._parse_vision_score(reply)
+            if score is None:
+                logger.info(
+                    "vision-eval: SCORE not parseable from %r — pass-through",
+                    reply[:120],
+                )
+                return True
+            ok = score >= _VISION_EVAL_CUTOFF
+            logger.info(
+                "vision-eval: score=%d cutoff=%d → %s",
+                score, _VISION_EVAL_CUTOFF, "PASS" if ok else "FAIL",
+            )
+            return ok
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning("vision-eval browser error: %s — pass-through", exc)
+            return True
+
+    def _wait_for_text_reply(self) -> Optional[str]:
+        """Wait for ChatGPT's latest assistant turn to finish streaming.
+
+        Polls innerText of the last ``[data-message-author-role='assistant']``
+        element. Considers the turn done when the text has not changed
+        for 2 consecutive polls (1 sec each) — ChatGPT streams tokens
+        every ~50 ms during generation so a 2-sec stable read means
+        generation has stopped.
+        """
+        if self._page is None:
+            return None
+        deadline = time.time() + _TEXT_WAIT_TIMEOUT / 1000
+        select_js = """() => {
+            const turns = document.querySelectorAll(
+                '[data-message-author-role="assistant"]'
+            );
+            if (!turns.length) return null;
+            return (turns[turns.length - 1].innerText || '').trim();
+        }"""
+        last_text = ""
+        stable_for = 0
+        while time.time() < deadline:
+            try:
+                cur = self._page.evaluate(select_js) or ""
+            except PlaywrightError:
+                cur = ""
+            if cur and cur == last_text:
+                stable_for += 1
+                if stable_for >= 2 and len(cur) > 0:
+                    return cur
+            else:
+                stable_for = 0
+                last_text = cur
+            self._page.wait_for_timeout(1_000)
+        return last_text or None
+
+    @staticmethod
+    def _parse_vision_score(reply: str) -> Optional[int]:
+        """Extract the SCORE: <n> integer. Tolerant of stray prose."""
+        m = re.search(r"SCORE\s*[:：]\s*(\d{1,2})", reply, re.IGNORECASE)
+        if not m:
+            # Fallback: grab the first standalone digit 1-10 in the reply.
+            m = re.search(r"\b([1-9]|10)\s*\s*[/／]?\s*10\b", reply)
+        if not m:
+            return None
+        try:
+            n = int(m.group(1))
+        except ValueError:
+            return None
+        return max(1, min(10, n))
+
+    @staticmethod
+    def _build_retry_prompt(
+        prompt: str, size: Size, is_cover: bool, topic: str,
+    ) -> str:
+        kind = "サムネイル画像" if is_cover else "インライン画像"
+        return (
+            f"前回の{kind}は記事内容『{topic[:80]}』とズレていました。\n"
+            "もう一度、以下の方針で生成し直してください。\n\n"
+            f"【記事の内容】\n{prompt}\n\n"
+            f"【サイズ】\n{_SIZE_PHRASE[size]}\n\n"
+            "【スタイル】\n"
+            "スタジオジブリ風で、記事のテーマと直接関係する被写体を中心に。\n"
+            "前回のような抽象的・無関係な描写は避けてください。\n\n"
+            "出力は画像のみ。"
+        )
 
     def _delete_current_chat(self) -> None:
         """Soft-delete the conversation we just used.
