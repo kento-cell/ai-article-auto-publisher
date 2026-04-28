@@ -43,22 +43,10 @@ _COVER_DIR.mkdir(parents=True, exist_ok=True)
 
 TARGETS: list[dict[str, str]] = [
     {
-        "slug": "fujin_shimokita",
-        "title": "【現地レポ】下北沢の和食居酒屋「風神」",
+        "slug": "naochan_ramen",
+        "title": "【本音】下北沢「なおちゃんラーメン」塩中華そば",
         "genre": "food",
-        "url": "https://note.com/note-user/n/n08c2bf51d0b7",
-    },
-    {
-        "slug": "aozora_cafe",
-        "title": "【保存版】Bluesky「青空カフェ部」が映す都市カフェ文化",
-        "genre": "food",
-        "url": "https://note.com/note-user/n/n3111501b8657",
-    },
-    {
-        "slug": "yayoiken_shimokita",
-        "title": "【本音】「下北沢にやよい軒を誘致してくれ」",
-        "genre": "food",
-        "url": "https://note.com/note-user/n/n086486f8a8d3",
+        "url": "https://note.com/note-user/n/n06546a2cc83f",
     },
 ]
 

@@ -273,6 +273,16 @@ class SheetsManager:
     def update_status(self, article_id: str, status: str) -> None:
         """Update the status cell for the row matching *article_id*.
 
+        When multiple rows exist with the same article_id (which
+        shouldn't happen but has been observed after re-generation
+        pushed a second row for an already-registered id), prefer a
+        row whose status is NOT already *status* — otherwise the
+        caller's "mark this as ✅投稿済み" intent lands on the older
+        already-published row and the fresh ✅承認 duplicate keeps
+        getting re-picked by ``get_approved_articles``, causing
+        duplicate publishes. Falls back to the first match when no
+        row is behind the target status.
+
         Args:
             article_id: Value to look up in column A.
             status: New status string.
@@ -285,12 +295,62 @@ class SheetsManager:
                 "Sheets not configured; skipping update_status",
             )
             return
+        cells = self._sheet.findall(
+            article_id, in_column=_COL_INDEX["article_id"],
+        )
+        if not cells:
+            raise ValueError(f"article_id '{article_id}' not found")
+        target_cell = None
+        for cell in cells:
+            current = self._sheet.cell(
+                cell.row, _COL_INDEX["status"],
+            ).value
+            if current != status:
+                target_cell = cell
+                break
+        if target_cell is None:
+            target_cell = cells[0]
+        self._sheet.update_cell(
+            target_cell.row, _COL_INDEX["status"], status,
+        )
+        self._logger.info(
+            "article_id=%s status -> '%s' (row=%d, dup_count=%d)",
+            article_id, status, target_cell.row, len(cells),
+        )
+
+    def update_row(self, article_id: str, data: dict[str, Any]) -> None:
+        """Overwrite every column of an existing row for *article_id*.
+
+        Used after regeneration to push the freshly computed grade,
+        evidence level, tier ratio, numeric score, critic summary and
+        updated title back to Sheets — previously ``update_status`` was
+        the only write path and all those other columns went stale.
+
+        Args:
+            article_id: Value to look up in column A.
+            data: Dict whose keys match :data:`HEADER_ROW` names.
+
+        Raises:
+            ValueError: If *article_id* is not found.
+        """
+        if self._sheet is None:
+            self._logger.warning(
+                "Sheets not configured; skipping update_row",
+            )
+            return
         cell = self._sheet.find(article_id, in_column=_COL_INDEX["article_id"])
         if cell is None:
             raise ValueError(f"article_id '{article_id}' not found")
-        self._sheet.update_cell(cell.row, _COL_INDEX["status"], status)
+        row_values = [str(data.get(col, "")) for col in HEADER_ROW]
+        end_col = chr(ord("A") + len(HEADER_ROW) - 1)
+        self._sheet.update(
+            f"A{cell.row}:{end_col}{cell.row}",
+            [row_values],
+            value_input_option="USER_ENTERED",
+        )
         self._logger.info(
-            "article_id=%s status -> '%s'", article_id, status,
+            "article_id=%s row updated (%s)",
+            article_id, data.get("title", "")[:40],
         )
 
     def get_pending_articles(self) -> list[dict[str, Any]]:
@@ -325,6 +385,73 @@ class SheetsManager:
             rec for rec in self.get_all_articles()
             if rec.get("status") == STATUS_CHOICES[2]
         ]
+
+    def archive_old_rows(self, keep_last_n: int = 20) -> dict[str, int]:
+        """Delete stale rows to keep the sheet readable.
+
+        Rules:
+          - "⏳承認待ち" and "✅承認" rows are NEVER deleted (still actionable).
+          - "✅投稿済み" rows: keep only the newest *keep_last_n*
+            (by row position — the sheet is append-only so higher row =
+            newer). Older ones are deleted.
+          - The '不合格' worksheet: keep only the newest *keep_last_n*.
+
+        Returns a dict `{"main_deleted": N, "rejected_deleted": M}`.
+        Safe to call when sheets is not configured (no-op, returns zeros).
+        """
+        deleted = {"main_deleted": 0, "rejected_deleted": 0}
+        if self._sheet is None:
+            self._logger.warning("Sheets not configured; cleanup skipped")
+            return deleted
+
+        # --- Main sheet: purge old 投稿済み ---
+        try:
+            records = self._sheet.get_all_records(expected_headers=HEADER_ROW)
+        except Exception as e:
+            self._logger.warning("cleanup: failed to fetch main records: %s", e)
+            records = []
+
+        posted_positions: list[int] = []
+        for idx, rec in enumerate(records):
+            if str(rec.get("status", "")).strip() == "✅投稿済み":
+                # Row number = header(1) + data index(0-based) + 1
+                posted_positions.append(idx + 2)
+
+        if len(posted_positions) > keep_last_n:
+            # Keep the tail (newest). Sheet is append-only so highest row = newest.
+            posted_positions.sort()  # ascending row numbers
+            to_delete = posted_positions[:-keep_last_n]
+            # Delete from bottom up so indices stay valid.
+            for row in sorted(to_delete, reverse=True):
+                try:
+                    self._sheet.delete_rows(row)
+                    deleted["main_deleted"] += 1
+                except Exception as e:
+                    self._logger.warning(
+                        "cleanup: delete_rows(%d) failed: %s", row, e,
+                    )
+
+        # --- Rejected sheet: trim to last keep_last_n ---
+        rej_ws = self._open_rejected_worksheet()
+        if rej_ws is not None:
+            try:
+                total_rows = rej_ws.row_count
+                all_values = rej_ws.get_all_values()
+                data_rows = len(all_values) - 1  # exclude header
+                excess = data_rows - keep_last_n
+                if excess > 0:
+                    # Delete rows 2..2+excess (oldest first after header)
+                    for _ in range(excess):
+                        rej_ws.delete_rows(2)
+                        deleted["rejected_deleted"] += 1
+            except Exception as e:
+                self._logger.warning("cleanup: rejected sheet trim failed: %s", e)
+
+        self._logger.info(
+            "Sheet cleanup: main_deleted=%d rejected_deleted=%d (kept %d)",
+            deleted["main_deleted"], deleted["rejected_deleted"], keep_last_n,
+        )
+        return deleted
 
     def get_all_articles(self) -> list[dict[str, Any]]:
         """Return every data row as a list of dicts.

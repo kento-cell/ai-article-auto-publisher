@@ -47,3 +47,11 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Claude Code ローカル状態
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
+# 一時ワークスペース
+tmp_img/
+run_generate.sh

@@ -13,7 +13,10 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Subjective dimensions to inspect.
-SUBJECTIVE_DIMENSIONS = ["originality", "accuracy", "readability", "engagement"]
+SUBJECTIVE_DIMENSIONS = [
+    "originality", "accuracy", "readability", "engagement",
+    "title_fulfillment",
+]
 
 # Grade weight for average calculation (A=3, B=2, C=1).
 GRADE_VALUE = {"A": 3, "B": 2, "C": 1}
@@ -23,8 +26,11 @@ GRADE_VALUE = {"A": 3, "B": 2, "C": 1}
 # mental model.
 GRADE_NUMERIC = {"A": 100.0, "B": 75.0, "C": 50.0}
 
-# Threshold: average >= 2.5 is "B+" territory.
-B_PLUS_THRESHOLD = 2.5
+# Threshold: subjective average >= 2.0 (solid B across dimensions).
+# Previously 2.5 which required at least 2A 2B — too harsh for a
+# local 12B model judging research papers, where "all B with no C" is
+# a perfectly publishable outcome and shouldn't be auto-rejected.
+B_PLUS_THRESHOLD = 2.0
 
 
 class ScoreAggregator:
@@ -144,6 +150,18 @@ class ScoreAggregator:
         sub_c_count = sub_grades.count("C")
         sub_a_count = sub_grades.count("A")
         obj_all_a = self._all_objective_a(objective)
+
+        # CLAUDE.md の最上位ルール: タイトル負けは即却下。本文がタイトル
+        # の約束を回収していない (title_fulfillment == C) 場合、他のどの
+        # 次元が強くても公開してはならない。これは「タイトルは攻めていい、
+        # ただし中身は濃く」という理念の直接表現。
+        title_fulfillment_grade = str(
+            subjective.get("title_fulfillment", {}).get("grade", "")
+        ).upper().strip()
+        if title_fulfillment_grade == "C":
+            logger.info("title_fulfillment=C -> タイトル負けで reject")
+            blocking.append("subjective:title_fulfillment=C (タイトル負け)")
+            return "C", "reject"
 
         # Any subjective C with objective weaknesses -> reject.
         if sub_c_count > 0 and obj_blocking:
@@ -282,17 +300,20 @@ class ScoreAggregator:
     def _extract_tier12_ratio(objective: dict) -> float:
         """Extract tier-1/2 source ratio from objective results.
 
-        Args:
-            objective: ObjectiveScorer output dict.
-
-        Returns:
-            Ratio as float (0.0 -- 1.0), defaults to 0.0.
+        The value is nested under evidence_level in ObjectiveScorer's
+        output; older code assumed it was top-level and always read 0.0,
+        which made Sheets' tier12_ratio column display "0%" regardless
+        of actual evidence quality.
         """
-        tier = objective.get("tier12_ratio", {})
-        if isinstance(tier, dict):
-            return float(tier.get("ratio", 0.0))
-        if isinstance(tier, (int, float)):
-            return float(tier)
+        evidence = objective.get("evidence_level", {})
+        if isinstance(evidence, dict):
+            value = evidence.get("tier12_ratio", 0.0)
+            if isinstance(value, (int, float)):
+                return float(value)
+        # Fallback for legacy flat shape.
+        flat = objective.get("tier12_ratio", 0.0)
+        if isinstance(flat, (int, float)):
+            return float(flat)
         return 0.0
 
     # ------------------------------------------------------------------

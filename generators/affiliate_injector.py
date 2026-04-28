@@ -152,7 +152,14 @@ class AffiliateInjector:
         return content
 
     def _detect_genre(self, text: str) -> str:
-        """Match article text against genre keywords and return best match."""
+        """Match article text against genre keywords and return best match.
+
+        Requires at least ``_MIN_GENRE_SCORE`` keyword hits to commit to a
+        non-default genre. Without the threshold a single mention of
+        ``AI`` anywhere in an otherwise consumer-electronics article
+        (ノジマ電気, 2026-04-23 case) would pick the tech/programming
+        pool and emit ``SkillHacks`` promos on an unrelated topic.
+        """
         genres = self._config.get("genres", {})
         best_genre = "default"
         best_score = 0
@@ -166,5 +173,17 @@ class AffiliateInjector:
                 best_score = score
                 best_genre = genre_name
 
+        if best_score < self._MIN_GENRE_SCORE:
+            logger.debug(
+                "Genre fallback to default: best=%s score=%d < %d",
+                best_genre, best_score, self._MIN_GENRE_SCORE,
+            )
+            return "default"
+
         logger.debug("Genre detected: %s (score=%d)", best_genre, best_score)
         return best_genre
+
+    # Genre commit threshold — a single keyword hit is not enough
+    # evidence that the article is primarily about that genre. Two or
+    # more hits typically means the topic is genuinely centered there.
+    _MIN_GENRE_SCORE = 2
