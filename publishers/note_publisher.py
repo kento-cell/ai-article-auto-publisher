@@ -1003,9 +1003,13 @@ class NotePublisher:
             if inline_image_paths:
                 self._inject_inline_images(inline_image_paths)
 
-            # Cover image (eyecatch) upload via shared helper.
+            # Cover image (eyecatch) upload via shared helper. This is
+            # the edit path — we always want to replace an existing
+            # cover, not skip the upload just because one is present.
             if cover_image_path:
-                self._set_eyecatch_on_current_page(cover_image_path)
+                self._set_eyecatch_on_current_page(
+                    cover_image_path, force_replace=True,
+                )
 
             # Click 公開に進む / 更新する button
             page.wait_for_timeout(1500)
@@ -1490,38 +1494,41 @@ class NotePublisher:
                 # with an empty <figcaption> slot that note styles as
                 # a small centred italic-like caption natively — focus
                 # that slot and type there.
-                focused = page.evaluate(
-                    """() => {
-                        const caps = document.querySelectorAll(
-                            '.ProseMirror figure figcaption'
-                        );
-                        // Pick the last *empty* figcaption. We upload
-                        // images in reverse document order (high block
-                        // index first), so the newly-created figcaption
-                        // for this upload is the newest empty one but
-                        // is NOT at the end of the document once
-                        // earlier iterations have already populated
-                        // later captions. Filter to empty-only so the
-                        // same slot isn't filled twice.
-                        let target = null;
-                        for (let i = caps.length - 1; i >= 0; i--) {
-                            if (!(caps[i].textContent || '').trim()) {
-                                target = caps[i];
-                                break;
-                            }
+                #
+                # 2026-04-28 fix: image upload's DOM mutation can lag
+                # behind Playwright by 500ms+. Poll up to 2s for an
+                # empty figcaption before declaring failure. If we
+                # truly can't find one, **skip the caption entirely**
+                # rather than typing an orphan "※イメージ画像" paragraph
+                # at the caret — the orphan text appearing alone above
+                # the body was a real reader-visible bug.
+                focus_js = """() => {
+                    const caps = document.querySelectorAll(
+                        '.ProseMirror figure figcaption'
+                    );
+                    let target = null;
+                    for (let i = caps.length - 1; i >= 0; i--) {
+                        if (!(caps[i].textContent || '').trim()) {
+                            target = caps[i];
+                            break;
                         }
-                        if (!target) return false;
-                        const range = document.createRange();
-                        range.selectNodeContents(target);
-                        range.collapse(true);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                        try { target.focus(); } catch (e) {}
-                        return true;
-                    }"""
-                )
-                page.wait_for_timeout(150)
+                    }
+                    if (!target) return false;
+                    const range = document.createRange();
+                    range.selectNodeContents(target);
+                    range.collapse(true);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    try { target.focus(); } catch (e) {}
+                    return true;
+                }"""
+                focused = False
+                for attempt in range(5):  # poll up to ~2.5s total
+                    page.wait_for_timeout(500)
+                    if page.evaluate(focus_js):
+                        focused = True
+                        break
                 if focused:
                     page.keyboard.type("※イメージ画像", delay=4)
                     page.wait_for_timeout(200)
@@ -1530,34 +1537,40 @@ class NotePublisher:
                     page.keyboard.press("ArrowDown")
                     page.wait_for_timeout(100)
                 else:
-                    # Fall back to the previous plain-text behaviour
-                    # if note's editor changed shape and no figcaption
-                    # is visible — plain caption is ugly but better
-                    # than silent failure.
+                    # No figcaption — skip caption entirely to avoid
+                    # the orphan-text bug. The image still publishes;
+                    # readers just don't see the small "※イメージ画像"
+                    # subtitle which is acceptable graceful degradation.
                     logger.warning(
                         "figcaption not found for block %d — "
-                        "caption will render as plain paragraph",
+                        "skipping caption (no orphan text injected)",
                         block_idx,
                     )
-                    page.keyboard.press("Enter")
-                    page.wait_for_timeout(120)
-                    page.keyboard.type("※イメージ画像", delay=4)
-                    page.wait_for_timeout(120)
-                    page.keyboard.press("Enter")
-                    page.wait_for_timeout(150)
             except Exception as exc:
                 logger.warning(
                     "inline image upload failed (%s): %s", path, exc
                 )
         page.wait_for_timeout(800)
 
-    def _set_eyecatch_on_current_page(self, file_path: str) -> bool:
+    def _set_eyecatch_on_current_page(
+        self, file_path: str, force_replace: bool = False,
+    ) -> bool:
         """Upload *file_path* as the eyecatch on the currently-open editor.
 
         Reuses the dual-strategy approach from
         scripts/retrofit_note_covers._attach_cover but operates on the
         page we are already editing — no navigation, no save click.
         Caller is responsible for saving after.
+
+        Args:
+            file_path: Absolute path of the image to set as the cover.
+            force_replace: When True, skip the "cover already present"
+                early-return and attempt to replace the existing cover.
+                Required by ``edit_article`` when the whole point of
+                the call is to swap in a new thumbnail. Default False
+                preserves the original ``publish_article`` idempotent
+                behaviour (re-publishes shouldn't duplicate-upload the
+                same cover).
         """
         assert self._page is not None
         page = self._page
@@ -1565,15 +1578,90 @@ class NotePublisher:
             page.evaluate("window.scrollTo(0, 0)")
             page.wait_for_timeout(300)
 
-            # Detect existing cover so we skip re-upload (idempotent).
+            # Detect existing cover. In publish_article flow we want
+            # idempotency, but edit_article wants to replace.
             already = page.evaluate(
                 """() => !document.querySelector('[aria-label="画像を追加"]')"""
             )
-            if already:
+
+            # Force-replace path: note's editor floats a toolbar with a
+            # ``aria-label="削除"`` button above the selected eyecatch.
+            # Clicking the image first forces selection / selects the
+            # figure node, then clicking 削除 removes the cover. After
+            # removal the ``画像を追加`` button reappears and the
+            # Strategy A/B upload paths below can take over.
+            if already and force_replace:
+                logger.info("force_replace: deleting existing eyecatch")
+                try:
+                    # Scroll the eyecatch into the mid-viewport so any
+                    # floating toolbar the note editor renders above
+                    # it stays visible.
+                    page.evaluate("window.scrollTo(0, 0)")
+                    page.wait_for_timeout(300)
+                    box = page.evaluate(
+                        """() => {
+                            const img = document.querySelector('img[alt="eyecatch"]');
+                            if (!img) return null;
+                            const r = img.getBoundingClientRect();
+                            window.scrollBy(0, r.top - 220);
+                            const r2 = img.getBoundingClientRect();
+                            return {x: r2.left + r2.width/2, y: r2.top + 40};
+                        }"""
+                    )
+                    page.wait_for_timeout(500)
+                    if box:
+                        # Real mouse interactions — JS-only clicks
+                        # don't trigger the editor's hover-to-reveal
+                        # floating toolbar on React-based builds.
+                        page.mouse.move(box["x"], box["y"])
+                        page.wait_for_timeout(300)
+                        page.mouse.click(box["x"], box["y"])
+                        page.wait_for_timeout(800)
+                    # After selecting the figure, ProseMirror accepts
+                    # ``Delete`` / ``Backspace`` to remove the node.
+                    # This path bypasses the hidden-toolbar problem
+                    # entirely.
+                    page.keyboard.press("Delete")
+                    page.wait_for_timeout(600)
+                    page.keyboard.press("Backspace")
+                    page.wait_for_timeout(800)
+                    clicked = {"found": True, "method": "keyboard"}
+                    logger.info("delete button click: %s", clicked)
+                    if not clicked.get("found"):
+                        logger.warning("delete button not found on toolbar")
+                    else:
+                        page.wait_for_timeout(800)
+                        # Some note UI versions show a confirm dialog.
+                        confirm = page.evaluate(
+                            """() => {
+                                const ok = Array.from(
+                                    document.querySelectorAll('button')
+                                ).find(b => /削除する|削除$|OK|はい/.test(
+                                    b.textContent.trim()
+                                ));
+                                if (ok) {ok.click(); return ok.textContent.trim();}
+                                return null;
+                            }"""
+                        )
+                        logger.info("confirm dialog click: %r", confirm)
+                        page.wait_for_timeout(1500)
+                        # Refresh the "already" flag.
+                        already = page.evaluate(
+                            """() => !document.querySelector(
+                                '[aria-label="画像を追加"]'
+                            )"""
+                        )
+                        logger.info(
+                            "after delete: already=%s", already,
+                        )
+                except Exception as exc:
+                    logger.warning("eyecatch delete attempt failed: %s", exc)
+
+            if already and not force_replace:
                 logger.info("eyecatch already present; skipping upload")
                 return True
 
-            # Strategy A: hidden file input.
+            # Strategy A: hidden file input (when no cover yet).
             file_inputs = page.locator('input[type="file"]').all()
             for fi in file_inputs:
                 try:
