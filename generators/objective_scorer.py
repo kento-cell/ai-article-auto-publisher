@@ -44,6 +44,7 @@ class ObjectiveScorer:
         cite_format = self._score_citation_format(article, sources)
         visuals = self._score_visual_count(article)
         words = self._score_word_count(article)
+        title_fulfillment = self._score_title_fulfillment(article, context)
         # Scan title+body together so patterns like
         # "〇〇氏のBluesky投稿から徹底" that appear in the title still
         # register as a forbidden hit. Previously title text was
@@ -71,6 +72,12 @@ class ObjectiveScorer:
             ("citation_format", cite_format),
             ("visual_count", visuals),
             ("word_count", words),
+            # title_fulfillment is the deterministic enforcement of the
+            # project's top-level rule: タイトル負け = 絶対禁止.
+            # The LLM-judged title_fulfillment in subjective_evaluator
+            # catches qualitative bait-and-switch; this catches mechanical
+            # ones (5選 with 3 items, named tool not in body, etc.).
+            ("title_fulfillment", title_fulfillment),
         ]
         _source_types = {str(s.get("source", "")).lower() for s in sources}
         _citation_exempt = {"google_trends", "bluesky", "reddit"}
@@ -172,6 +179,7 @@ class ObjectiveScorer:
             "forbidden_phrases": forbidden_result,
             "heading_structure": headings,
             "chain_stores": chain_check,
+            "title_fulfillment": title_fulfillment,
         }
         if trend.get("grade") == "A":
             metrics["trend_alignment"] = trend
@@ -190,6 +198,33 @@ class ObjectiveScorer:
     # ------------------------------------------------------------------
     # Private scoring methods
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _score_title_fulfillment(article: str, context: dict) -> dict:
+        """Programmatic check that body delivers on title's specific promises.
+
+        Detects mechanical bait-and-switch (5選 with 3 items, named
+        tool not in body, claimed timeframe absent, etc.). The LLM
+        judges qualitative title fulfillment; this catches the
+        deterministic failures the LLM may overlook or grade leniently.
+        """
+        try:
+            from generators import title_fulfillment_scorer
+        except Exception as exc:
+            logger.warning("title_fulfillment_scorer unavailable: %s", exc)
+            return {
+                "grade": "B", "promises": [], "unfulfilled": [],
+                "reason": f"scorer unavailable: {exc}",
+            }
+        title = str((context or {}).get("title") or "")
+        try:
+            return title_fulfillment_scorer.score(title, article)
+        except Exception as exc:
+            logger.warning("title_fulfillment scoring failed: %s", exc)
+            return {
+                "grade": "B", "promises": [], "unfulfilled": [],
+                "reason": f"error: {exc}",
+            }
 
     def _score_evidence_level(self, sources: list[dict]) -> dict:
         """Score source quality by tier distribution.
