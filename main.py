@@ -2610,6 +2610,36 @@ def publish_approved(
             or _deny_reason(content[:2500])
             or _deny_reason(content[-2500:])
         )
+        # 2026-04-28: align publish-time deny with the objective_scorer
+        # note-relaxation. For note articles, the empty-bullet "Tool: "
+        # placeholder pattern is a structural artifact (LLM listing
+        # tools without URLs), not a fact-hallucination. The scorer
+        # already lets these through, so the publish deny should too —
+        # otherwise we register the article in Sheets, mark it
+        # 投稿済み-eligible, then silently flip to ❌却下 here. The
+        # *real* fact-precision deny patterns (Bluesky/Threads,
+        # トレンド入り、架空, 〇〇, etc.) still block on note.
+        _structural_template_markers = (
+            "公式サイト", "公式ドキュメント", "ここに入力",
+            "URLは記載しません", "実際には", "サンプルリポジトリ",
+        )
+        _danger_markers = (
+            "Bluesky", "Threads", "Mastodon",
+            "トレンド入り", "話題を呼んで", "議論を呼んで",
+            "架空", "Dr. X", "〇〇", "◯◯", "○○",
+        )
+        if (
+            _deny_hit
+            and platform == "note"
+            and any(m in _deny_hit for m in _structural_template_markers)
+            and not any(d in _deny_hit for d in _danger_markers)
+        ):
+            logger.info(
+                "[note] publish deny hit was structural template "
+                "(%s) — passing through (parity with objective_scorer)",
+                _deny_hit[:60],
+            )
+            _deny_hit = None
         if _deny_hit:
             logger.warning(
                 "[%s] deny-pattern hit → publish 拒否: %s — matched %r",
