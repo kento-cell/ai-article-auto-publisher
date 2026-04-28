@@ -574,6 +574,72 @@ def _load_success_patterns(max_chars: int = 900) -> str:
     return block
 
 
+def _load_anti_patterns(max_chars: int = 700) -> str:
+    """Read ``docs/knowledge/quality_anti_patterns.md`` (auto-generated
+    by ``scripts/analyze_performance.py``) and return a prompt-injectable
+    block of engagement-failure title shapes the LLM should avoid.
+
+    Counterpart to :func:`_load_success_patterns`: the success file lists
+    shapes proven to drive likes; this one lists shapes that flopped on
+    real reader data. Together they form a positive+negative feedback
+    pair distinct from :func:`_load_failure_patterns` (which is about
+    SCORING failures, not engagement failures).
+    """
+    path = Path("docs/knowledge/quality_anti_patterns.md")
+    if not path.exists():
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.debug("anti-pattern read failed: %s", exc)
+        return ""
+
+    parts: list[str] = [
+        "\n\n【エンゲージメント実績ベース — 避けるべきアンチパターン】",
+    ]
+    in_shape = False
+    in_examples = False
+    bullet_count = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("## 避けるべきタイトル型"):
+            in_shape = True
+            in_examples = False
+            bullet_count = 0
+            parts.append("\n✗ 下位20%に集中している型 (上位に出ない):")
+            continue
+        if stripped.startswith("## 避けるべき具体タイトル例"):
+            in_shape = False
+            in_examples = True
+            bullet_count = 0
+            parts.append("\n✗ 下位20%の具体タイトル例:")
+            continue
+        if stripped.startswith("## "):
+            in_shape = False
+            in_examples = False
+            continue
+        if (in_shape or in_examples) and stripped.startswith("- "):
+            parts.append(stripped)
+            bullet_count += 1
+            if bullet_count >= 5:
+                if in_shape:
+                    in_shape = False
+                else:
+                    in_examples = False
+
+    if len(parts) == 1:
+        return ""
+
+    parts.append(
+        "\n上記の型は実績で読者が反応しなかったので避けること。"
+        "似た切り口を採るなら別の型・別の表現で。"
+    )
+    block = "\n".join(parts) + "\n"
+    if len(block) > max_chars:
+        block = block[:max_chars] + "…\n"
+    return block
+
+
 def _load_failure_patterns(max_chars: int = 900) -> str:
     """Read ``docs/knowledge/quality_recurring_failures.md`` and return a
     short prompt-injectable block summarising the failure patterns the
@@ -753,6 +819,13 @@ def _load_learned_block() -> str:
         # engagement patterns.
         if _xp_enabled("learn.success_patterns"):
             block += _load_success_patterns()
+
+        # Append the engagement-driven anti-pattern block: shapes that
+        # appear in the bottom 20% AND never in the top 20% on real
+        # reader data. Distinct from learn.failure_patterns (which is
+        # about scoring failures, not engagement).
+        if _xp_enabled("learn.anti_patterns"):
+            block += _load_anti_patterns()
     except Exception as exc:
         logger.warning("learned block load failed: %s", exc)
         block = ""
