@@ -37,6 +37,13 @@ learn:
   # emit success patterns → inject next generation.
   success_patterns: true
 
+  # Append ``docs/knowledge/quality_anti_patterns.md`` as a "avoid
+  # these shapes" block. Mirrors success_patterns but feeds the
+  # bottom-20% engagement signal — title shapes that consistently
+  # flopped on real reader data and never appeared in the top 20%.
+  # Distinct from failure_patterns (scoring failures, not engagement).
+  anti_patterns: true
+
 hashtag:
   # Blend learned top tags into the hashtag output.
   blend_learned: true
