@@ -2642,13 +2642,27 @@ def publish_approved(
                         numeric_score, ZENN_ARTICLE_THRESHOLD,
                     )
                     url = _publish_zenn(article_id, title, content, stored)
-                    # Verify Zenn actually indexed the article. The
-                    # 12-article cap silently 404's anything past it,
-                    # so we sleep ~30s, HEAD-check, and on 404 fall
-                    # back to scrap *for this article* AND set the
-                    # batch flag so subsequent zenn articles skip the
-                    # article path entirely.
-                    if url and _is_zenn_article_404(url):
+                    # Two failure modes both fall back to scrap:
+                    #   (a) _publish_zenn returned None — git push or
+                    #       commit failed (e.g. nothing-to-commit when
+                    #       a previous run already pushed the .md).
+                    #   (b) URL is set but Zenn returns 404 — the
+                    #       known 12-article-cap silent drop.
+                    # In both cases the user's intent ("publish this
+                    # zenn article") is best served by re-publishing
+                    # as a scrap, which has no cap. Set the batch
+                    # flag so subsequent zenn entries skip the article
+                    # attempt entirely.
+                    if url is None:
+                        logger.warning(
+                            "[zenn] article publish returned None — "
+                            "falling back to scrap + flagging batch"
+                        )
+                        _zenn_cap_exhausted = True
+                        url = _save_scrap_draft(
+                            article_id, title, content, stored,
+                        )
+                    elif _is_zenn_article_404(url):
                         logger.warning(
                             "[zenn] article 404 detected (cap likely hit) — "
                             "falling back to scrap for this article + "
@@ -2728,15 +2742,18 @@ def _is_zenn_article_404(url: str, indexing_wait_sec: int = 25) -> bool:
     """
     if not url or "/articles/" not in url:
         return False
+    # ``requests`` is imported lazily as ``_requests`` elsewhere in
+    # main.py for SSRF-allowlisting reasons; reuse the same alias.
+    import requests as _r
     try:
         time.sleep(indexing_wait_sec)
-        resp = requests.head(url, timeout=15, allow_redirects=True)
+        resp = _r.head(url, timeout=15, allow_redirects=True)
         is_404 = resp.status_code == 404
         logger.info(
             "[zenn] URL check %s → HTTP %d", url, resp.status_code,
         )
         return is_404
-    except requests.RequestException as exc:
+    except _r.RequestException as exc:
         logger.warning("[zenn] URL check failed (%s) — assuming OK", exc)
         return False
 
