@@ -2545,6 +2545,12 @@ def publish_approved(
                 return m.group(0)[:60]
         return None
 
+    # Hybrid Zenn batch state: once we observe an article-publish
+    # land on a 404 (Zenn's silent ~12-cap drop), every remaining
+    # zenn article in the same publish run goes straight to scrap
+    # without paying the 25-second 404-wait again.
+    _zenn_cap_exhausted = False
+
     for article_data in approved:
         platform = article_data.get("platform", "")
         title = article_data.get("title", "")
@@ -2621,12 +2627,37 @@ def publish_approved(
                         numeric_score,
                     )
                     url = _save_scrap_draft(article_id, title, content, stored)
+                elif _zenn_cap_exhausted:
+                    # An earlier article in this batch already 404'd
+                    # → Zenn's cap is full for this account. Don't
+                    # waste another git push that will silently drop;
+                    # publish straight to a scrap so it surfaces.
+                    logger.info(
+                        "[zenn] cap exhausted in this batch → スクラップ投稿"
+                    )
+                    url = _save_scrap_draft(article_id, title, content, stored)
                 elif numeric_score >= ZENN_ARTICLE_THRESHOLD:
                     logger.info(
                         "[zenn] score=%.1f >= %.1f → 記事投稿",
                         numeric_score, ZENN_ARTICLE_THRESHOLD,
                     )
                     url = _publish_zenn(article_id, title, content, stored)
+                    # Verify Zenn actually indexed the article. The
+                    # 12-article cap silently 404's anything past it,
+                    # so we sleep ~30s, HEAD-check, and on 404 fall
+                    # back to scrap *for this article* AND set the
+                    # batch flag so subsequent zenn articles skip the
+                    # article path entirely.
+                    if url and _is_zenn_article_404(url):
+                        logger.warning(
+                            "[zenn] article 404 detected (cap likely hit) — "
+                            "falling back to scrap for this article + "
+                            "switching rest of batch to scrap mode"
+                        )
+                        _zenn_cap_exhausted = True
+                        url = _save_scrap_draft(
+                            article_id, title, content, stored,
+                        )
                 else:
                     logger.info(
                         "[zenn] score=%.1f < %.1f → スクラップ投稿",
@@ -2681,6 +2712,33 @@ def publish_approved(
             gmail.notify_error(str(e), f"{platform}: {title[:30]}")
 
     return results
+
+
+def _is_zenn_article_404(url: str, indexing_wait_sec: int = 25) -> bool:
+    """Verify a freshly-pushed Zenn article URL actually surfaces.
+
+    The known 2026-04-20+ bug: Zenn's GitHub integration silently
+    drops articles once the author's published-article count exceeds
+    a hidden cap (~12 at last measurement). The git push succeeds,
+    the file lands in zenn-content with ``published: true``, but the
+    URL stays 404 forever. The only way to detect it is to hit the
+    URL after Zenn's normal indexing window (~20-30s) and see what
+    we get. Returns True on confirmed 404, False on 200 or any
+    transient error (caller treats False as success).
+    """
+    if not url or "/articles/" not in url:
+        return False
+    try:
+        time.sleep(indexing_wait_sec)
+        resp = requests.head(url, timeout=15, allow_redirects=True)
+        is_404 = resp.status_code == 404
+        logger.info(
+            "[zenn] URL check %s → HTTP %d", url, resp.status_code,
+        )
+        return is_404
+    except requests.RequestException as exc:
+        logger.warning("[zenn] URL check failed (%s) — assuming OK", exc)
+        return False
 
 
 def _save_scrap_draft(

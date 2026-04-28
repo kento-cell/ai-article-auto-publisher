@@ -65,4 +65,4 @@ publish:
   # author-level cap. Until this is fixed on Zenn's side (manual
   # dashboard check + support ticket), keep every Zenn post as a
   # Scrap — they surface correctly in the feed.
-  zenn_scrap_only: false  # 2026-04-28: user requested article-mode for next batch (scraps piling up)
+  zenn_scrap_only: false  # 2026-04-28 hybrid: try article first, auto-fallback to scrap on 404
