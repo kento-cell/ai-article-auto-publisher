@@ -1547,6 +1547,169 @@ def _alt_is_relevant(alt: str, title: str, content: str) -> bool:
     return True
 
 
+# Subject-vocabulary expansion. The query we send to Unsplash/Pexels
+# resolves to a 1-3 word English phrase (e.g. "skincare cosmetics
+# bottle"). We then check the returned image's alt text for at least
+# one *related* English word — a coffee article should yield alts
+# mentioning {coffee, cafe, espresso, bean, …}, a robotics article
+# should yield {robot, machine, arm, automation, …}. When the alt has
+# zero overlap with the expected vocabulary, the image is almost
+# certainly off-topic even if it didn't trip a red flag, and we drop
+# it. This is a positive-side companion to `_ALT_RED_FLAGS`.
+#
+# Mapping is keyed by lower-case substrings that appear in our query
+# strings; values are the set of words that should at least partially
+# show up in a relevant alt text.
+_QUERY_SUBJECT_VOCAB: list[tuple[str, frozenset[str]]] = [
+    ("skincare", frozenset({
+        "skin", "skincare", "cosmetic", "cosmetics", "makeup", "beauty",
+        "lip", "lipstick", "face", "facial", "bottle", "serum", "lotion",
+        "cream", "moisturiz", "moisturis", "powder", "fragrance", "spa",
+    })),
+    ("cosmetic", frozenset({
+        "cosmetic", "cosmetics", "makeup", "beauty", "lip", "lipstick",
+        "face", "powder", "skincare", "fragrance",
+    })),
+    ("coffee", frozenset({
+        "coffee", "cafe", "espresso", "latte", "bean", "beans", "brew",
+        "brewing", "barista", "cup", "mug", "kettle", "pour", "drip",
+        "roast", "roasting", "roaster", "roastery", "moka",
+    })),
+    ("robot", frozenset({
+        "robot", "robotic", "machine", "arm", "drone", "automation",
+        "automate", "mechanical", "gripper", "industrial", "factory",
+        "engineer", "humanoid",
+    })),
+    ("morning routine", frozenset({
+        "morning", "sunrise", "breakfast", "coffee", "bedroom", "alarm",
+        "sun", "dawn", "daybreak", "tea", "kitchen", "window",
+    })),
+    ("calendar", frozenset({
+        "calendar", "schedule", "clock", "planner", "watch", "agenda",
+        "time", "desk", "notebook", "diary", "journal",
+    })),
+    ("planner", frozenset({
+        "planner", "calendar", "notebook", "diary", "journal", "agenda",
+        "schedule", "desk", "pen", "list",
+    })),
+    ("relax", frozenset({
+        "tea", "candle", "plant", "calm", "peaceful", "meditation",
+        "yoga", "spa", "bath", "blanket", "cozy", "relax", "sofa",
+        "couch", "book", "garden",
+    })),
+    ("meditation", frozenset({
+        "meditation", "yoga", "calm", "peaceful", "lotus", "mindful",
+        "breathe", "incense", "candle",
+    })),
+    ("ramen", frozenset({"ramen", "noodle", "noodles", "soup", "bowl"})),
+    ("sushi", frozenset({"sushi", "sashimi", "rice", "fish", "japanese"})),
+    ("ai technology", frozenset({
+        "ai", "tech", "computer", "laptop", "desk", "code", "screen",
+        "monitor", "neural", "circuit", "robot", "device", "office",
+        "workspace", "keyboard", "typing",
+    })),
+    ("artificial intelligence", frozenset({
+        "ai", "tech", "computer", "laptop", "code", "screen", "neural",
+        "circuit", "abstract", "digital", "data",
+    })),
+    ("python code", frozenset({
+        "code", "coding", "programming", "computer", "laptop", "screen",
+        "developer", "monitor", "keyboard",
+    })),
+    ("web development", frozenset({
+        "code", "coding", "computer", "laptop", "screen", "developer",
+        "web", "monitor", "keyboard", "design",
+    })),
+    ("machine learning", frozenset({
+        "data", "chart", "computer", "graph", "ai", "neural", "circuit",
+        "abstract", "tech",
+    })),
+    ("stock chart", frozenset({
+        "stock", "chart", "graph", "trading", "finance", "market",
+        "money", "data", "candlestick",
+    })),
+    ("finance", frozenset({
+        "finance", "money", "stock", "chart", "graph", "bank", "wallet",
+        "coin", "currency", "office",
+    })),
+    ("startup", frozenset({
+        "startup", "office", "team", "laptop", "desk", "meeting",
+        "whiteboard", "co-working", "coworking", "workspace",
+    })),
+    ("concert", frozenset({
+        "concert", "stage", "music", "guitar", "band", "audience",
+        "live", "festival", "lights",
+    })),
+    ("music", frozenset({
+        "music", "guitar", "piano", "studio", "headphones", "vinyl",
+        "concert", "band", "song", "instrument",
+    })),
+    ("basketball", frozenset({
+        "basketball", "court", "ball", "arena", "player", "hoop",
+        "athlete", "sport",
+    })),
+    ("soccer", frozenset({
+        "soccer", "football", "stadium", "pitch", "ball", "player",
+        "athlete", "sport",
+    })),
+    ("baseball", frozenset({
+        "baseball", "stadium", "pitch", "bat", "player", "athlete",
+        "sport",
+    })),
+    ("travel", frozenset({
+        "travel", "city", "landmark", "tourism", "tourist", "japan",
+        "tokyo", "street", "view", "skyline", "tower", "shrine",
+    })),
+    ("subway", frozenset({
+        "subway", "train", "station", "metro", "platform", "rail",
+        "tokyo",
+    })),
+    ("train station", frozenset({
+        "train", "station", "subway", "metro", "platform", "rail",
+        "japan", "tokyo",
+    })),
+    ("amusement park", frozenset({
+        "park", "ride", "rollercoaster", "castle", "ferris", "amusement",
+        "theme",
+    })),
+    ("korea", frozenset({
+        "korea", "korean", "seoul", "k-pop", "kpop", "hanok", "palace",
+        "street", "city",
+    })),
+]
+
+
+def _alt_matches_query_subject(alt: str, query: str) -> bool:
+    """Return True if `alt` contains at least one expected vocabulary
+    word for the given image-search `query`. False = the image is
+    plausibly off-topic even though it didn't trigger a red flag.
+
+    Always returns True when no vocabulary mapping exists for any
+    query token (we don't want to drop images when we have no opinion
+    about what they should look like).
+    """
+    if not alt or not query:
+        return True
+    alt_lo = alt.lower()
+    query_lo = query.lower()
+    matched_any_rule = False
+    for key, vocab in _QUERY_SUBJECT_VOCAB:
+        if key not in query_lo:
+            continue
+        matched_any_rule = True
+        if any(w in alt_lo for w in vocab):
+            return True
+    if matched_any_rule:
+        logger.warning(
+            "[image] dropping off-subject alt=%r — query=%r expected vocab not in alt",
+            alt[:80],
+            query,
+        )
+        return False
+    # No rule triggered → we have no opinion → keep.
+    return True
+
+
 def _build_stock_image_block(image: dict, local_path: Path, alt: str) -> str:
     """Build a Markdown image block with both local path and remote URL.
 
@@ -1592,13 +1755,17 @@ def _insert_stock_images(
 
     # Filter out placeholder/empty results AND alt-text red flags
     # (gravestones on a rest article, sewing machines on a coffee
-    # article, etc. — see `_alt_is_relevant` docstring).
+    # article, etc. — see `_alt_is_relevant` docstring), AND alts
+    # that simply don't carry the subject vocabulary the query asked
+    # for (a robotics query that returned a "man on a beach" alt is
+    # almost certainly off-topic — see `_alt_matches_query_subject`).
     usable = [
         img
         for img in images
         if img.get("url")
         and img.get("platform") != "Placeholder"
         and _alt_is_relevant(img.get("alt_text", ""), title, content)
+        and _alt_matches_query_subject(img.get("alt_text", ""), query)
     ]
     if not usable:
         logger.info("[image] No usable stock images for query '%s' — skipping.", query)
