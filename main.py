@@ -1130,31 +1130,121 @@ def _image_mood_modifier(title: str, content: str = "") -> str:
     return ""
 
 
+#
+# Order matters — earlier entries win the first-match. Put SPECIFIC
+# subjects (skincare, robotics, coffee extraction) BEFORE generic
+# umbrellas (韓国, AI, 音楽). Otherwise a K-beauty skincare article
+# matches "韓国 → korea seoul" and gets Seoul cherry-blossom photos
+# instead of skincare; a 休息 (rest) article matches "rest → at rest"
+# tombstones; etc. Each entry's English value should evoke the actual
+# physical subject, not the umbrella topic.
+#
 _THEME_KEYWORDS: list[tuple[str, str]] = [
-    ("コーヒー", "coffee"), ("カフェ", "cafe"), ("ランチ", "restaurant food"),
-    ("居酒屋", "izakaya japanese bar"), ("グルメ", "food"),
-    ("ラーメン", "ramen"), ("寿司", "sushi"), ("スイーツ", "dessert"),
-    ("焼肉", "yakiniku grill"), ("カレー", "curry spice"),
-    ("韓国", "korea seoul"), ("美容", "beauty cosmetics"),
-    ("コスメ", "cosmetics"), ("ファッション", "fashion"),
-    ("旅行", "travel"), ("観光", "travel landmark"),
-    ("AI", "artificial intelligence"), ("LLM", "ai technology"),
-    ("Claude", "ai technology"), ("ChatGPT", "ai technology"),
-    ("Python", "python code"), ("React", "web development"),
-    ("論文", "research paper"), ("機械学習", "machine learning"),
-    ("投資", "finance investment"), ("株価", "stock market finance"),
-    ("副業", "business laptop"),
-    ("マネタイズ", "business money"), ("起業", "startup"),
-    ("鉄道", "train railway"), ("地下鉄", "subway tokyo"),
-    ("電車", "train railway"), ("駅", "train station japan"),
-    ("俳優", "actor celebrity"), ("女優", "actress celebrity"),
-    ("歌手", "singer concert"), ("アーティスト", "music concert"),
-    ("政治", "politics government"), ("首相", "politics government"),
-    ("大統領", "politics government"), ("中国", "china beijing"),
-    ("NBA", "basketball nba"), ("バスケ", "basketball"),
-    ("サッカー", "soccer football"), ("野球", "baseball japan"),
-    ("テーマパーク", "theme park ride"), ("ディズニー", "theme park castle"),
-    ("音楽", "music concert stage"), ("ライブ", "live concert"),
+    # Specific subjects first — these MUST win over umbrella terms.
+    ("スキンケア", "skincare cosmetics bottle"),
+    ("化粧水", "skincare cosmetics bottle"),
+    ("美容液", "skincare serum bottle"),
+    ("クレンジング", "skincare cleansing"),
+    ("洗顔", "skincare face wash"),
+    ("保湿", "skincare moisturizer"),
+    ("角質", "skincare face care"),
+    ("肌荒れ", "skincare face care"),
+    ("肌質", "skincare face care"),
+    ("K-beauty", "skincare cosmetics bottle"),
+    ("Kビューティー", "skincare cosmetics bottle"),
+    ("メイク", "makeup cosmetics"),
+    ("リップ", "lipstick cosmetics"),
+    # Coffee subjects — must beat generic "コーヒー" because the broader
+    # term often pulls cafe interiors when we want bean / extraction
+    # close-ups.
+    ("焙煎", "coffee beans roasting"),
+    ("抽出", "coffee pour over brewing"),
+    ("カッピング", "coffee tasting cupping"),
+    ("ドリップ", "coffee dripper pour over"),
+    ("豆", "coffee beans roasted"),
+    ("ロースター", "coffee roastery beans"),
+    ("バリスタ", "barista coffee shop"),
+    ("コーヒー", "coffee beans cup"),
+    ("カフェ", "cafe interior coffee"),
+    # Time / focus / rest / habit — the 'rest' query MUST NOT collide
+    # with English "at rest" tombstone photography.
+    ("朝活", "morning routine sunrise"),
+    ("ルーティン", "morning routine notebook"),
+    ("習慣", "morning routine notebook"),
+    ("タイムブロッキング", "calendar planner schedule"),
+    ("ポモドーロ", "timer desk focus"),
+    ("Deep Work", "focused work desk laptop"),
+    ("時間管理", "calendar planner schedule"),
+    ("休息", "relax peaceful tea"),
+    ("リラックス", "relax peaceful tea"),
+    ("ストレス", "calm meditation peaceful"),
+    ("瞑想", "meditation calm peaceful"),
+    ("睡眠", "bedroom sleep cozy"),
+    # Robotics / VLA — pulled subject before AI umbrella so 論文 articles
+    # get robot arms instead of generic AI brain renders or coding.
+    ("ロボット", "robot arm robotics"),
+    ("ロボティクス", "robot arm robotics"),
+    ("Figure", "humanoid robot lab"),
+    ("Tesla", "humanoid robot lab"),
+    ("Neo", "humanoid robot home"),
+    ("ヒューマノイド", "humanoid robot lab"),
+    ("VLA", "robot arm laboratory"),
+    ("マニピュレ", "robot arm gripping"),
+    ("把持", "robot gripper hand"),
+    # Food (specific before umbrella).
+    ("ラーメン", "ramen bowl noodles"),
+    ("寿司", "sushi platter japan"),
+    ("スイーツ", "dessert pastry plate"),
+    ("焼肉", "yakiniku grill meat"),
+    ("カレー", "curry spice plate"),
+    ("ランチ", "japanese restaurant table"),
+    ("居酒屋", "japanese izakaya bar"),
+    ("グルメ", "japanese food close up"),
+    # Music.
+    ("歌手", "concert stage lights"),
+    ("アーティスト", "music studio recording"),
+    ("音楽", "music studio recording"),
+    ("ライブ", "concert stage crowd"),
+    # Sports.
+    ("NBA", "basketball game arena"),
+    ("バスケ", "basketball court arena"),
+    ("サッカー", "soccer stadium pitch"),
+    ("野球", "baseball stadium pitch"),
+    # Programming subjects (specific before AI umbrella).
+    ("Python", "python code editor"),
+    ("React", "web development laptop"),
+    ("TypeScript", "code editor screen"),
+    ("hooks", "code editor screen"),
+    ("MCP", "code editor terminal"),
+    ("settings.json", "code editor terminal"),
+    # Travel / locale (LAST among umbrellas — easily misfires).
+    ("旅行", "japan travel landmark"),
+    ("観光", "japan travel landmark"),
+    ("テーマパーク", "amusement park ride"),
+    ("ディズニー", "amusement park castle"),
+    ("地下鉄", "tokyo subway station"),
+    ("鉄道", "japan train station"),
+    ("電車", "japan train station"),
+    # Politics / business.
+    ("投資", "stock chart finance"),
+    ("株価", "stock chart finance"),
+    ("副業", "laptop home desk"),
+    ("マネタイズ", "money business desk"),
+    ("起業", "startup laptop desk"),
+    ("政治", "japanese parliament"),
+    ("首相", "japanese parliament"),
+    # Generic AI / LLM — LAST. These are too broad on their own but
+    # serve as a final umbrella when nothing more specific matched.
+    ("Claude", "ai technology laptop"),
+    ("ChatGPT", "ai technology laptop"),
+    ("LLM", "ai technology laptop"),
+    ("論文", "research paper desk"),
+    ("機械学習", "machine learning chart"),
+    ("AI", "artificial intelligence abstract"),
+    # Korea — stays at the very END as a fallback. Only fires when
+    # NOTHING above matched, which avoids the K-beauty article ending
+    # up with Seoul cityscapes.
+    ("韓国", "korea seoul city"),
 ]
 
 
@@ -1383,6 +1473,80 @@ def _fetch_cached_images(
     return results
 
 
+# Tokens that, when present in alt text WITHOUT matching the article,
+# strongly indicate a hallucinated image — the historical failure
+# modes (休息→tombstone, スキンケア→Seoul cherry blossom, ロースター→
+# sewing machine). If alt contains any of these AND the article does
+# not, drop the image. This is a backstop when query extraction
+# itself doesn't catch the mismatch.
+_ALT_RED_FLAGS: dict[str, frozenset[str]] = {
+    # Death imagery on rest / habit / morning articles.
+    "tombstone": frozenset({"墓", "葬", "霊"}),
+    "gravestone": frozenset({"墓", "葬", "霊"}),
+    "grave": frozenset({"墓", "葬", "霊"}),
+    "cemetery": frozenset({"墓", "葬", "霊"}),
+    "headstone": frozenset({"墓", "葬", "霊"}),
+    "at rest": frozenset({"墓", "葬", "霊"}),
+    "rip": frozenset({"墓", "葬", "霊"}),
+    "buried": frozenset({"墓", "葬", "霊"}),
+    "funeral": frozenset({"墓", "葬", "霊"}),
+    # Sewing / textile imagery for coffee / AI articles.
+    "sewing machine": frozenset({"裁縫", "ミシン", "服飾"}),
+    "thread": frozenset({"裁縫", "ミシン"}),
+    "fabric": frozenset({"裁縫", "ミシン", "服飾"}),
+    # Tombstone/coffin trigger words.
+    "coffin": frozenset({"棺", "葬"}),
+    "tomb": frozenset({"墓", "葬"}),
+    # Toothbrush / dental for non-dental articles.
+    "toothbrush": frozenset({"歯", "デンタル", "口腔"}),
+    "dental": frozenset({"歯", "デンタル", "口腔"}),
+    # Boats for non-marine articles.
+    "boat": frozenset({"船", "海", "ヨット", "クルーズ"}),
+    "yacht": frozenset({"船", "海", "ヨット", "クルーズ"}),
+    "sailing": frozenset({"船", "海", "ヨット"}),
+    # Mannequin / display dummy for non-fashion articles.
+    "mannequin": frozenset({"ファッション", "服", "アパレル", "店頭"}),
+    # VR / sci-fi cosplay for non-VR articles.
+    "vr headset": frozenset({"VR", "メタバース", "AR", "XR"}),
+    "sci-fi": frozenset({"SF", "アニメ", "コスプレ"}),
+    "cosplay": frozenset({"コスプレ", "アニメ"}),
+    "armor": frozenset({"鎧", "ファンタジー"}),
+    # Concert / stage for non-music articles.
+    "concert stage": frozenset({"音楽", "ライブ", "コンサート", "歌手", "アーティスト"}),
+    "soundboard": frozenset({"音楽", "ライブ", "ミキサー"}),
+    # Cherry blossom / Seoul scenery for non-travel articles.
+    "cherry blossom": frozenset({"桜", "花見", "春", "観光", "旅行"}),
+    "seoul": frozenset({"ソウル", "韓国", "観光", "旅行", "K-POP"}),
+}
+
+
+def _alt_is_relevant(alt: str, title: str, content: str) -> bool:
+    """Return True if `alt` looks safe to insert into an article whose
+    `title` + `content` do not contain the disqualifying themes from
+    `_ALT_RED_FLAGS`. False means the image is almost certainly a
+    hallucination (gravestones on a 'rest' article etc.) and should
+    be dropped silently.
+    """
+    if not alt:
+        return True
+    alt_lo = alt.lower()
+    haystack = f"{title}\n{content[:2000]}".lower()
+    for flag, allowed in _ALT_RED_FLAGS.items():
+        if flag not in alt_lo:
+            continue
+        # If any of the article's tokens explicitly endorses this
+        # subject (e.g. 葬儀 article featuring tombstone), allow it.
+        if any(a.lower() in haystack for a in allowed):
+            return True
+        logger.warning(
+            "[image] dropping hallucinated alt=%r — red flag %r without matching subject in article",
+            alt[:80],
+            flag,
+        )
+        return False
+    return True
+
+
 def _build_stock_image_block(image: dict, local_path: Path, alt: str) -> str:
     """Build a Markdown image block with both local path and remote URL.
 
@@ -1426,8 +1590,16 @@ def _insert_stock_images(
         sourcer, query, total_needed, cache_salt=slug
     )
 
-    # Filter out placeholder/empty results
-    usable = [img for img in images if img.get("url") and img.get("platform") != "Placeholder"]
+    # Filter out placeholder/empty results AND alt-text red flags
+    # (gravestones on a rest article, sewing machines on a coffee
+    # article, etc. — see `_alt_is_relevant` docstring).
+    usable = [
+        img
+        for img in images
+        if img.get("url")
+        and img.get("platform") != "Placeholder"
+        and _alt_is_relevant(img.get("alt_text", ""), title, content)
+    ]
     if not usable:
         logger.info("[image] No usable stock images for query '%s' — skipping.", query)
         return content
