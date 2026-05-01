@@ -54,22 +54,10 @@ _BRAVE_PATH: Final[str] = (
     r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 )
 
-# Files (relative to Default/) we copy to inherit the ChatGPT login.
-# Modern Chromium puts cookies under Default/Network/. Local Storage /
-# IndexedDB cover the auth tokens ChatGPT stores on the SPA side.
-_AUTH_FILES: Final[tuple[str, ...]] = (
-    "Network/Cookies",
-    "Network/Cookies-journal",
-    "Network/TransportSecurity",
-    "Preferences",
-    "Login Data",
-    "Login Data For Account",
-)
-_AUTH_DIRS: Final[tuple[str, ...]] = (
-    "Local Storage",
-    "IndexedDB",
-    "Session Storage",
-)
+# `_AUTH_FILES` / `_AUTH_DIRS` removed 2026-05-01 — they enumerated
+# the cookie / session-storage / login DB files that the now-deleted
+# `_sync_auth_from_brave` copied between profiles. Keeping the names
+# would have invited future code to re-read those secrets.
 
 # Default landing URL. Resolution order:
 #   1. ``data/chatgpt-image-chat-url.txt`` (auto-persisted last
@@ -87,15 +75,40 @@ _CHAT_URL_CACHE_FILE: Final[Path] = (
 )
 
 
+_DEFAULT_CHATGPT_URL: Final[str] = "https://chatgpt.com/"
+
+
+def _is_safe_chatgpt_url(url: str) -> bool:
+    """Defence-in-depth: an attacker who can write
+    `data/chatgpt-image-chat-url.txt` (or set the env var) could
+    otherwise redirect Playwright — running with the user's Brave
+    cookies — to a phishing host that harvests session tokens or
+    runs hostile JS in `_send_prompt`. Restrict to the
+    chatgpt.com / chat.openai.com origins we actually use."""
+    return (
+        url.startswith("https://chatgpt.com/")
+        or url.startswith("https://chat.openai.com/")
+    )
+
+
 def _resolve_chat_url() -> str:
     if _CHAT_URL_CACHE_FILE.exists():
         cached = _CHAT_URL_CACHE_FILE.read_text(encoding="utf-8").strip()
-        if cached:
+        if cached and _is_safe_chatgpt_url(cached):
             return cached
+        if cached:
+            logger.warning(
+                "ignoring suspicious cached chat URL %r — falling back",
+                cached[:80],
+            )
     env = os.environ.get("CHATGPT_IMAGE_CHAT_URL")
-    if env:
+    if env and _is_safe_chatgpt_url(env):
         return env
-    return "https://chatgpt.com/"
+    if env:
+        logger.warning(
+            "ignoring CHATGPT_IMAGE_CHAT_URL env (not a chatgpt.com URL)",
+        )
+    return _DEFAULT_CHATGPT_URL
 
 
 _CHATGPT_NEW_CHAT: Final[str] = _resolve_chat_url()
@@ -120,9 +133,14 @@ _VISION_EVAL_MAX_RETRIES: Final[int] = 1
 
 
 def _vision_eval_enabled() -> bool:
-    """``CHATGPT_VISION_EVAL`` toggle. Default off (opt-in)."""
-    val = os.environ.get("CHATGPT_VISION_EVAL", "").strip().lower()
-    return val in {"1", "true", "yes", "on"}
+    """``CHATGPT_VISION_EVAL`` toggle. Default ON since 2026-05-01:
+    the K-beauty-image-on-Claude-Code-article incident showed that
+    silent fallbacks (stale chat-cache, mis-keyed stock photos) can
+    ship topical-mismatched covers without any error. Vision eval is
+    cheap (one extra ChatGPT turn) and catches the divergence before
+    upload. Set ``CHATGPT_VISION_EVAL=0`` to opt out for debugging."""
+    val = os.environ.get("CHATGPT_VISION_EVAL", "1").strip().lower()
+    return val not in {"0", "false", "no", "off"}
 
 Size = Literal["landscape", "portrait", "square"]
 _SIZE_PHRASE: Final[dict[Size, str]] = {
@@ -262,10 +280,13 @@ class ChatGPTImageGenerator:
         """Ask ChatGPT to score the most-recent image vs the article topic.
 
         Sends a short scoring prompt, waits for the text reply, parses
-        the SCORE: <n> line, and returns True iff n >= cutoff. Any
-        failure (timeout, parse miss, browser error) returns True so
-        we don't tank a perfectly fine generation on infrastructure
-        flake — Vision eval is supplementary, not load-bearing.
+        the SCORE: <n> line, and returns True iff n >= cutoff.
+
+        Fail-closed semantics (changed 2026-05-01 per Codex review):
+        any infrastructure failure (no reply, unparseable score, browser
+        error) is treated as FAIL so the caller regenerates instead of
+        shipping an unverified image. Previously these all pass-through
+        which silently masked vision-eval being effectively off.
         """
         try:
             eval_prompt = (
@@ -280,15 +301,18 @@ class ChatGPTImageGenerator:
             self._send_prompt(eval_prompt)
             reply = self._wait_for_text_reply()
             if not reply:
-                logger.info("vision-eval: no reply parseable; pass-through")
-                return True
+                logger.warning(
+                    "vision-eval: no reply parseable; FAIL (fail-closed)",
+                )
+                return False
             score = self._parse_vision_score(reply)
             if score is None:
-                logger.info(
-                    "vision-eval: SCORE not parseable from %r — pass-through",
+                logger.warning(
+                    "vision-eval: SCORE not parseable from %r — FAIL "
+                    "(fail-closed)",
                     reply[:120],
                 )
-                return True
+                return False
             ok = score >= _VISION_EVAL_CUTOFF
             logger.info(
                 "vision-eval: score=%d cutoff=%d → %s",
@@ -296,8 +320,10 @@ class ChatGPTImageGenerator:
             )
             return ok
         except (PlaywrightTimeoutError, PlaywrightError) as exc:
-            logger.warning("vision-eval browser error: %s — pass-through", exc)
-            return True
+            logger.warning(
+                "vision-eval browser error: %s — FAIL (fail-closed)", exc,
+            )
+            return False
 
     def _wait_for_text_reply(self) -> Optional[str]:
         """Wait for ChatGPT's latest assistant turn to finish streaming.
@@ -500,8 +526,22 @@ class ChatGPTImageGenerator:
 
         try:
             self._open_browser()
+            # Snapshot every image URL already on the page (the fixed
+            # share-URL chat carries history from prior runs). Without
+            # this, _wait_for_image picks the largest existing image —
+            # often a previous topic's result — instead of waiting for
+            # the freshly-generated one.
+            preexisting: set[str] = set()
+            try:
+                preexisting = set(self._page.evaluate(
+                    """() => Array.from(document.querySelectorAll('img'))
+                        .map(i => i.src)
+                        .filter(s => s && (s.startsWith('https://') || s.startsWith('blob:')))"""
+                ) or [])
+            except Exception as exc:
+                logger.warning("preexisting-image snapshot failed: %s", exc)
             self._send_prompt(full_prompt)
-            img_url = self._wait_for_image()
+            img_url = self._wait_for_image(skip_urls=preexisting)
             if not img_url:
                 logger.error("ChatGPT image generation: no image element found")
                 return None
@@ -510,6 +550,32 @@ class ChatGPTImageGenerator:
             # signed query plus session auth). Download via Playwright
             # so the request inherits the browser context.
             self._download_via_browser(img_url, out_path)
+
+            # Vision-eval gate (default ON since 2026-05-01). The topic
+            # passed to the evaluator is the original Japanese visual
+            # summary — not the wrapper template — so the LLM scores
+            # the actual subject match. On low-score, retry once with
+            # a "前回はズレていた" feedback prompt.
+            if _vision_eval_enabled() and prompt:
+                kind = "サムネ"
+                if not self._image_passes_vision_eval(topic=prompt, kind=kind):
+                    logger.warning(
+                        "single-gen vision-eval failed; regenerating once",
+                    )
+                    seen = preexisting | {img_url}
+                    retry_prompt = self._build_retry_prompt(
+                        prompt, size, is_cover=True, topic=prompt,
+                    )
+                    try:
+                        self._send_prompt(retry_prompt)
+                        new_url = self._wait_for_image(skip_urls=seen)
+                        if new_url:
+                            self._download_via_browser(new_url, out_path)
+                    except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                        logger.warning(
+                            "single-gen retry failed: %s — keeping original",
+                            exc,
+                        )
             return out_path
         except PlaywrightTimeoutError as exc:
             logger.error("ChatGPT image gen timeout: %s", exc)
@@ -554,6 +620,17 @@ class ChatGPTImageGenerator:
             else self._context.new_page()
         )
         self._page.set_default_timeout(_NAV_TIMEOUT)
+        # Defence-in-depth: when Playwright runs against the user's
+        # personal Brave profile, every cookie & sessionStorage entry
+        # for every site they're logged into is in scope. A bug or
+        # hostile chat-URL that redirected the top frame to evil.com
+        # would hand that origin first-party access to whatever
+        # cookies their domain carries (and a chance to phish via a
+        # _send_prompt() call). The route hook below aborts any
+        # top-frame document load that isn't on a chatgpt.com /
+        # chat.openai.com host. Sub-resources (CSS/fonts/CDN) are
+        # untouched so the legitimate ChatGPT page still works.
+        self._install_navigation_guard()
         self._page.goto(_CHATGPT_NEW_CHAT, wait_until="domcontentloaded")
         self._page.wait_for_timeout(2_500)
 
@@ -584,8 +661,10 @@ class ChatGPTImageGenerator:
                         new_url = self._page.url
                         logger.info("share-URL continued → %s", new_url)
                         # Persist the resolved /c/<id> URL so future
-                        # runs skip the share-redirect dance.
-                        if "/c/" in new_url:
+                        # runs skip the share-redirect dance. Only
+                        # cache origins we trust — see
+                        # _is_safe_chatgpt_url for rationale.
+                        if "/c/" in new_url and _is_safe_chatgpt_url(new_url):
                             try:
                                 _CHAT_URL_CACHE_FILE.parent.mkdir(
                                     parents=True, exist_ok=True,
@@ -636,54 +715,91 @@ class ChatGPTImageGenerator:
         # Otherwise: stay on whatever chat is open (last one used).
         # No new-chat click — keeps the run inside one conversation.
 
-    def _sync_auth_from_brave(self) -> None:
-        """Copy auth files from the user's real Brave profile.
+    # Hosts where the script is allowed to land top-level documents.
+    # Sub-resources (img/css/font/api) are not restricted — only the
+    # main frame's navigated URL.
+    _ALLOWED_HOSTS: Final[tuple[str, ...]] = (
+        "chatgpt.com",
+        "chat.openai.com",
+        "auth0.openai.com",   # ChatGPT login redirect
+        "auth.openai.com",    # newer login host
+    )
 
-        Idempotent and fast — just overwrites the auth artifacts inside
-        our isolated profile dir. The source ``Default`` profile may be
-        in use (Brave running) but Windows allows reading these files
-        even when locked, so the copy succeeds.
+    @classmethod
+    def _host_is_allowed(cls, url: str) -> bool:
+        """True iff *url*'s host is in the allowlist (or a subdomain).
+        Empty / ``about:blank`` / ``data:`` URLs are treated as safe
+        because Playwright opens an about:blank tab on launch and we
+        do not want to abort that."""
+        if not url or url.startswith(("about:", "data:", "chrome:", "chrome-error:")):
+            return True
+        try:
+            from urllib.parse import urlparse
+            host = (urlparse(url).hostname or "").lower()
+        except Exception:
+            return False
+        if not host:
+            return False
+        for allowed in cls._ALLOWED_HOSTS:
+            if host == allowed or host.endswith("." + allowed):
+                return True
+        return False
+
+    def _install_navigation_guard(self) -> None:
+        """Abort top-frame navigation to any non-allowlisted host.
+
+        Why: when running against the user's personal Brave profile,
+        a redirect to evil.example.com would expose the user's full
+        cookie jar to that host (because Playwright reuses the real
+        DPAPI-decryptable cookies). Aborting the document request
+        before the browser ever sends cookies prevents that. The
+        guard only fires for top-frame navigation — sub-resources
+        (chatgpt's CDN / fonts / metrics) keep loading normally.
         """
-        import shutil
-        src_default = _BRAVE_USER_DATA / "Default"
-        if not src_default.exists():
-            logger.warning(
-                "Brave default profile not found at %s — assuming "
-                "isolated profile already has a login.",
-                src_default,
-            )
+        page = self._page
+        if page is None:
             return
-        dst_default = self._profile_dir / "Default"
-        dst_default.mkdir(parents=True, exist_ok=True)
-        # Always copy Local State (sits at User Data root).
-        local_state_src = _BRAVE_USER_DATA / "Local State"
-        if local_state_src.exists():
+
+        def _maybe_block(route, request):
             try:
-                shutil.copy2(local_state_src, self._profile_dir / "Local State")
-            except OSError as exc:
-                logger.debug("Local State copy skipped: %s", exc)
-        for fname in _AUTH_FILES:
-            src = src_default / fname
-            if src.exists():
-                dst = dst_default / fname
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    shutil.copy2(src, dst)
-                except OSError as exc:
-                    logger.debug("auth file copy skipped (%s): %s", fname, exc)
-        for dname in _AUTH_DIRS:
-            src = src_default / dname
-            dst = dst_default / dname
-            if src.exists():
-                try:
-                    if dst.exists():
-                        shutil.rmtree(dst, ignore_errors=True)
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
-                except OSError as exc:
-                    logger.debug("auth dir copy skipped (%s): %s", dname, exc)
-        logger.info(
-            "synced auth files from Brave Default → %s", self._profile_dir,
-        )
+                # Only inspect top-frame document requests.
+                rtype = request.resource_type
+                is_main = (
+                    request.is_navigation_request()
+                    and rtype == "document"
+                )
+                if is_main:
+                    if not self._host_is_allowed(request.url):
+                        logger.error(
+                            "navigation guard: BLOCKED top-frame nav to %r",
+                            request.url[:200],
+                        )
+                        try:
+                            route.abort()
+                            return
+                        except PlaywrightError:
+                            pass
+            except Exception as exc:  # noqa: BLE001 — never raise from a route hook
+                logger.debug("nav-guard hook error (continuing): %s", exc)
+            try:
+                route.continue_()
+            except PlaywrightError:
+                pass
+
+        try:
+            self._context.route("**/*", _maybe_block)
+        except PlaywrightError as exc:
+            logger.warning(
+                "could not install navigation guard: %s — running unguarded",
+                exc,
+            )
+
+    # `_sync_auth_from_brave` was removed 2026-05-01: the strategy was
+    # already abandoned (DPAPI keys are bound to the source profile so
+    # copies decrypt blank), but the dead code still read & copied
+    # the user's Cookies / Login Data DBs. Removing it eliminates an
+    # unnecessary read of those secrets and prevents future
+    # maintainers from re-enabling a path that doesn't actually work.
 
     def _close_browser(self) -> None:
         # Explicitly close every page first. Without this, pages we
@@ -791,20 +907,30 @@ class ChatGPTImageGenerator:
         """
         assert self._page is not None
         deadline = time.time() + _IMAGE_WAIT_TIMEOUT / 1000
-        skip = skip_urls or set()
-        skip_js_array = "[" + ",".join(
-            f"'{u}'" for u in skip if "'" not in u
-        ) + "]"
+        skip_list = list(skip_urls or set())
 
-        # Strategy: poll all <img> elements in the document and pick the
-        # one that (a) has a real https/blob src, (b) renders larger
-        # than 200×200 px (filters icons, avatars, sprites), and (c) is
-        # not in the skip set (so batch mode advances past prior images).
-        # The generated image is by far the largest visual element added
-        # to the DOM after we send.
-        select_js = """() => {
-            const skip = new Set(%s);
-            const imgs = Array.from(document.querySelectorAll('img'));
+        # Strategy: limit the search to the LAST assistant turn — i.e.
+        # the message bubble created by the prompt we just sent. Falls
+        # back to the whole document if no assistant turn exists yet.
+        # This is the divergence-prevention fix from 2026-05-01: prior
+        # turns (cached in the fixed share-URL chat) had K-beauty/etc.
+        # images that were being picked up as if they were the new
+        # generation. Even with skip_urls a stale image could win if
+        # we forgot to seed it. Scoping to the newest turn closes that
+        # whole class of bugs.
+        # Pass skip_list via Playwright's second-arg serializer rather
+        # than %-formatting it into the JS source — that avoids JS
+        # injection / quote-escape bugs when ChatGPT image URLs contain
+        # exotic characters.
+        select_js = """(skipArr) => {
+            const skip = new Set(skipArr || []);
+            const turns = document.querySelectorAll(
+                '[data-message-author-role="assistant"]'
+            );
+            const root = turns.length
+                ? turns[turns.length - 1]
+                : document;
+            const imgs = Array.from(root.querySelectorAll('img'));
             const candidates = imgs
                 .map(img => ({
                     src: img.src,
@@ -822,10 +948,10 @@ class ChatGPTImageGenerator:
                 )
                 .sort((a, b) => (b.w * b.h) - (a.w * a.h));
             return candidates.length ? candidates[0].src : null;
-        }""" % skip_js_array
+        }"""
         while time.time() < deadline:
             try:
-                src = self._page.evaluate(select_js)
+                src = self._page.evaluate(select_js, skip_list)
             except PlaywrightError:
                 src = None
             if src:
@@ -837,7 +963,7 @@ class ChatGPTImageGenerator:
                     try:
                         # Reuse the same skip-aware selector so we keep
                         # tracking only the freshly-generated image.
-                        new_src = self._page.evaluate(select_js)
+                        new_src = self._page.evaluate(select_js, skip_list)
                     except PlaywrightError:
                         new_src = None
                     if new_src == last_src:
