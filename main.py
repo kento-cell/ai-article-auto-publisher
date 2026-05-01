@@ -3328,9 +3328,25 @@ def _fetch_topic_cover(title: str, content: str = "") -> Path | None:
         from generators.image_sourcer import ImageSourcer
         sourcer = ImageSourcer()
         query = _extract_image_query(title, content)
-        results = sourcer.find_images(query, count=1)
+        # Over-fetch + relevance filter so the cover doesn't end up
+        # being the kind of mismatched stock photo that triggered the
+        # 2026-04-30 tombstone/sewing-machine/cherry-blossom incident.
+        # find_images returns Unsplash's keyword guess and we have to
+        # reject obvious red-flag alts before the image becomes the
+        # face of the article (cover CTR matters more than inline).
+        results = sourcer.find_images(query, count=8)
+        results = [
+            r for r in results
+            if r.get("url")
+            and r.get("platform") != "Placeholder"
+            and _alt_is_relevant(r.get("alt_text", ""), title, content)
+            and _alt_matches_query_subject(r.get("alt_text", ""), query)
+        ]
         if not results:
-            logger.info("[cover] no Unsplash result for %r", query)
+            logger.info(
+                "[cover] no Unsplash result passed relevance filter for %r",
+                query,
+            )
             return None
         url = results[0].get("url") or results[0].get("download_url")
         if not url:

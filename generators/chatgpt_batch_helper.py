@@ -50,17 +50,27 @@ def is_brave_running() -> bool:
 
     Excludes the BraveCrashHandler service which lingers as a system
     process and is not a real browser instance.
+
+    Fail-closed semantics: if `tasklist` itself errors, we cannot
+    prove Brave is closed, so we report it as RUNNING. That makes
+    the caller cascade to Unsplash instead of optimistically
+    grabbing the locked profile (which would either hang for 90 s
+    or silently pick up the user's live cookies — see Codex review
+    2026-05-01 finding `chatgpt_batch_helper.py:52`).
     """
     try:
         out = subprocess.check_output(
             ["tasklist"], text=True, errors="replace",
         )
-        for ln in out.splitlines():
-            stripped = ln.strip().lower()
-            if stripped.startswith("brave.exe"):
-                return True
-    except Exception:  # noqa: BLE001 - tasklist failure ⇒ assume safe
-        pass
+    except Exception as exc:  # noqa: BLE001 - tasklist failure ⇒ fail closed
+        logger.warning(
+            "is_brave_running: tasklist failed (%s) — failing closed", exc,
+        )
+        return True
+    for ln in out.splitlines():
+        stripped = ln.strip().lower()
+        if stripped.startswith("brave.exe"):
+            return True
     return False
 
 

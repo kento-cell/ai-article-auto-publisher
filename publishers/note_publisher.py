@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from pathlib import Path
 from typing import Final
 
@@ -141,7 +142,18 @@ class NotePublisher:
             self._navigate_to_editor()
             self._input_title(title)
             if cover_image_path:
-                self._set_eyecatch_on_current_page(cover_image_path)
+                # Don't silently publish a wrong-or-missing eyecatch.
+                # The 16-article cross-contamination incident on
+                # 2026-04-30 happened because this return value was
+                # ignored: prior article's cover was still in the
+                # editor, _set_eyecatch_on_current_page early-returned,
+                # and the new post inherited the wrong thumbnail.
+                ok = self._set_eyecatch_on_current_page(cover_image_path)
+                if not ok:
+                    raise RuntimeError(
+                        f"eyecatch upload failed for {cover_image_path!r}; "
+                        "refusing to publish without a verified cover",
+                    )
             self._input_content_html(html)
             if inline_image_paths:
                 self._inject_inline_images(inline_image_paths)
@@ -1007,9 +1019,38 @@ class NotePublisher:
             # the edit path — we always want to replace an existing
             # cover, not skip the upload just because one is present.
             if cover_image_path:
-                self._set_eyecatch_on_current_page(
+                ok = self._set_eyecatch_on_current_page(
                     cover_image_path, force_replace=True,
                 )
+                if not ok:
+                    logger.error(
+                        "edit_article: eyecatch swap failed for %r; "
+                        "aborting save to avoid leaving the old cover.",
+                        cover_image_path,
+                    )
+                    return False
+                # ChatGPT-generated PNGs run 1.5-3 MB. note's eyecatch
+                # uploader takes 5-15s to ingest+resize them, during
+                # which 公開に進む is disabled. Without this poll the
+                # next step click() is a no-op and the article saves
+                # with the old cover. Wait for the eyecatch <img> to
+                # have a real https src (not the local blob/data URI)
+                # before proceeding — that signals the upload finished.
+                upload_deadline = time.time() + 30
+                while time.time() < upload_deadline:
+                    try:
+                        ready = page.evaluate(
+                            """() => {
+                                const img = document.querySelector('img[alt="eyecatch"]');
+                                if (!img || !img.src) return false;
+                                return img.src.startsWith('https://');
+                            }"""
+                        )
+                    except Exception:
+                        ready = False
+                    if ready:
+                        break
+                    page.wait_for_timeout(500)
 
             # Click 公開に進む / 更新する button
             page.wait_for_timeout(1500)
@@ -1552,6 +1593,93 @@ class NotePublisher:
                 )
         page.wait_for_timeout(800)
 
+    # Trust boundary for any image path passed to upload helpers. The
+    # cover_image_path parameter flows from JSON files / CLI args and
+    # eventually hits set_input_files() / read_bytes() — without this
+    # gate an attacker (or a corrupted JSON) could upload arbitrary
+    # local files (SSH keys, cookies, env secrets) to note's CDN.
+    _ALLOWED_IMAGE_DIRS: tuple[str, ...] = (
+        "data/images",
+        "docs/images",
+    )
+    _ALLOWED_IMAGE_EXTS: tuple[str, ...] = (
+        ".png", ".jpg", ".jpeg", ".webp", ".gif",
+    )
+    _IMAGE_MAGIC_BYTES: tuple[bytes, ...] = (
+        b"\x89PNG\r\n\x1a\n",   # PNG
+        b"\xff\xd8\xff",        # JPEG (any variant)
+        b"GIF87a", b"GIF89a",   # GIF
+        b"RIFF",                # WEBP container (further check via "WEBP" at offset 8)
+    )
+    _MAX_IMAGE_BYTES: int = 20 * 1024 * 1024  # 20 MB ceiling
+
+    @classmethod
+    def _validate_image_path(cls, file_path: str) -> Path:
+        """Reject any path that isn't a small, real image under our
+        data/images or docs/images trees. Returns the resolved Path
+        on success; raises ValueError otherwise.
+
+        Why this gate exists:
+        * `set_input_files()` and `read_bytes()` will happily ingest
+          ``../../../.ssh/id_ed25519`` or similar if the JSON spec
+          (or a malicious CLI arg) says so — `cover_image_path` flows
+          unchecked from `data/articles/note-*.json::cover_image`.
+        * Stem checks (``endswith(".png")``) are not enough: an
+          attacker could rename a binary blob. We sniff the leading
+          bytes against the small set of formats note actually
+          supports.
+        """
+        if not file_path:
+            raise ValueError("image path is empty")
+        p = Path(file_path).resolve()
+        if not p.exists():
+            raise ValueError(f"image path does not exist: {p}")
+        if not p.is_file():
+            raise ValueError(f"image path is not a regular file: {p}")
+        size = p.stat().st_size
+        if size <= 0:
+            raise ValueError(f"image is empty: {p}")
+        if size > cls._MAX_IMAGE_BYTES:
+            raise ValueError(
+                f"image too large ({size} bytes > {cls._MAX_IMAGE_BYTES}): {p}"
+            )
+        if p.suffix.lower() not in cls._ALLOWED_IMAGE_EXTS:
+            raise ValueError(f"image extension not allowed: {p.suffix}")
+        # Path-traversal / arbitrary-FS guard: must live under one of
+        # the trees we generate into. Repo root == note_publisher.py's
+        # parent.parent.
+        repo_root = Path(__file__).resolve().parent.parent
+        try:
+            rel = p.relative_to(repo_root)
+        except ValueError as exc:
+            raise ValueError(
+                f"image must live under repo root ({repo_root}): {p}"
+            ) from exc
+        rel_posix = rel.as_posix()
+        if not any(
+            rel_posix.startswith(allowed + "/")
+            for allowed in cls._ALLOWED_IMAGE_DIRS
+        ):
+            raise ValueError(
+                f"image not in allowlisted dir {cls._ALLOWED_IMAGE_DIRS}: "
+                f"{rel_posix}"
+            )
+        # Magic-bytes sniff. Cheap defence against a renamed payload
+        # that just happens to have a .png/.jpg extension.
+        head = p.read_bytes()[:16]
+        ok = False
+        for sig in cls._IMAGE_MAGIC_BYTES:
+            if head.startswith(sig):
+                if sig == b"RIFF":
+                    # WEBP must also have b"WEBP" at offset 8.
+                    ok = len(head) >= 12 and head[8:12] == b"WEBP"
+                else:
+                    ok = True
+                break
+        if not ok:
+            raise ValueError(f"image magic-bytes do not match a known format: {p}")
+        return p
+
     def _set_eyecatch_on_current_page(
         self, file_path: str, force_replace: bool = False,
     ) -> bool:
@@ -1575,6 +1703,15 @@ class NotePublisher:
         assert self._page is not None
         page = self._page
         try:
+            # Trust gate. Reject anything that isn't a real image under
+            # our data/docs trees BEFORE handing it to Playwright.
+            try:
+                validated_path = self._validate_image_path(file_path)
+            except ValueError as exc:
+                logger.error("eyecatch image rejected: %s", exc)
+                return False
+            file_path = str(validated_path)
+
             page.evaluate("window.scrollTo(0, 0)")
             page.wait_for_timeout(300)
 
@@ -1593,67 +1730,72 @@ class NotePublisher:
             if already and force_replace:
                 logger.info("force_replace: deleting existing eyecatch")
                 try:
-                    # Scroll the eyecatch into the mid-viewport so any
-                    # floating toolbar the note editor renders above
-                    # it stays visible.
                     page.evaluate("window.scrollTo(0, 0)")
                     page.wait_for_timeout(300)
-                    box = page.evaluate(
+                    # Note's editor renders an `aria-label="削除"` X-button
+                    # overlaid on the eyecatch (top-right corner). It is
+                    # visible without a hover and a JS-side click on it
+                    # removes the cover. Find the one whose centre is
+                    # inside the eyecatch-image bounding box (other 削除
+                    # elements may exist for inline images / tags).
+                    deleted = page.evaluate(
                         """() => {
                             const img = document.querySelector('img[alt="eyecatch"]');
-                            if (!img) return null;
-                            const r = img.getBoundingClientRect();
-                            window.scrollBy(0, r.top - 220);
-                            const r2 = img.getBoundingClientRect();
-                            return {x: r2.left + r2.width/2, y: r2.top + 40};
+                            if (!img) return 'no-eyecatch-img';
+                            const ir = img.getBoundingClientRect();
+                            const cands = Array.from(
+                                document.querySelectorAll('[aria-label="削除"]')
+                            );
+                            for (const el of cands) {
+                                const r = el.getBoundingClientRect();
+                                const cx = r.left + r.width / 2;
+                                const cy = r.top + r.height / 2;
+                                if (
+                                    cx >= ir.left && cx <= ir.right &&
+                                    cy >= ir.top && cy <= ir.bottom
+                                ) {
+                                    const target = el.closest('button') || el;
+                                    target.click();
+                                    return 'clicked';
+                                }
+                            }
+                            return 'no-delete-button';
                         }"""
                     )
-                    page.wait_for_timeout(500)
-                    if box:
-                        # Real mouse interactions — JS-only clicks
-                        # don't trigger the editor's hover-to-reveal
-                        # floating toolbar on React-based builds.
-                        page.mouse.move(box["x"], box["y"])
-                        page.wait_for_timeout(300)
-                        page.mouse.click(box["x"], box["y"])
-                        page.wait_for_timeout(800)
-                    # After selecting the figure, ProseMirror accepts
-                    # ``Delete`` / ``Backspace`` to remove the node.
-                    # This path bypasses the hidden-toolbar problem
-                    # entirely.
-                    page.keyboard.press("Delete")
-                    page.wait_for_timeout(600)
-                    page.keyboard.press("Backspace")
+                    logger.info("eyecatch delete: %s", deleted)
+                    if deleted not in ("clicked",):
+                        # If we can't locate the eyecatch image OR its
+                        # adjacent delete button, do NOT continue to
+                        # upload — the page state is unexpected and
+                        # uploading would risk attaching the cover to
+                        # a body file-input or simply layering a new
+                        # eyecatch on top of the old one.
+                        logger.error(
+                            "force_replace abort: %s (page state unsafe)",
+                            deleted,
+                        )
+                        return False
                     page.wait_for_timeout(800)
-                    clicked = {"found": True, "method": "keyboard"}
-                    logger.info("delete button click: %s", clicked)
-                    if not clicked.get("found"):
-                        logger.warning("delete button not found on toolbar")
-                    else:
-                        page.wait_for_timeout(800)
-                        # Some note UI versions show a confirm dialog.
-                        confirm = page.evaluate(
-                            """() => {
-                                const ok = Array.from(
-                                    document.querySelectorAll('button')
-                                ).find(b => /削除する|削除$|OK|はい/.test(
-                                    b.textContent.trim()
-                                ));
-                                if (ok) {ok.click(); return ok.textContent.trim();}
-                                return null;
-                            }"""
-                        )
-                        logger.info("confirm dialog click: %r", confirm)
-                        page.wait_for_timeout(1500)
-                        # Refresh the "already" flag.
-                        already = page.evaluate(
-                            """() => !document.querySelector(
-                                '[aria-label="画像を追加"]'
-                            )"""
-                        )
-                        logger.info(
-                            "after delete: already=%s", already,
-                        )
+                    # Some note UI versions show a confirm dialog.
+                    confirm = page.evaluate(
+                        """() => {
+                            const ok = Array.from(
+                                document.querySelectorAll('button')
+                            ).find(b => /削除する|削除$|OK|はい/.test(
+                                b.textContent.trim()
+                            ));
+                            if (ok) {ok.click(); return ok.textContent.trim();}
+                            return null;
+                        }"""
+                    )
+                    logger.info("confirm dialog click: %r", confirm)
+                    page.wait_for_timeout(1500)
+                    already = page.evaluate(
+                        """() => !document.querySelector(
+                            '[aria-label="画像を追加"]'
+                        )"""
+                    )
+                    logger.info("after delete: already=%s", already)
                 except Exception as exc:
                     logger.warning("eyecatch delete attempt failed: %s", exc)
 
@@ -1661,18 +1803,52 @@ class NotePublisher:
                 logger.info("eyecatch already present; skipping upload")
                 return True
 
-            # Strategy A: hidden file input (when no cover yet).
-            file_inputs = page.locator('input[type="file"]').all()
-            for fi in file_inputs:
+            # Strategy A: hidden file input scoped to the eyecatch
+            # dropzone. Without scoping we'd iterate every <input
+            # type=file> on the page (note editor has several — body
+            # inline image, custom uploaders, etc.) and post the cover
+            # to whichever accepted first. Cross-contamination risk:
+            # the cover would render as an inline body image while
+            # the eyecatch slot stayed empty.
+            scoped_handles = page.evaluate_handle(
+                """() => {
+                    const btn = document.querySelector('[aria-label="画像を追加"]');
+                    if (!btn) return [];
+                    let host = btn;
+                    for (let depth = 0; depth < 6 && host; depth++) {
+                        const inputs = host.querySelectorAll('input[type="file"]');
+                        if (inputs.length) return Array.from(inputs);
+                        host = host.parentElement;
+                    }
+                    return [];
+                }"""
+            )
+            scoped_inputs: list = []
+            try:
+                length = scoped_handles.evaluate("a => a.length") or 0
+                for i in range(length):
+                    scoped_inputs.append(
+                        scoped_handles.evaluate_handle(
+                            "(a, idx) => a[idx]", i,
+                        ).as_element()
+                    )
+            except Exception as exc:
+                logger.debug("scoped file_input lookup failed: %s", exc)
+            for fi in scoped_inputs:
+                if fi is None:
+                    continue
                 try:
                     fi.set_input_files(file_path)
                     page.wait_for_timeout(2500)
                     self._dismiss_crop_modal()
                     page.wait_for_timeout(800)
-                    logger.info("eyecatch uploaded via file input: %s", file_path)
+                    logger.info(
+                        "eyecatch uploaded via scoped file input: %s",
+                        file_path,
+                    )
                     return True
                 except Exception as exc:
-                    logger.debug("file input rejected: %s", exc)
+                    logger.debug("scoped file input rejected: %s", exc)
                     continue
 
             # Strategy B: synthetic drop event onto the eyecatch dropzone.
