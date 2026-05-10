@@ -29,6 +29,14 @@ _FEED_FAILURE_PATH = Path(__file__).resolve().parent.parent / "data" / "rss_feed
 _FEED_FAILURE_THRESHOLD = 3
 _FEED_COOLDOWN_SECONDS = 6 * 60 * 60  # 6 hours
 
+# Beyond this many consecutive failures a feed is considered dead
+# (chronic 404 / DNS NXDOMAIN / permanent 403). The 6-hour cooldown
+# never expires it back into rotation — instead it stays quarantined
+# until the user clears its entry in data/rss_feed_failures.json.
+# Observed today (2026-05-11): 6 feeds at streak=20-26 still being
+# retried 4×/day. Quarantine cuts those wasted requests entirely.
+_FEED_PERMANENT_QUARANTINE_THRESHOLD = 10
+
 # Pre-configured Japanese RSS sources
 DEFAULT_FEEDS: dict[str, dict[str, str]] = {
     # --- note向け（一般） ---
@@ -363,10 +371,29 @@ class RssCollector(BaseCollector):
         import time as _time
         now = _time.time()
 
+        # Pre-flight summary: list permanently-quarantined feeds once at
+        # the start so the user sees what to fix without scrolling
+        # through per-feed mute lines later. Keeps the per-feed loop quiet.
+        quarantined = [
+            (fid, int(s.get("streak", 0)), str(s.get("last_error", ""))[:80])
+            for fid, s in failures.items()
+            if int(s.get("streak", 0)) >= _FEED_PERMANENT_QUARANTINE_THRESHOLD
+        ]
+        if quarantined:
+            logger.warning(
+                "RSS 永久隔離中 (%d 件): 復活するには data/rss_feed_failures.json から該当エントリを削除",
+                len(quarantined),
+            )
+            for fid, streak, err in quarantined:
+                logger.warning("  %s (streak=%d): %s", fid, streak, err)
+
         for feed_id, feed_config in self.feeds.items():
             state = failures.get(feed_id, {})
             streak = int(state.get("streak", 0))
             last_fail = float(state.get("last_fail", 0.0))
+            # Permanent quarantine — skip without retry until manual reset.
+            if streak >= _FEED_PERMANENT_QUARANTINE_THRESHOLD:
+                continue
             if streak >= _FEED_FAILURE_THRESHOLD and (now - last_fail) < _FEED_COOLDOWN_SECONDS:
                 cooldown_left = int((_FEED_COOLDOWN_SECONDS - (now - last_fail)) / 60)
                 logger.info(
