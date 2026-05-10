@@ -76,6 +76,11 @@ _CHAT_URL_CACHE_FILE: Final[Path] = (
 
 
 _DEFAULT_CHATGPT_URL: Final[str] = "https://chatgpt.com/"
+# Note: ?temporary-chat=true was tried 2026-05-07 to bypass Memory
+# but ChatGPT disables the image-generation tool inside temporary
+# chats ("このチャットでは画像生成ツールにアクセスできません").
+# Reverted to the regular new-chat URL; Memory pollution is fought
+# instead by the anti-template directive in `_build_prompt`.
 
 
 def _is_safe_chatgpt_url(url: str) -> bool:
@@ -119,7 +124,7 @@ _IMAGE_WAIT_TIMEOUT: Final[int] = 240_000
 
 # Text-reply waiting (used by Vision evaluation). ChatGPT typically
 # answers a 2-line scoring prompt in 5-15s; cap at 60s.
-_TEXT_WAIT_TIMEOUT: Final[int] = 60_000
+_TEXT_WAIT_TIMEOUT: Final[int] = 120_000
 
 # Vision-evaluation thresholds. The evaluator asks ChatGPT to score the
 # just-generated image 1-10 against the article topic. Below cutoff →
@@ -160,6 +165,10 @@ class ChatGPTImageGenerator:
         self._playwright = None
         self._context: BrowserContext | None = None
         self._page: Page | None = None
+        # CDP attach state — when set, _close_browser() leaves the
+        # underlying Brave alive and only tears down the tab we created.
+        self._cdp_browser = None
+        self._cdp_attached = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -171,6 +180,7 @@ class ChatGPTImageGenerator:
         size: Size = "landscape",
         out_paths: Optional[list[Path]] = None,
         topic: str = "",
+        style_block: str | None = None,
     ) -> list[Optional[Path]]:
         """Generate multiple images in a single ChatGPT session.
 
@@ -203,71 +213,94 @@ class ChatGPTImageGenerator:
             raise ValueError("out_paths length must match prompts length")
 
         results: list[Optional[Path]] = [None] * len(prompts)
-        seen_urls: set[str] = set()
         eval_on = _vision_eval_enabled()
         try:
             self._open_browser()
             for i, (prompt, dest) in enumerate(zip(prompts, out_paths)):
                 logger.info(
-                    "batch image %d/%d", i + 1, len(prompts),
+                    "batch image %d/%d (fresh chat per image)",
+                    i + 1, len(prompts),
                 )
+                # Per-image session policy (2026-05-07 user request):
+                # 1) Open a NEW chat for every image so this generation
+                #    cannot inherit pollution from the previous prompt's
+                #    context (different topic, retry feedback, vision
+                #    eval text).
+                # 2) Delete the chat immediately after extracting the
+                #    image so the sidebar stays clean and the user's
+                #    history doesn't accumulate one entry per published
+                #    article.
+                # `seen_urls` is reset inside this loop because each
+                # chat is brand-new and previous URLs cannot collide.
+                seen_urls: set[str] = set()
+                try:
+                    self._start_new_chat()
+                except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                    logger.warning(
+                        "batch %d: new chat open failed: %s — "
+                        "continuing on existing tab",
+                        i + 1, exc,
+                    )
+
                 # Convention from publish_custom_post.py: prompts[0] is
                 # the article cover, rest are inline section visuals.
                 is_cover = (i == 0)
                 full_prompt = self._build_prompt(
                     prompt, size, is_cover=is_cover,
+                    style_block=style_block,
                 )
                 try:
                     self._send_prompt(full_prompt)
                     img_url = self._wait_for_image(skip_urls=seen_urls)
                     if not img_url:
                         logger.error("batch %d: no image found", i + 1)
-                        continue
-                    seen_urls.add(img_url)
-                    self._download_via_browser(img_url, dest)
-                    results[i] = dest
+                    else:
+                        seen_urls.add(img_url)
+                        self._download_via_browser(img_url, dest)
+                        results[i] = dest
 
-                    if eval_on and topic:
-                        kind = "サムネ" if is_cover else "インライン"
-                        if not self._image_passes_vision_eval(
-                            topic=topic, kind=kind,
-                        ):
-                            # One retry: ask for a fresh image with
-                            # explicit "前回はズレていた" feedback so the
-                            # model adjusts. The skip_urls guard ensures
-                            # we wait for a new URL, not the rejected one.
-                            logger.warning(
-                                "batch %d vision-eval failed; "
-                                "regenerating once", i + 1,
-                            )
-                            retry_prompt = self._build_retry_prompt(
-                                prompt, size, is_cover, topic,
-                            )
-                            try:
-                                self._send_prompt(retry_prompt)
-                                new_url = self._wait_for_image(
-                                    skip_urls=seen_urls,
-                                )
-                                if new_url:
-                                    seen_urls.add(new_url)
-                                    self._download_via_browser(new_url, dest)
-                                    results[i] = dest
-                            except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                        if eval_on and topic:
+                            kind = "サムネ" if is_cover else "インライン"
+                            if not self._image_passes_vision_eval(
+                                topic=topic, kind=kind,
+                            ):
                                 logger.warning(
-                                    "batch %d retry failed: %s — "
-                                    "keeping original",
-                                    i + 1, exc,
+                                    "batch %d vision-eval failed; "
+                                    "regenerating once", i + 1,
                                 )
+                                retry_prompt = self._build_retry_prompt(
+                                    prompt, size, is_cover, topic,
+                                )
+                                try:
+                                    self._send_prompt(retry_prompt)
+                                    new_url = self._wait_for_image(
+                                        skip_urls=seen_urls,
+                                    )
+                                    if new_url:
+                                        seen_urls.add(new_url)
+                                        self._download_via_browser(
+                                            new_url, dest,
+                                        )
+                                        results[i] = dest
+                                except (
+                                    PlaywrightTimeoutError, PlaywrightError,
+                                ) as exc:
+                                    logger.warning(
+                                        "batch %d retry failed: %s — "
+                                        "keeping original", i + 1, exc,
+                                    )
                 except (PlaywrightTimeoutError, PlaywrightError) as exc:
                     logger.error("batch %d failed: %s", i + 1, exc)
-                    continue
-            # All prompts processed (or skipped) — soft-delete the
-            # personal /c/<id> chat we created so the user's sidebar
-            # 「最近」section doesn't fill up with one entry per run.
-            try:
-                self._delete_current_chat()
-            except PlaywrightError as exc:
-                logger.warning("delete current chat failed: %s", exc)
+                finally:
+                    # Always delete this chat — even on send-prompt
+                    # timeout we still left a /c/<id> conversation that
+                    # would pollute the sidebar.
+                    try:
+                        self._delete_current_chat()
+                    except PlaywrightError as exc:
+                        logger.warning(
+                            "batch %d delete chat failed: %s", i + 1, exc,
+                        )
         finally:
             self._close_browser()
         return results
@@ -329,10 +362,14 @@ class ChatGPTImageGenerator:
         """Wait for ChatGPT's latest assistant turn to finish streaming.
 
         Polls innerText of the last ``[data-message-author-role='assistant']``
-        element. Considers the turn done when the text has not changed
-        for 2 consecutive polls (1 sec each) — ChatGPT streams tokens
-        every ~50 ms during generation so a 2-sec stable read means
-        generation has stopped.
+        element. Considers the turn done when the text has stabilized AND
+        the streaming-progress indicator (思考中 / Thinking / cursor blob)
+        has cleared.
+
+        2026-05-08 fix: previously the 2-sec stability check returned
+        "思考中" prematurely (the placeholder is itself stable while the
+        model is still thinking) — vision-eval then failed to parse a
+        non-existent SCORE and the entire batch fell back to Unsplash.
         """
         if self._page is None:
             return None
@@ -344,6 +381,30 @@ class ChatGPTImageGenerator:
             if (!turns.length) return null;
             return (turns[turns.length - 1].innerText || '').trim();
         }"""
+        # Indicators ChatGPT shows WHILE still generating. Returning these
+        # as the final answer = bug (they're transient). Stay in the loop
+        # until they go away.
+        thinking_markers = (
+            "思考中", "考え中", "回答を生成", "生成中",
+            "Thinking", "thinking", "Reasoning", "reasoning",
+        )
+
+        def _is_placeholder(t: str) -> bool:
+            stripped = t.strip()
+            if not stripped:
+                return True
+            # Treat as placeholder when the entire reply is essentially
+            # one of the markers (allowing for surrounding whitespace /
+            # punctuation but not for substantive content alongside).
+            if len(stripped) <= 24 and any(m in stripped for m in thinking_markers):
+                return True
+            # Last-line check: if the reply ends with a thinking marker
+            # the model is still producing — keep waiting.
+            tail = stripped.splitlines()[-1].strip() if stripped else ""
+            if tail and len(tail) <= 12 and any(m in tail for m in thinking_markers):
+                return True
+            return False
+
         last_text = ""
         stable_for = 0
         while time.time() < deadline:
@@ -353,13 +414,19 @@ class ChatGPTImageGenerator:
                 cur = ""
             if cur and cur == last_text:
                 stable_for += 1
-                if stable_for >= 2 and len(cur) > 0:
+                # Need: stable for 2 polls AND not a placeholder.
+                if stable_for >= 2 and not _is_placeholder(cur):
                     return cur
             else:
                 stable_for = 0
                 last_text = cur
             self._page.wait_for_timeout(1_000)
-        return last_text or None
+        # On timeout, return whatever we have IF it's not a placeholder.
+        # A placeholder reply means ChatGPT didn't finish — caller will
+        # treat None as fail-closed.
+        if last_text and not _is_placeholder(last_text):
+            return last_text
+        return None
 
     @staticmethod
     def _parse_vision_score(reply: str) -> Optional[int]:
@@ -392,6 +459,115 @@ class ChatGPTImageGenerator:
             "前回のような抽象的・無関係な描写は避けてください。\n\n"
             "出力は画像のみ。"
         )
+
+    def _start_new_chat(self) -> None:
+        """Open a brand-new tab + chat for the next image.
+
+        Per-image tab policy (2026-05-07 user request):
+          * CDP attach mode — close the previous tab and open a fresh
+            ``ctx.new_page()``, then navigate to chatgpt.com. This
+            guarantees a clean composer with no leftover scroll /
+            modal / sidebar state from the previous image.
+          * Launch mode — keep the single tab and just ``goto()`` the
+            new-chat URL (creating a tab here would conflict with the
+            launch context's lifecycle).
+
+        Either way, ``self._page`` ends up pointing at the active
+        composer ready for ``_send_prompt``.
+        """
+        if self._context is None:
+            return
+        if self._cdp_attached:
+            # Close the previous tab first so the sidebar isn't
+            # littered with stale chatgpt.com tabs across batches.
+            if self._page is not None:
+                try:
+                    self._page.close()
+                except PlaywrightError:
+                    pass
+                self._page = None
+            try:
+                self._page = self._context.new_page()
+                self._page.set_default_timeout(_NAV_TIMEOUT)
+            except PlaywrightError as exc:
+                logger.warning(
+                    "_start_new_chat: new_page failed: %s", exc,
+                )
+                return
+        if self._page is None:
+            return
+        try:
+            self._page.goto(
+                _DEFAULT_CHATGPT_URL, wait_until="domcontentloaded",
+            )
+            # Composer needs a beat to mount its prompt-textarea.
+            self._page.wait_for_timeout(1_500)
+            self._dismiss_blocking_dialogs()
+        except PlaywrightTimeoutError as exc:
+            logger.warning(
+                "_start_new_chat: nav timeout (%s) — staying on current tab",
+                exc,
+            )
+
+    def _cleanup_orphan_tabs(self) -> None:
+        """Close stray about:blank / new-tab pages we may have left.
+
+        ``new_page()`` and chromium's session-restore can leave behind
+        empty tabs (about:blank, chrome://newtab/) that pollute the
+        user's tab strip. This walks every page in the context and
+        closes the empty ones, leaving real user pages alone.
+        Safe to call repeatedly.
+        """
+        if self._context is None:
+            return
+        empty = {"", "about:blank", "chrome://newtab/"}
+        for pg in list(self._context.pages):
+            try:
+                if pg is self._page:
+                    continue  # never close our own working tab
+                url = pg.url or ""
+                if url in empty or url.startswith("about:"):
+                    pg.close()
+                    logger.info("closed orphan tab: %s", url[:80])
+            except PlaywrightError:
+                continue
+
+    def _dismiss_blocking_dialogs(self) -> None:
+        """Close any modal dialog covering the composer.
+
+        ``temporary-chat=true`` and other onboarding flows render a
+        ``<dialog open>`` that intercepts pointer events so the
+        composer ``.click()`` retries forever. Press Escape (works for
+        most ChatGPT modals), then explicitly click any visible
+        dismiss button as a backup.
+        """
+        if self._page is None:
+            return
+        try:
+            self._page.keyboard.press("Escape")
+            self._page.wait_for_timeout(300)
+        except PlaywrightError:
+            pass
+        for sel in (
+            "dialog button[aria-label='閉じる']",
+            "dialog button[aria-label='Close']",
+            "dialog button:has-text('始める')",
+            "dialog button:has-text('OK')",
+            "dialog button:has-text('続ける')",
+            "dialog button:has-text('Continue')",
+            "dialog button:has-text('Got it')",
+        ):
+            try:
+                btn = self._page.locator(sel).first
+                if btn.count() > 0 and btn.is_visible():
+                    btn.click(timeout=2_000)
+                    self._page.wait_for_timeout(300)
+                    logger.info(
+                        "dismissed dialog via selector %s", sel,
+                    )
+                    return
+            except PlaywrightError:
+                continue
 
     def _delete_current_chat(self) -> None:
         """Soft-delete the conversation we just used.
@@ -460,7 +636,12 @@ class ChatGPTImageGenerator:
             logger.warning("delete chat fetch raised: %s", exc)
 
     @staticmethod
-    def _build_prompt(prompt: str, size: Size, is_cover: bool = False) -> str:
+    def _build_prompt(
+        prompt: str,
+        size: Size,
+        is_cover: bool = False,
+        style_block: str | None = None,
+    ) -> str:
         """Compose the imperative prompt sent to ChatGPT (Japanese).
 
         Format requested by the user (2026-04-28):
@@ -468,33 +649,100 @@ class ChatGPTImageGenerator:
           2. 記事の要約 (prompt argument is the JP summary of the
              article, produced by visual_prompt_builder)
           3. サイズ指定
-          4. 宮崎駿/新海誠/細田守風で生成 — 最後に明示
-             (「スタジオジブリ」直書きは2026-04-28以降ChatGPTがブロック)
+          4. スタイルブロック (default: 宮崎駿/新海誠/細田守風)
+             — caller can override with ``style_block`` (game-homage,
+             cyberpunk, etc.). Keeping default Ghibli preserves
+             backwards-compat for every existing caller.
           5. 全部日本語
 
         ``is_cover`` switches the noun between サムネイル / インライン.
         """
         kind = "サムネイル画像" if is_cover else "インライン画像"
-        # 2026-04-28: 「スタジオジブリ風」直書きが OpenAI の第三者コンテンツ
-        # モデレーションに引っかかるようになったので、商標名を外して
-        # 個人クリエイター名 + テクニカルな描写語に分散。日本のアニメ
-        # 監督 (宮崎駿/新海誠/細田守) の名前なら個人芸術家として通る。
+        # Default Ghibli-ish block. 2026-04-28: 「スタジオジブリ風」直書き
+        # が OpenAI の第三者コンテンツモデレーションに引っかかるようになっ
+        # たので、商標名を外して個人クリエイター名 + テクニカルな描写語に
+        # 分散。日本のアニメ監督 (宮崎駿/新海誠/細田守) の名前なら個人芸
+        # 術家として通る。
+        default_style = (
+            "宮崎駿、新海誠、細田守のような日本のアニメ監督の作風を参考に、\n"
+            "温かみのある手描き水彩アニメーション調で生成してください。\n"
+            "- 手描き水彩タッチ、優しいパステルカラー、温かい光\n"
+            "- 夢幻的・ノスタルジックな雰囲気、自然光\n"
+            "- キャラクターや自然背景・建物が登場してOK\n"
+            "- テキスト・読める文字・ロゴ・透かし・UIスクリーンショットは描かない\n"
+            "- 中央に被写体を配置、シネマティックな構図"
+        )
+        style = style_block.strip() if style_block else default_style
+        # Anti-template-prompt directive (2026-05-07):
+        # ChatGPT Memory has been observed to repeatedly answer image
+        # requests with a fixed 5-item template ("【記事の内容】
+        # 【サイズ】【スタイル】【入れたい要素】【文字入れ】を送って
+        # ください") instead of generating. Force-override that
+        # behaviour: lead with an explicit "no clarifying questions"
+        # statement, give every field inline, and end with a final
+        # imperative the model has to honour for compliance.
+        if is_cover:
+            # 煽動的・文字入りサムネ専用プロンプト (2026-05-07 user request)
+            # Inline images stay Ghibli / clean illustration; ONLY the
+            # cover gets the click-bait infographic treatment with
+            # large hand-drawn Japanese title text + character + bold
+            # background. Goal: thumbnail is the click-driver, body
+            # images are the calm complement.
+            return (
+                f"【最重要】このメッセージで全情報を提供しています。"
+                f"絶対に追加質問せず、即座に画像を1枚生成してください。\n"
+                f"テンプレート確認・項目の聞き返し・「もう少し情報を」"
+                f"などの応答は禁止です。\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"用途: note記事のアイキャッチ・サムネ画像 (1枚)\n"
+                f"サイズ: {_SIZE_PHRASE[size]}\n"
+                f"目的: クリック率を最大化する煽動的・文字入りバナー\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"【★最重要★ 文字を必ず画像内に大きく描画】\n"
+                f"メインキャッチ文字 (画像中央〜上部に巨大日本語ゴシックで):\n"
+                f"  「{prompt[:60]}」\n"
+                f"  ※この文字の主要キーワード3〜5語を抜き出し、\n"
+                f"    一番大きく目立つように描いてください\n"
+                f"  ※フォント: 極太ゴシック / 漫画風手書き風\n"
+                f"  ※色: 黒地+白文字 / 赤地+黄文字 / 白地+黒文字 など強コントラスト\n"
+                f"  ※縁取り (3-5px 反対色) + ドロップシャドウ必須\n"
+                f"  ※文字はくっきり読めること。絶対にぼかさない\n\n"
+                f"【キャラ・象徴イラスト】\n"
+                f"記事の被写体: {prompt}\n"
+                f"  ※左右どちらかにアニメ風キャラ or 象徴イラストを大きく配置\n"
+                f"  ※表情豊か (驚き / ニヤリ / 真剣 など)、視線を文字に誘導\n"
+                f"  ※文字と被らない位置にレイアウト\n\n"
+                f"【背景】\n"
+                f"  - ビビッドな単色 or 2色グラデ (赤・紫・青・黄・ピンク系から選択)\n"
+                f"  - 装飾を1-2個入れる: 集中線 / きらめき / 吹き出し / 矢印 / 雷光\n"
+                f"  - 全体構図は YouTube サムネ・雑誌の煽り広告型\n\n"
+                f"【スタイル】\n"
+                f"  - インフォグラフィック型 / バナー型\n"
+                f"  - SNS (note・Twitter・YouTube) でクリックされやすい煽動レイアウト\n"
+                f"  - アニメ風キャラOK、ポップ・カラフル\n"
+                f"  - 既存IPの商標ロゴ・実在キャラの直接描写は避ける\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"出力は画像1枚のみ。前置き・後置きの文章不要。"
+                f"質問・確認・テンプレ要求は一切禁止。"
+                f"必ず日本語の文字を画像内にはっきり描いてください。"
+            )
+        # インライン画像: 従来通り Ghibli / クリーン水彩。本文を邪魔しない補完絵。
         return (
-            f"以下の記事の{kind}を作成してください。\n"
-            f"プロンプトを返さず、実際に画像を生成して返してください。\n\n"
-            f"【記事の内容】\n"
+            f"【最重要】このメッセージで全情報を提供しています。"
+            f"絶対に追加質問せず、即座に画像を1枚生成してください。\n"
+            f"テンプレート確認・項目の聞き返し・「もう少し情報を」"
+            f"などの応答は禁止です。\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"用途: 記事のインライン画像 (本文中の挿絵、1枚)\n"
+            f"サイズ: {_SIZE_PHRASE[size]}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"記事の被写体・場面（これをそのまま描いてください）:\n"
             f"{prompt}\n\n"
-            f"【サイズ】\n"
-            f"{_SIZE_PHRASE[size]}\n\n"
-            f"【スタイル】\n"
-            f"宮崎駿、新海誠、細田守のような日本のアニメ監督の作風を参考に、\n"
-            f"温かみのある手描き水彩アニメーション調で生成してください。\n"
-            f"- 手描き水彩タッチ、優しいパステルカラー、温かい光\n"
-            f"- 夢幻的・ノスタルジックな雰囲気、自然光\n"
-            f"- キャラクターや自然背景・建物が登場してOK\n"
-            f"- テキスト・読める文字・ロゴ・透かし・UIスクリーンショットは描かない\n"
-            f"- 中央に被写体を配置、シネマティックな構図\n\n"
-            f"出力は画像のみ。前置き・後置きの文章は不要です。"
+            f"スタイル指定:\n"
+            f"{style}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"出力は画像1枚のみ。前置き・後置きのテキスト不要。"
+            f"質問・確認・テンプレ要求は一切禁止。"
         )
 
     def generate(
@@ -502,6 +750,7 @@ class ChatGPTImageGenerator:
         prompt: str,
         size: Size = "landscape",
         out_path: Optional[Path] = None,
+        style_block: str | None = None,
     ) -> Optional[Path]:
         """Generate one image and save to *out_path*.
 
@@ -522,7 +771,7 @@ class ChatGPTImageGenerator:
             out_dir.mkdir(parents=True, exist_ok=True)
             out_path = out_dir / f"chatgpt_cover_{ts}.png"
 
-        full_prompt = self._build_prompt(prompt, size)
+        full_prompt = self._build_prompt(prompt, size, style_block=style_block)
 
         try:
             self._open_browser()
@@ -591,17 +840,71 @@ class ChatGPTImageGenerator:
     # ------------------------------------------------------------------
 
     def _open_browser(self) -> None:
-        # Strategy: use Brave's actual User Data dir directly. Cookies
-        # are encrypted with Windows DPAPI keys stored in Local State
-        # — copying selected files alone won't preserve decryptability,
-        # so the copy strategy was abandoned in favour of reusing the
-        # real profile. Brave **must be closed** for this to work
-        # (otherwise the user_data_dir is locked).
-        # Profile changes during automation are limited to the chat
-        # history (one new conversation per image). To avoid history
-        # pollution we delete the conversation right after extraction
-        # in a future revision; for now the cost is one ephemeral
-        # row in the user's chat list per image.
+        """Open the working ChatGPT page.
+
+        Two strategies, in priority order:
+
+        1. **CDP attach** (preferred) — if ``CHATGPT_CDP_PORT`` is set
+           we connect to a Brave that's already running with
+           ``--remote-debugging-port=<port>`` and open a NEW tab on
+           ``chatgpt.com``. The user's existing tabs are never
+           inspected or closed, and Brave stays alive across runs so
+           the next ``--publish`` doesn't re-pay the launch cost.
+        2. **launch_persistent_context** (fallback) — kicks off our
+           own Brave instance against the user's real profile. This
+           requires Brave to be closed (otherwise the user_data_dir
+           is locked) and is what the pipeline used before 2026-05-07.
+        """
+        cdp_port = os.environ.get("CHATGPT_CDP_PORT")
+        if cdp_port:
+            cdp_url = f"http://localhost:{cdp_port}"
+            try:
+                self._playwright = sync_playwright().start()
+                self._cdp_browser = (
+                    self._playwright.chromium.connect_over_cdp(cdp_url)
+                )
+                if not self._cdp_browser.contexts:
+                    raise PlaywrightError(
+                        "CDP browser exposed no contexts",
+                    )
+                self._context = self._cdp_browser.contexts[0]
+                self._cdp_attached = True
+                logger.info(
+                    "CDP attached to Brave at %s "
+                    "(%d existing tabs preserved)",
+                    cdp_url, len(self._context.pages),
+                )
+                # Sweep any pre-existing about:blank / chrome://newtab
+                # tabs left behind by chromium session-restore so we
+                # don't leak them into the user's tab strip.
+                self._cleanup_orphan_tabs()
+                self._page = self._context.new_page()
+                self._page.set_default_timeout(_NAV_TIMEOUT)
+                # NOTE: skipping _install_navigation_guard in CDP mode
+                # — context.route is shared across the user's existing
+                # tabs and would block their non-chatgpt navigation.
+                # We rely on never goto-ing anywhere but chatgpt.com/.
+                self._page.goto(
+                    _DEFAULT_CHATGPT_URL,
+                    wait_until="domcontentloaded",
+                )
+                self._page.wait_for_timeout(2_500)
+                return
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "CDP connect to %s failed (%s) — "
+                    "falling back to launch_persistent_context",
+                    cdp_url, exc,
+                )
+                if self._playwright is not None:
+                    try:
+                        self._playwright.stop()
+                    except PlaywrightError:
+                        pass
+                self._playwright = None
+                self._cdp_browser = None
+                self._cdp_attached = False
+
         target_profile = (
             _BRAVE_USER_DATA if _BRAVE_USER_DATA.exists()
             else self._profile_dir
@@ -802,11 +1105,45 @@ class ChatGPTImageGenerator:
     # maintainers from re-enabling a path that doesn't actually work.
 
     def _close_browser(self) -> None:
-        # Explicitly close every page first. Without this, pages we
-        # opened (including the implicit about:blank that Playwright
-        # creates when launching Brave) get persisted in the user's
-        # Brave session-restore data and reappear next time they open
-        # the browser manually. Closing one-by-one prevents that.
+        # CDP attach mode: leave the underlying Brave running and only
+        # close the single tab we opened. The user's existing tabs are
+        # NEVER touched. Then sweep any leftover about:blank /
+        # chrome://newtab tabs.
+        if self._cdp_attached:
+            try:
+                if self._page is not None:
+                    try:
+                        self._page.close()
+                    except PlaywrightError:
+                        pass
+                    self._page = None
+                # Final orphan-tab sweep before disconnecting so the
+                # user's tab strip stays as clean as we found it.
+                try:
+                    self._cleanup_orphan_tabs()
+                except PlaywrightError:
+                    pass
+            finally:
+                if self._cdp_browser is not None:
+                    try:
+                        self._cdp_browser.close()
+                    except PlaywrightError:
+                        pass
+                if self._playwright is not None:
+                    try:
+                        self._playwright.stop()
+                    except PlaywrightError:
+                        pass
+                self._context = None
+                self._page = None
+                self._playwright = None
+                self._cdp_browser = None
+                self._cdp_attached = False
+            return
+
+        # Launched mode (we own the Brave instance) — close every page,
+        # then the context, so nothing reappears in the user's session
+        # restore on their next manual Brave open.
         try:
             if self._context is not None:
                 try:
@@ -844,6 +1181,7 @@ class ChatGPTImageGenerator:
             "div[contenteditable='true']",
             "textarea[placeholder*='メッセージ']",
             "textarea[placeholder*='message' i]",
+            "textarea[placeholder*='質問してみましょう']",
         ):
             loc = self._page.locator(sel).first
             if loc.count() > 0 and loc.is_visible():
@@ -852,34 +1190,140 @@ class ChatGPTImageGenerator:
         if composer is None:
             raise PlaywrightError("ChatGPT composer not found")
 
-        composer.click()
-        composer.type(text, delay=10)
-        # The send button only renders once the composer has content.
-        # Wait for it explicitly — Enter as a fallback can be misread
-        # as "newline" in contenteditable on some UI revisions.
-        sent = False
-        send_btn = self._page.locator(
-            "button[data-testid='send-button']"
-        ).first
+        # 2026-05-08 — composer focus + insert reliability hardening.
+        # Symptom: `keyboard.insert_text(text)` after a bare `composer.click()`
+        # occasionally landed in nowhere (composer ended up empty), which
+        # then prevented the send-button from rendering and the whole
+        # batch fell back to Unsplash. Three fixes:
+        #   1. Disable voice-input mode if active (user ChatGPT settings
+        #      may default to voice; the bottom-right "音声を使用する"
+        #      icon then OCCUPIES the area where send button would render).
+        #   2. Re-click + scroll-into-view to guarantee focus.
+        #   3. After insertion, verify the composer's innerText is non-empty
+        #      and retry with `fill()` on contenteditable / textarea if not.
+        # Step 1 — force text mode (no-op if already in text mode).
         try:
-            send_btn.wait_for(state="visible", timeout=8_000)
-            send_btn.click()
-            sent = True
-            logger.info("clicked send button (data-testid=send-button)")
-        except PlaywrightTimeoutError:
-            logger.warning("send-button did not become visible in 8s")
+            voice_btn = self._page.locator(
+                "button[aria-label*='音声' i], "
+                "button[aria-label*='voice' i], "
+                "button[data-testid='voice-mode-button']"
+            ).first
+            if voice_btn.count() > 0 and voice_btn.is_visible():
+                # Pressed/aria-pressed indicates active voice mode.
+                pressed = (voice_btn.get_attribute("aria-pressed") or "").lower()
+                if pressed == "true":
+                    voice_btn.click()
+                    logger.info("disabled voice-input mode (was active)")
+                    self._page.wait_for_timeout(500)
         except PlaywrightError as exc:
-            logger.warning("send-button click failed: %s", exc)
-        if not sent:
-            # Last-resort: try Ctrl+Enter (forces send even when Enter
-            # inserts newline) then plain Enter.
+            logger.debug("voice-mode probe skipped: %s", exc)
+
+        composer.scroll_into_view_if_needed()
+        composer.click()
+        try:
+            self._page.keyboard.insert_text(text)
+        except PlaywrightError as exc:
+            logger.warning(
+                "insert_text failed (%s) — falling back to type()",
+                exc,
+            )
+            composer.type(text, delay=1)
+
+        # Verify text actually landed. ProseMirror sometimes drops content
+        # if focus shifted between click() and insert_text. Self-heal once.
+        try:
+            cur = (composer.evaluate("el => el.innerText || el.value || ''") or "").strip()
+        except PlaywrightError:
+            cur = ""
+        if len(cur) < min(20, len(text) // 4):
+            logger.warning(
+                "composer content too short after insert (got %d chars, want %d) — retrying via fill()",
+                len(cur), len(text),
+            )
             try:
-                self._page.keyboard.press("Control+Enter")
-                sent = True
-                logger.info("sent via Ctrl+Enter fallback")
+                composer.fill("")
+                composer.fill(text)
             except PlaywrightError:
-                self._page.keyboard.press("Enter")
-                logger.info("sent via Enter fallback")
+                # Last-ditch: re-click and retype.
+                composer.click()
+                self._page.keyboard.insert_text(text)
+
+        # 2026-05-08 user-suggested submission order: focus composer
+        # then press Enter — this is the simplest path that works on
+        # current ChatGPT UI (plain Enter submits, Shift+Enter adds
+        # newline). Button-click stays as a fallback for very old UI
+        # revs where Enter inserts newline.
+        #
+        # Verify submission by polling the composer — if its innerText
+        # clears, we know the prompt was accepted. If not, escalate
+        # through the fallback chain.
+        def _composer_text() -> str:
+            try:
+                return (
+                    composer.evaluate("el => el.innerText || el.value || ''")
+                    or ""
+                ).strip()
+            except PlaywrightError:
+                return "<unreadable>"
+
+        sent = False
+        # Primary: focus composer + press Enter.
+        try:
+            composer.click()  # re-focus in case voice-probe shifted it
+            self._page.keyboard.press("Enter")
+            self._page.wait_for_timeout(700)
+            if not _composer_text():
+                sent = True
+                logger.info("sent via Enter (composer cleared)")
+        except PlaywrightError as exc:
+            logger.debug("Enter primary failed: %s", exc)
+
+        # Secondary: send button via multiple selectors.
+        if not sent:
+            send_selectors = (
+                "button[data-testid='send-button']",
+                "button[aria-label='プロンプトを送信する']",
+                "button[aria-label*='送信']",
+                "button[aria-label='Send prompt']",
+                "button[aria-label*='Send' i]",
+                "form button[type='submit']:not([disabled])",
+            )
+            for sel in send_selectors:
+                btn = self._page.locator(sel).first
+                try:
+                    btn.wait_for(state="visible", timeout=3_000)
+                except PlaywrightTimeoutError:
+                    continue
+                try:
+                    btn.click()
+                    self._page.wait_for_timeout(500)
+                    if not _composer_text():
+                        sent = True
+                        logger.info("sent via send button (sel=%s)", sel)
+                        break
+                except PlaywrightError as exc:
+                    logger.debug("send click failed sel=%s exc=%s", sel, exc)
+                    continue
+
+        # Tertiary: Ctrl+Enter (forces send when Enter inserts newline
+        # on some legacy UI revisions).
+        if not sent:
+            try:
+                composer.click()
+                self._page.keyboard.press("Control+Enter")
+                self._page.wait_for_timeout(700)
+                if not _composer_text():
+                    sent = True
+                    logger.info("sent via Ctrl+Enter fallback")
+            except PlaywrightError as exc:
+                logger.warning("Ctrl+Enter fallback failed: %s", exc)
+
+        if not sent:
+            logger.warning(
+                "all submission paths failed — composer still has text=%r",
+                _composer_text()[:60],
+            )
+
         logger.info("ChatGPT prompt sent (%d chars)", len(text))
         # Confirm the composer cleared (UI flushes input on send).
         self._page.wait_for_timeout(1_500)
