@@ -221,3 +221,18 @@ config/
 - 画像はCC0/Unsplash/Pexels/AI生成のみ使用可
 - チェーン店ブラックリストは `config/settings.yaml` の `evidence.gourmet_rules.chain_blacklist`
 - 構成パターンは `config/prompts.yaml` の `article_structures` + `structure_selection`
+
+## Monitor / バックグラウンドタスクの後始末
+
+Claude Code の `Monitor` ツール (`tail -F ... | grep ...`) を使った後は、
+`TaskStop` だけだと Windows 上で子プロセス (`tail.exe` / `grep.exe`) が
+孤児化して残ることがある (シグナル伝播の問題)。
+
+ターン終了前に必ず以下を実行してクリーンアップ:
+
+```powershell
+Get-Process tail,grep -ErrorAction SilentlyContinue | Stop-Process -Force
+```
+
+何もぶら下がっていなければ no-op。害は無いが、何セッションも続けると
+プロセス表が tail.exe で埋まる。
