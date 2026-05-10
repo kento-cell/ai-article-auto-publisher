@@ -853,30 +853,46 @@ def _pick_title_bracket_hint() -> str:
     )
 
 
-_AI_DISCLAIMER_SENTINEL = "<!-- AI_DISCLAIMER -->"
+_AI_DISCLAIMER_SENTINEL = "<!-- STORE_DATA_DISCLAIMER -->"
+# 2026-05-08 改訂: 旧文面 "本記事の店舗情報は…AIが構成しています" は
+# (a) 店舗情報がない技術記事にも誤って付き、(b) "AIが構成" という
+# AI 開示文言が読者への裏切り(品質を担保していない=逃げ口上)になるため、
+# 文面を「営業時間/価格は変動する可能性」だけに絞り、AI 言及を削除。
+# さらに STORE_BLOCK_START sentinels を含む「実店舗を扱う記事」だけに
+# 限定して付与する (一般記事には付かない)。
 _AI_DISCLAIMER_BLOCK = f"""
 ---
 
 {_AI_DISCLAIMER_SENTINEL}
-## ⚠️ 免責事項
+## ご利用にあたって
 
-本記事の店舗・施設情報は、執筆時点のGoogle Maps公開データおよび投稿情報をもとにAIが構成しています。営業時間・価格・メニュー等は変更される場合があるため、来店前に公式サイトまたは店舗へ直接ご確認ください。また、本記事は情報提供を目的としており、掲載情報の正確性・完全性を保証するものではありません。ご利用は読者ご自身の判断でお願いいたします。
+本記事に掲載した店舗の営業時間・価格・メニューは、変更される場合があります。来店前に公式サイトまたは店舗へ直接ご確認ください。
 """
 
 
-def _ensure_ai_disclaimer(content: str) -> str:
-    """Append the AI-generated disclaimer if the LLM omitted it.
+def _has_store_blocks(content: str) -> bool:
+    """True iff the article contains real STORE_BLOCK sentinels."""
+    return "STORE_BLOCK_START" in content
 
-    Idempotent across re-runs (sentinel check) AND tolerant of the
-    LLM authoring its own disclaimer block (heading-text check) so
-    we never end up with two ⚠️免責事項 sections on one article.
+
+def _ensure_ai_disclaimer(content: str) -> str:
+    """Append the data-staleness disclaimer ONLY for store/施設 articles.
+
+    Conditions:
+    1. Article contains STORE_BLOCK sentinels (real stores being referenced).
+    2. No existing 免責 / disclaimer heading (idempotent).
+
+    Tech / AI tool / general articles do NOT get a disclaimer.
     """
     if _AI_DISCLAIMER_SENTINEL in content:
         return content
+    # Skip if the article doesn't actually reference stores.
+    if not _has_store_blocks(content):
+        return content
     # LLM-authored disclaimers usually use "免責事項" as the H2.
-    # Allow arbitrary chars (emoji + variation selectors) between ##
-    # and 免責 so we don't end up with two disclaimer sections.
     if re.search(r"(?m)^#{1,3}.{0,6}免責", content):
+        return content
+    if re.search(r"(?m)^#{1,3}.{0,6}ご利用にあたって", content):
         return content
     return content.rstrip() + "\n" + _AI_DISCLAIMER_BLOCK
 
@@ -2059,21 +2075,23 @@ def _build_regen_feedback(obj_result: dict, subj_result: dict, final: dict) -> s
     }
     metrics = obj_result.get("metrics") or {}
 
-    # Word count is high-leverage — make the feedback concrete by
-    # including the *actual* current count so the LLM can reason about
-    # how much to add. Gemma3 previously ignored "2500〜3500字" because
-    # it had no measuring reference.
+    # Word count regen feedback — only fires when the article is
+    # below the A-grade window (4000-5500). Targets re-tuned 2026-05-01
+    # evening to match Gemma3 12B's realistic ceiling: aim for 4500
+    # rather than the original 5500 push so the regen prompt stays
+    # achievable in one retry.
     wc = metrics.get("word_count") or {}
     current_chars = wc.get("count", 0)
-    if wc.get("grade") in ("B", "C") or current_chars < 2400:
-        shortfall = max(2800 - current_chars, 500)
+    if wc.get("grade") in ("B", "C") or current_chars < 4000:
+        shortfall = max(4500 - current_chars, 600)
         weak.append(
-            f"- 文字数が{current_chars}字しかない。**最低2800字、目標3200字**まで伸ばす"
+            f"- 文字数が{current_chars}字しかない。**最低4500字、目標5000字**まで伸ばす"
             f"(現在より{shortfall}字以上追加)。以下のいずれかで各H2セクションを厚くする:\n"
             f"    ・各セクションに固有名詞つきの具体例を2つ以上\n"
             f"    ・引用ブロック(>)で一次情報を直接引く(最低3箇所)\n"
             f"    ・数値データ(再生回数/売上/割合)を本文に埋め込む\n"
-            f"    ・読者への問いかけ→回答の往復で1段落追加"
+            f"    ・読者への問いかけ→回答の往復で1段落追加\n"
+            f"    ・H2セクションの数を4個 → 5個程度に増やす"
         )
 
     for name, data in metrics.items():
@@ -2941,6 +2959,54 @@ def publish_approved(
         _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿から徹底"),
         _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿から読み解"),
         _re.compile(r"架空の\s*URL"),
+        # 2026-05-07 一人飯記事で○○寿司/××焼鳥/□□ラーメン/△△バルが
+        # 全店伏字で公開された実害事故。settings.yaml にも入っているが、
+        # ここにハードコードして「外せない」状態にする (公開時の最終防衛線)。
+        _re.compile(
+            r"(?:〇〇|◯◯|○○|△△|××|□□|■■)"
+            r"(?:寿司|寿し|鮨|焼鳥|やきとり|ラーメン|つけ麺|バル|バー|"
+            r"ビストロ|食堂|酒場|割烹|蕎麦|そば|うどん|カレー|カフェ|"
+            r"喫茶|ベーカリー|スイーツ|和菓子|洋菓子|焼肉|鉄板|串カツ|"
+            r"串揚げ|天ぷら|うなぎ|もんじゃ|お好み焼|ピザ|フレンチ|"
+            r"イタリアン|中華|韓国料理|タイ料理|居酒屋|ホルモン|"
+            r"ジビエ|ステーキ|定食)",
+        ),
+        _re.compile(
+            r"(?:〇〇|◯◯|○○|△△|××|□□|■■)"
+            r"[一-龯ぁ-ゔァ-ヶー]{0,6}店(?![名称])",
+        ),
+        # 「（仮名）」 等の明示的フィクション開示。実在店記事の中身を偽る逃げ口上。
+        _re.compile(r"（\s*(?:仮名|仮称|架空|フィクション)\s*）"),
+        _re.compile(r"\(\s*(?:仮名|仮称|架空|フィクション)\s*\)"),
+        # AI 開示 footer は読者への裏切り。2026-05-08 に「AI が構成」変種で
+        # 11 件公開済記事が判明したのを受けて動詞群を拡充 (構成/編集/書き起こ も追加)。
+        _re.compile(
+            r"本記事は[^\n]{0,20}"
+            r"(?:AI|ChatGPT|Claude|Gemini|GPT|生成AI|人工知能)"
+            r"[^\n]{0,40}(?:生成|作成|執筆|書き起こ|構成|編集)",
+        ),
+        _re.compile(
+            r"本記事の[^\n]{0,30}"
+            r"(?:AI|ChatGPT|Claude|Gemini|GPT|生成AI|人工知能)"
+            r"[^\n]{0,40}(?:生成|作成|執筆|書き起こ|構成|編集)",
+        ),
+        _re.compile(
+            r"(?:AI|ChatGPT|Claude|Gemini|GPT)\s*(?:による|が)"
+            r"\s*(?:自動)?(?:生成|作成|執筆|構成|編集)",
+        ),
+        _re.compile(
+            r"AIによって(?:生成|作成|執筆|構成|編集|自動生成)された",
+        ),
+        _re.compile(
+            r"本記事の[^\n]{0,20}(?:正確性|最新性|内容)"
+            r"を保証(?:するもの|いたしません)",
+        ),
+        # 英語形式 (海外読者向け記事で混入した場合の保険)
+        _re.compile(
+            r"(?:Generated|Written|Created|Produced)\s+by\s+"
+            r"(?:AI|ChatGPT|Claude|GPT|Gemini)",
+            _re.IGNORECASE,
+        ),
     ]
 
     # Codex Q2 (2026-04-23): the publish-time deny list above only
@@ -3039,12 +3105,30 @@ def publish_approved(
         _danger_markers = (
             "Bluesky", "Threads", "Mastodon",
             "トレンド入り", "話題を呼んで", "議論を呼んで",
-            "架空", "Dr. X", "〇〇", "◯◯", "○○",
+            "架空", "Dr. X", "〇〇", "◯◯", "○○", "△△", "××", "□□", "■■",
+            # 2026-05-08 拡充: 伏字+業態語(自動検出が非常に重要), 仮名/仮称, AI 開示
+            "寿司", "焼鳥", "ラーメン", "バル", "焼肉", "居酒屋",
+            "仮名", "仮称", "フィクション",
+            "AIが", "AIによって", "AIで自動生成", "Generated by",
+        )
+        # 2026-05-08 BMW 却下事故対応: scorer は note の empty-bullet
+        # tech list (Tool: \n Tool: \n) を相対緩和して通すが、publish-deny
+        # 側は marker 一覧との文字列一致しか見ておらず "BMW Group: " のような
+        # 同じ構造でも落としていた。scorer と同じ regex を使って整合させる。
+        _empty_bullet_re = re.compile(
+            r"(?:\*|-)\s+[^*:\n]{2,60}:\s*\n.*(?:\*|-)\s+[^*:\n]{2,60}:\s*\n",
+            re.DOTALL,
+        )
+        _is_empty_bullet_template = bool(
+            _deny_hit and _empty_bullet_re.search(_deny_hit)
         )
         if (
             _deny_hit
             and platform == "note"
-            and any(m in _deny_hit for m in _structural_template_markers)
+            and (
+                any(m in _deny_hit for m in _structural_template_markers)
+                or _is_empty_bullet_template
+            )
             and not any(d in _deny_hit for d in _danger_markers)
         ):
             logger.info(

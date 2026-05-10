@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "gemma3:12b"
-DEFAULT_TIMEOUT = 300  # seconds -- local generation can be slow
+DEFAULT_TIMEOUT = 900  # seconds — bumped 2026-05-01 from 300 because the
+# raised char-count target (5000-7000 chars) makes Gemma3 12B routinely take
+# 6-12 min per article on the user's hardware. The 300s ceiling killed every
+# generation in the 16:09 batch (0 articles produced, all read-timeout errors).
 
 
 class LocalLLM:

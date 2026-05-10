@@ -80,16 +80,26 @@ class ObjectiveScorer:
             ("title_fulfillment", title_fulfillment),
         ]
         _source_types = {str(s.get("source", "")).lower() for s in sources}
-        _citation_exempt = {"google_trends", "bluesky", "reddit"}
+        _citation_exempt = {"google_trends", "bluesky", "reddit", "arxiv"}
         # 2026-04-27: note向けの一般読み物 (体験談 / 比較 / ハウツー) は
         # 引用URLが少ないのが普通。Zennの技術記事と同基準で弾くと、
         # 7連続却下の構造的な詰まりが発生していた (Opus/GPT比較、
         # Zapier/Make/n8n、AIツールスタック等)。ユーザーの方針に従い
         # noteプラットフォームは citation_count を非ブロッキング化
         # (グレード自体は計測してSheetsに記録し続ける、却下条件から除外)。
+        # 2026-05-08 拡充: arXiv 論文要約系の zenn 記事も同じ構造問題で
+        # 連続却下していた (ActCam, UniPool, Pair2Scene 等)。abstract に
+        # 参考文献URLが含まれないため Gemma3 が複数 citation を作れない。
+        # arXiv URL 自身が一次ソースなので citation_count を非ブロッキング化。
+        # source URL 文字列にも arxiv.org が含まれる場合は exempt 扱い。
+        _source_urls_lower = " ".join(
+            str(s.get("url", "")).lower() for s in sources
+        )
+        _arxiv_in_urls = "arxiv.org" in _source_urls_lower
         _platform = str(context.get("platform", "")).lower()
         if (
             _platform != "note"
+            and not _arxiv_in_urls
             and (not _source_types or not (_source_types & _citation_exempt))
         ):
             metrics_to_check.insert(0, ("citation_count", citations))
@@ -647,13 +657,20 @@ class ObjectiveScorer:
         text = re.sub(r"\s+", "", text)
 
         count = len(text)
-        target_min = 2500
-        target_max = 3500
-        # Acceptable B-grade window. Lowered after Codex-grounded
-        # generation (which sticks tighter to facts) consistently
-        # produced 1300-1900 char articles that were otherwise solid.
-        accept_min = 1300
-        accept_max = 4500
+        # Length policy (revised 2026-05-01 evening):
+        # - Original 2500-3500 was too short — user wanted longer pieces.
+        # - First raise to 5000-7000 with accept_min=3500 caused 100%
+        #   reject because Gemma3 12B settles at 2800-3500 chars on
+        #   most generations even with 5000-7000 in the prompt.
+        # - Compromise: keep the prompt asking for 5000-7000 (so the
+        #   model aims high), but score the *acceptable* window wide.
+        # - A grade target moved to 4000-5500 (1.5× old A range).
+        # - B grade accepts down to 2200 — catches Gemma3 floor without
+        #   shipping clearly-thin pieces.
+        target_min = 4000
+        target_max = 5500
+        accept_min = 2200
+        accept_max = 9000
 
         if target_min <= count <= target_max:
             grade = "A"
