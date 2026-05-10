@@ -38,6 +38,26 @@ _LINE_KILL_PHRASES: Final[tuple[str, ...]] = (
     "（※",
 )
 
+# AI 開示 footer / 自動生成バナー (2026-05-07 一人飯記事で残留した
+# 「※本記事はAIで生成しました」「免責事項: 本記事の正確性は保証しません」
+# 等)。技術解説記事で「Claude を使った」のような正常文脈は誤爆させたく
+# ないので、line-kill ではなく regex で「いかにも footer 」な文だけ消す。
+_AI_DISCLOSURE_LINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^.*(?:"
+    r"本記事は[^\n]{0,20}(?:AI|ChatGPT|Claude|Gemini|GPT|生成AI|人工知能)"
+    r"[^\n]{0,40}(?:生成|作成|執筆|書き起こ|構成|編集)"
+    r"|本記事の[^\n]{0,30}(?:AI|ChatGPT|Claude|Gemini|GPT|生成AI|人工知能)"
+    r"[^\n]{0,40}(?:生成|作成|執筆|書き起こ|構成|編集)"
+    r"|AIによって(?:生成|作成|執筆|構成|編集|自動生成)された"
+    r"|(?:AI|ChatGPT|Claude|Gemini|GPT)\s*(?:による|が)\s*(?:自動)?(?:生成|作成|執筆|構成|編集)"
+    r"|本記事の[^\n]{0,20}(?:正確性|最新性|内容)を保証(?:するもの|いたしません)"
+    r"|免責事項[:：]?\s*本記事[^\n]{0,30}(?:正確性|参考|個人)"
+    r"|※\s*(?:AI|ChatGPT|Claude|Gemini|GPT|生成AI)[^\n]{0,15}(?:生成|作成|執筆|構成|編集)(?:記事|コンテンツ)"
+    r"|(?:Generated|Written|Created|Produced)\s+by\s+(?:AI|ChatGPT|Claude|GPT|Gemini)"
+    r").*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
 # Pattern that detects 2+ consecutive bullet lines whose value after
 # `:` is blank or whitespace. We collapse the entire run.
 # Matches both `*` and `-` bullets, optional bold around the label.
@@ -79,7 +99,17 @@ def sanitize(content: str) -> tuple[str, list[str]]:
 
     cleaned = _EMPTY_BULLET_BLOCK_RE.sub(_replace_block, cleaned)
 
-    # 3. Tidy up: collapse 3+ consecutive blank lines to 2.
+    # 3. Strip AI-disclosure footer lines. The matching is line-scoped
+    #    via `^...$` + re.MULTILINE so we don't accidentally swallow
+    #    surrounding paragraphs.
+    def _kill_disclosure(m: re.Match[str]) -> str:
+        snippet = m.group(0).strip()
+        removed.append(f"ai_disclosure: {snippet[:80]!r}")
+        return ""
+
+    cleaned = _AI_DISCLOSURE_LINE_RE.sub(_kill_disclosure, cleaned)
+
+    # 4. Tidy up: collapse 3+ consecutive blank lines to 2.
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
 
     if removed:
