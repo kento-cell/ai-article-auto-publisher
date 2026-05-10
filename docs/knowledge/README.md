@@ -3,6 +3,16 @@
 AI記事自動生成システムの品質向上のためのナレッジ集積所。
 各カテゴリ別に学習内容・ベストプラクティス・事例を蓄積する。
 
+## トップレベルファイル
+
+- **`hallucination_registry.md`** — 過去のハルシネーション事故と対策の正典 (canonical)。
+  新しい事故が起きたら必ずここに追記し、deny pattern を 3 箇所 (settings.yaml /
+  settings.yaml.example / main.py `_PUBLISH_DENY_PATTERNS`) に同期する。
+- `quality_anti_patterns.md` — 低エンゲージメントから自動抽出されたアンチパターン。
+- `quality_recurring_failures.md` — 繰り返し観測される構造的不合格パターン。
+- `quality_successes.md` — 高エンゲージメント記事の共通点。
+- `quality_codex_grounded_scoring.md` — Codex 連携時のスコア基準。
+
 ## カテゴリ
 
 ### `note-trends/`
