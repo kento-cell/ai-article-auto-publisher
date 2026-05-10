@@ -45,6 +45,66 @@ def is_chatgpt_image_gen_enabled() -> bool:
     return val not in {"", "0", "false", "no", "off"}
 
 
+def is_pollinations_fallback_enabled() -> bool:
+    """``USE_POLLINATIONS_FALLBACK`` toggle (default OFF).
+
+    Pollinations.ai is an HTTP-GET API, which the user has explicitly
+    excluded ("API利用はNG"). The fallback is kept in code as an
+    emergency escape hatch but is OFF by default — the production
+    image path is ChatGPT-via-Playwright only. Set
+    ``USE_POLLINATIONS_FALLBACK=1`` to opt in (e.g. for local
+    debugging when ChatGPT itself is rate-limited).
+    """
+    val = os.environ.get("USE_POLLINATIONS_FALLBACK", "0").strip().lower()
+    return val not in {"", "0", "false", "no", "off"}
+
+
+def _pollinations_image_batch(
+    prompts: list[str], out_paths: list[Path],
+) -> list[Path | None]:
+    """Generate the (cover + inline) prompt set via Pollinations.ai.
+
+    Independent of Brave / ChatGPT — pure HTTP GET to
+    ``image.pollinations.ai``. Used as a second-stage fallback inside
+    :func:`chatgpt_image_batch` when ChatGPT itself failed (e.g. the
+    OpenAI image-gen rate cap surfaces as a stuck send-button).
+    """
+    from urllib.parse import quote
+
+    import requests as _req
+
+    results: list[Path | None] = []
+    for prompt, dest in zip(prompts, out_paths):
+        try:
+            url = f"https://image.pollinations.ai/prompt/{quote(prompt)}"
+            params = {
+                "width": 1200,
+                "height": 630,
+                "model": "flux",
+                "nologo": "true",
+                "enhance": "true",
+            }
+            resp = _req.get(url, params=params, timeout=120)
+            resp.raise_for_status()
+            dest.write_bytes(resp.content)
+            size = dest.stat().st_size if dest.exists() else 0
+            if size >= _MIN_VALID_IMAGE_BYTES:
+                logger.info(
+                    "pollinations OK: %s (%d bytes)", dest.name, size,
+                )
+                results.append(dest)
+            else:
+                logger.warning(
+                    "pollinations: file too small (%d bytes) → discarding",
+                    size,
+                )
+                results.append(None)
+        except Exception as exc:  # noqa: BLE001 — fail closed per slot
+            logger.warning("pollinations fail %s: %s", dest.name, exc)
+            results.append(None)
+    return results
+
+
 def is_brave_running() -> bool:
     """Detect a live ``brave.exe`` so we can skip ChatGPT (would hang).
 
@@ -91,38 +151,98 @@ def chatgpt_image_batch(
     inline paths may be shorter than ``inline_count`` on partial
     failure — callers fill missing slots from Unsplash.
     """
-    if not is_chatgpt_image_gen_enabled():
-        logger.debug(
-            "USE_CHATGPT_IMAGES is disabled — skipping ChatGPT batch."
-        )
-        return None, []
-
-    if is_brave_running():
+    # Determine which engines are usable RIGHT NOW. Either path
+    # produces ghibli-styled images keyed off the same prompts, so
+    # the article still gets visuals matched to its content.
+    chatgpt_usable = is_chatgpt_image_gen_enabled()
+    pollinations_usable = is_pollinations_fallback_enabled()
+    # Brave-running check is only relevant in launch_persistent_context
+    # mode (we'd hit a user_data_dir lock). With CHATGPT_CDP_PORT set
+    # we ATTACH to the running Brave instead, so a live Brave is the
+    # required state, not a blocker. Skip the kill-switch in that case.
+    cdp_attach_mode = bool(os.environ.get("CHATGPT_CDP_PORT"))
+    if chatgpt_usable and not cdp_attach_mode and is_brave_running():
         logger.warning(
-            "Brave is running — ChatGPT image gen requires it closed. "
-            "Falling back to non-ChatGPT path."
+            "Brave is running — ChatGPT path blocked "
+            "(launch mode requires Brave closed). "
+            "Pollinations fallback will handle this batch."
+        )
+        chatgpt_usable = False
+    if not chatgpt_usable and not pollinations_usable:
+        logger.debug(
+            "Both ChatGPT (%s) and Pollinations (%s) disabled — "
+            "skipping batch.",
+            chatgpt_usable, pollinations_usable,
         )
         return None, []
 
     try:
-        from generators.chatgpt_image_generator import ChatGPTImageGenerator
         from generators.visual_prompt_builder import build_visual_prompt
+        if chatgpt_usable:
+            from generators.chatgpt_image_generator import ChatGPTImageGenerator
     except ImportError as exc:
-        logger.warning("ChatGPT image gen unavailable: %s", exc)
+        logger.warning("image gen unavailable: %s", exc)
         return None, []
 
-    h2s = re.findall(r"^##\s+(.+)$", content, re.MULTILINE)[:inline_count]
-    while len(h2s) < inline_count:
-        h2s.append(title)
+    # Effective inline count = min(requested, actual H2 sections).
+    # Without this the previous code happily generated 4 inline images
+    # for an article with only 2 H2s — note's `_inject_inline_images`
+    # then dropped 2 of them on the floor (one image per H2 section)
+    # which (a) burned ChatGPT daily quota and (b) left orphan PNGs
+    # under data/images/covers/. Cap to actual H2 count so no image is
+    # generated unless it has a section to live in.
+    all_h2 = re.findall(r"^##\s+(.+)$", content, re.MULTILINE)
+    effective_inline_count = min(inline_count, max(0, len(all_h2)))
+    if effective_inline_count < inline_count:
+        logger.info(
+            "[image] inline_count requested=%d → adjusted to %d "
+            "(H2 sections available)",
+            inline_count, effective_inline_count,
+        )
+    inline_count = effective_inline_count
+    h2s = all_h2[:inline_count]
+
+    # Style pack selection. Default 'ghibli' preserves the existing
+    # visual identity; setting IMAGE_STYLE_PACK=game_homage swaps in
+    # one of the game-homage idioms (Smash sansen / WILD APPEARED /
+    # K.O. / etc.). The chosen style is *consistent within an article*
+    # — same style for cover and every inline image — so the post
+    # reads as a coherent set rather than a montage.
+    style_block: str | None = None
+    style_label = "ghibli"
+    try:
+        from generators.game_homage_styles import (
+            is_game_homage_enabled,
+            pick_style_for_article,
+        )
+        if is_game_homage_enabled():
+            chosen = pick_style_for_article(title)
+            style_block = chosen["style_block"]
+            style_label = f"game_homage:{chosen['name']}"
+    except Exception as exc:  # noqa: BLE001 — never block image gen on style pick
+        logger.warning("style pack selection failed (%s) — using default", exc)
 
     logger.info(
-        "Building Ghibli prompts (%d total)…", inline_count + 1,
+        "Building image prompts (%d total, style=%s)…",
+        inline_count + 1, style_label,
     )
-    cover_prompt = build_visual_prompt(title, genre_hint=genre_hint)
-    inline_prompts = [
-        build_visual_prompt(title, section=h, genre_hint=genre_hint)
-        for h in h2s
-    ]
+    if style_block:
+        # Game-homage / explicit style: skip the Gemma3-generated
+        # Japanese summary because that summary bakes in the default
+        # 「水彩アニメ調」 phrasing which fights the override style.
+        # Direct title-as-subject is what regen_eyecatch_smash_style.py
+        # uses and it produces clean game-homage covers.
+        cover_prompt = title
+        inline_prompts = [
+            f"{title} の「{h}」セクションを象徴する被写体を中央に配置"
+            for h in h2s
+        ]
+    else:
+        cover_prompt = build_visual_prompt(title, genre_hint=genre_hint)
+        inline_prompts = [
+            build_visual_prompt(title, section=h, genre_hint=genre_hint)
+            for h in h2s
+        ]
     all_prompts = [cover_prompt] + inline_prompts
 
     out_dir = _REPO_ROOT / "data" / "images" / "covers"
@@ -141,15 +261,29 @@ def chatgpt_image_batch(
         for i in range(inline_count)
     ]
 
-    logger.info(
-        "Calling ChatGPT image gen (%d images, ~%d sec)…",
-        len(all_prompts), len(all_prompts) * 60,
-    )
-    gen = ChatGPTImageGenerator(headless=False)
-    results = gen.generate_batch(
-        prompts=all_prompts, size="landscape", out_paths=out_paths,
-        topic=title,
-    )
+    if chatgpt_usable:
+        logger.info(
+            "Calling ChatGPT image gen (%d images, ~%d sec)…",
+            len(all_prompts), len(all_prompts) * 60,
+        )
+        try:
+            gen = ChatGPTImageGenerator(headless=False)
+            results = gen.generate_batch(
+                prompts=all_prompts, size="landscape", out_paths=out_paths,
+                topic=title, style_block=style_block,
+            )
+        except Exception as exc:  # noqa: BLE001 — fail open to fallback
+            logger.warning(
+                "ChatGPT generate_batch raised (%s) — "
+                "feeding empty results to Pollinations stage", exc,
+            )
+            results = [None] * len(all_prompts)
+    else:
+        logger.info(
+            "ChatGPT disabled — going straight to Pollinations for %d images",
+            len(all_prompts),
+        )
+        results = [None] * len(all_prompts)
 
     def _is_valid(p: Path | None) -> bool:
         # Defence-in-depth: generate_batch already returns None for
@@ -170,4 +304,39 @@ def chatgpt_image_batch(
         "ChatGPT batch done: cover=%s, inline=%d/%d",
         bool(cover), len(inlines), inline_count,
     )
+
+    # Pollinations fallback: when ChatGPT yielded no usable cover the
+    # publish flow used to crash out to Unsplash, which is a stock
+    # photo and can drift from article content. Retry the SAME prompts
+    # against pollinations.ai (free, no key) so the visual still
+    # matches what the article actually says.
+    needs_cover_retry = cover is None
+    needs_inline_retry = len(inlines) < inline_count
+    if (needs_cover_retry or needs_inline_retry) and is_pollinations_fallback_enabled():
+        logger.warning(
+            "ChatGPT batch incomplete (cover=%s, inline=%d/%d) "
+            "→ retrying via Pollinations.ai",
+            bool(cover), len(inlines), inline_count,
+        )
+        poll_paths = [out_dir / f"poll_{safe}_{uniq}_cover.png"] + [
+            out_dir / f"poll_{safe}_{uniq}_inline_{i:02d}.png"
+            for i in range(inline_count)
+        ]
+        poll_results = _pollinations_image_batch(all_prompts, poll_paths)
+        if cover is None and _is_valid(poll_results[0]):
+            cover = poll_results[0]
+            logger.info("pollinations supplied cover")
+        # Always rebuild the inline list when fallback succeeds so we
+        # don't end up with a torn (ChatGPT cover + Pollinations inline)
+        # mix that visually clashes — Pollinations style is consistent
+        # within its own batch.
+        poll_inlines = [p for p in poll_results[1:] if _is_valid(p)]
+        if not inlines and poll_inlines:
+            inlines = poll_inlines
+        elif len(poll_inlines) > len(inlines):
+            inlines = poll_inlines
+        logger.info(
+            "Post-fallback: cover=%s, inline=%d/%d",
+            bool(cover), len(inlines), inline_count,
+        )
     return cover, inlines
