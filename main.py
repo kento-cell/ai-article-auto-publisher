@@ -4385,6 +4385,38 @@ def main():
                 )
 
         logger.info("=== 学習完了: %d件のサンプルから学習 ===", len(all_articles))
+
+        # Sprint 2/3/4 (2026-05-11): auto-reindex chromadb after --learn
+        # so the RAG retriever sees the fresh anti_patterns/successes/
+        # insights without a manual rebuild step. Skipped when:
+        #   - env RAG_AUTO_REINDEX=false set explicitly, OR
+        #   - the builder script is missing (deps not installed yet)
+        if os.environ.get("RAG_AUTO_REINDEX", "true").lower() in (
+            "true", "1", "yes", "on",
+        ):
+            try:
+                import subprocess
+                builder = Path(__file__).resolve().parent / "scripts" / "build_rag_index.py"
+                if builder.exists():
+                    logger.info("=== RAG auto-reindex 開始 ===")
+                    r = subprocess.run(
+                        [sys.executable, str(builder)],
+                        capture_output=True, text=True, timeout=300,
+                    )
+                    if r.returncode == 0:
+                        # Echo just the chunk-summary lines, not the
+                        # full embed-model loading noise.
+                        for line in r.stdout.splitlines():
+                            if "chunk(s)" in line or "DONE" in line:
+                                logger.info("  %s", line.strip())
+                        logger.info("=== RAG auto-reindex 完了 ===")
+                    else:
+                        logger.warning(
+                            "RAG auto-reindex failed (exit %d): %s",
+                            r.returncode, (r.stderr or "")[:300],
+                        )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("RAG auto-reindex skipped: %s", exc)
         return
 
     config = load_config(args.config)
