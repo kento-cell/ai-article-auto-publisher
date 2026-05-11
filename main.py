@@ -688,6 +688,78 @@ def _load_failure_patterns(max_chars: int = 900) -> str:
     return block
 
 
+def _retrieve_hallucination_warnings(
+    article_content: str,
+    top_k: int = 3,
+    # Threshold tuned 2026-05-11 against the chromadb seed (22 chunks).
+    # At 0.62 a clean tech article describing Claude/AI topically came
+    # back with 3 false-positive hits at cos sim ~0.82. The planted
+    # hallucination ("〇〇寿司") scored 0.89-0.91. 0.85 cleanly separates
+    # them. Revisit when the index grows past 100 chunks.
+    score_threshold: float = 0.85,
+) -> list[dict]:
+    """RAG-driven hallucination guard for the subjective critic.
+
+    Sprint 2 (2026-05-11): given an article body, semantic-search the
+    hallucinations collection for past incidents that look similar, and
+    return a compact warning record per hit. The critic prompt receives
+    these and is instructed to downgrade accuracy/title_fulfillment to
+    C if the current article reproduces any of the patterns.
+
+    Returns an empty list when:
+      - ``RAG_HALLUCINATION_CHECK=false`` is set explicitly, OR
+      - the chromadb index hasn't been built yet, OR
+      - chromadb / sentence-transformers aren't installed, OR
+      - no hit clears ``score_threshold``.
+
+    All failures are silent so the existing pipeline never breaks
+    because of this guard.
+    """
+    if os.environ.get("RAG_HALLUCINATION_CHECK", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return []
+    try:
+        from generators.rag_retriever import RagRetriever
+    except ImportError:
+        return []
+    try:
+        retriever = RagRetriever()
+        # Use a representative chunk of the article (start + middle)
+        # so the query embedding captures both the lede (where most
+        # hallucination patterns live: 〇〇店, AI開示) AND the body
+        # (where evidence-free claims may appear).
+        body = article_content[:1500]
+        mid_start = max(0, len(article_content) // 2 - 500)
+        mid = article_content[mid_start: mid_start + 1000]
+        query = (body + "\n" + mid)[:3000]
+        hits = retriever.retrieve(
+            query=query,
+            collection="hallucinations",
+            top_k=top_k,
+            score_threshold=score_threshold,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("hallucination retrieval failed: %s", exc)
+        return []
+    warnings: list[dict] = []
+    for h in hits:
+        warnings.append(
+            {
+                "score": h.score,
+                "section_title": h.metadata.get("section_title", "")
+                if h.metadata else "",
+                "snippet": (h.text or "").strip().replace("\n", " ")[:240],
+            }
+        )
+    if warnings:
+        logger.info(
+            "[hallu-guard] %d past incident(s) flagged for critic review",
+            len(warnings),
+        )
+    return warnings
+
+
 def _load_learned_block() -> str:
     """Read the last *_LEARN_MERGE_WINDOW_DAYS* learn reports and build a
     prompt-injectable block.
@@ -2424,8 +2496,10 @@ def _generate_single_article(
         else lambda p: claude.send_prompt(p)
     )
     subj_evaluator = SubjectiveEvaluator()
+    hallu_warnings = _retrieve_hallucination_warnings(content)
     subj_result = subj_evaluator.score(content, eval_fn, {
         "research_brief": article.get("content", ""),
+        "hallucination_warnings": hallu_warnings,
     })
     token_manager.record_usage(estimate_tokens(content))
 
@@ -3696,8 +3770,10 @@ def _process_regeneration_requests(
         # Run subjective scoring (separate scorer model — see LLM_MODEL_SCORER)
         eval_fn = get_llm("scorer").generate
         subj_evaluator = SubjectiveEvaluator()
+        hallu_warnings = _retrieve_hallucination_warnings(content)
         subj_result = subj_evaluator.score(content, eval_fn, {
             "research_brief": "",
+            "hallucination_warnings": hallu_warnings,
         })
         token_manager.record_usage(estimate_tokens(content) * 2)
 

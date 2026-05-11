@@ -201,14 +201,68 @@ def main() -> int:
             else:
                 print(f"    [STRIP] {label}")
 
-    # 6. Summary.
+    # 6. RAG hallucination retriever — Sprint 2 (2026-05-11).
+    # Verify the semantic guard correctly flags planted patterns and
+    # leaves clean topical articles alone. Skipped gracefully when the
+    # index hasn't been built (CI without ML deps).
+    print("[6] Validating RAG hallucination retriever ...")
+    # Samples are intentionally realistic-length (200-500 chars).
+    # The retriever uses 1500-char body + 1000-char mid in its query
+    # builder; very short samples (<100 chars) get poor embedding
+    # representation and miss matches that production-length articles
+    # catch fine.
+    rag_cases: list[tuple[str, str, int]] = [
+        # (label, sample, min_expected_hits)
+        ("rag-伏字寿司",
+         "今回紹介する3軒は〇〇寿司、××焼鳥、□□ラーメン。"
+         "それぞれカウンター席が快適で、地元客に愛されている店ばかり。"
+         "予約は電話のみ、現金決済推奨。\n",
+         1),
+        ("rag-AI開示",
+         "店舗A、店舗Bと比較しても、味は群を抜いていました。\n"
+         "## ご利用にあたって\n"
+         "本記事はAIで生成しました。"
+         "免責事項：本記事の内容の正確性は保証しません。",
+         1),
+        ("rag-clean-tech",
+         "Claude Code は Anthropic の CLI ツールで、ターミナルから "
+         "AI コーディング支援が受けられる。GitHub の公式リポジトリで "
+         "OSS として公開されており、Mac/Linux/Windows いずれでも動作する。"
+         "サブスクリプションは Anthropic Console から管理。",
+         0),
+    ]
+    rag_results: list[tuple[str, int, bool]] = []
+    try:
+        from main import _retrieve_hallucination_warnings  # noqa: E402
+        for label, sample, min_hits in rag_cases:
+            hits = _retrieve_hallucination_warnings(sample)
+            ok = len(hits) >= min_hits if min_hits > 0 else len(hits) == 0
+            rag_results.append((label, len(hits), ok))
+            tag = "OK" if ok else "FAIL"
+            print(f"    [{tag}] {label}: {len(hits)} hits (need {'>=' if min_hits>0 else '=='}{min_hits})")
+        rag_failures = [r for r in rag_results if not r[2]]
+        if rag_failures:
+            for label, hits, _ in rag_failures:
+                failures.append(
+                    f"RAG GUARD [{label}]: got {hits} hits (expectation mismatch)"
+                )
+    except ImportError as exc:
+        print(f"    SKIP - RAG deps not available: {exc}")
+    except Exception as exc:
+        print(f"    SKIP - RAG retriever unavailable: {exc}")
+
+    # 7. Summary.
     print()
     if failures:
         print(f"FAIL: {len(failures)} test(s) failed:")
         for f in failures:
             print(f"  - {f}")
         return 1
-    print(f"PASS: all {len(DENY_TEST_CASES)} deny + {len(SANITIZER_CASES)} sanitizer cases OK")
+    print(
+        f"PASS: all {len(DENY_TEST_CASES)} deny + "
+        f"{len(SANITIZER_CASES)} sanitizer + "
+        f"{len(rag_results)} RAG cases OK"
+    )
     return 0
 
 

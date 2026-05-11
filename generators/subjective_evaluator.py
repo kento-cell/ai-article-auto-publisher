@@ -210,6 +210,39 @@ class SubjectiveEvaluator:
                     "Strategy Brief for originality verification:\n"
                     f"{strategy}\n"
                 )
+            # 2026-05-11 Sprint 2: RAG-driven hallucination guard.
+            # `hallucination_warnings` is a list of past-incident records
+            # the retriever pulled by semantic similarity to this article.
+            # When present, instruct the critic to evaluate accuracy
+            # AND title_fulfillment against each warning — a recurrence
+            # of the same pattern must downgrade accuracy to C.
+            warnings = context.get("hallucination_warnings") or []
+            if warnings:
+                lines = [
+                    "PAST HALLUCINATION INCIDENTS (RAG semantic matches — verify carefully):",
+                ]
+                for i, w in enumerate(warnings, 1):
+                    score = w.get("score", 0.0)
+                    title = w.get("section_title", "")
+                    snippet = w.get("snippet", "")
+                    lines.append(
+                        f"{i}. (similarity={score:.2f}) {title} — {snippet[:200]}"
+                    )
+                lines.append(
+                    "GUARD INSTRUCTIONS:\n"
+                    "- These are similarity matches, NOT confirmed hits. Verify the "
+                    "current article actually CONTAINS the pattern (e.g., literal "
+                    "伏字 like 〇〇寿司 / ××焼鳥, AI 開示 footer text, made-up SNS posts "
+                    "with quoted bodies, symbol-named entities like 'ブランド A'). "
+                    "Topical reference to AI / 副業 / 店舗 alone is NOT a hit.\n"
+                    "- If you confirm the pattern is present in the body: downgrade "
+                    "ACCURACY to C and quote the exact problematic passage in the "
+                    "reason. Also consider downgrading TITLE_FULFILLMENT to C if "
+                    "the title's promise depends on the fabricated content.\n"
+                    "- If you cannot find the pattern in the body after careful "
+                    "reading: ignore the warning and grade normally."
+                )
+                research_context += "\n".join(lines) + "\n\n"
 
         return EVALUATION_PROMPT.format(
             article=article,
