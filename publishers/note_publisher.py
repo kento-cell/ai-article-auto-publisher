@@ -1438,6 +1438,24 @@ class NotePublisher:
             # opening section stays clean.
             h2_pool = h2_indices[1:] if len(h2_indices) > n_imgs else h2_indices
             pool_size = len(h2_pool)
+
+            # 2026-05-11 fix: previously, when n_imgs > pool_size, the
+            # collision-avoidance loop bailed out leaving `block_idx`
+            # at its colliding value, so 2+ images landed in the same
+            # H2 section ("2 連続" reader-flagged issue). Cap n_imgs at
+            # pool_size and drop the excess — H2 structure caps how
+            # many images can sit comfortably anyway.
+            if n_imgs > pool_size > 0:
+                dropped = image_paths[pool_size:]
+                image_paths = image_paths[:pool_size]
+                n_imgs = pool_size
+                logger.warning(
+                    "Inline image count (%d) exceeds H2 sections (%d); "
+                    "dropping %d trailing image(s) to keep readability: %s",
+                    n_imgs + len(dropped), pool_size, len(dropped),
+                    [Path(p).name for p in dropped],
+                )
+
             target_block_idxs: list[int] = []
             for i in range(n_imgs):
                 # Evenly spaced pick from the pool.
@@ -1445,16 +1463,25 @@ class NotePublisher:
                 idx = min(max(idx, 0), pool_size - 1)
                 block_idx = h2_pool[idx]
                 if block_idx in target_block_idxs:
-                    # Avoid collisions when fewer H2s than images —
-                    # push to the next unused slot.
+                    # Avoid collisions — push to next unused slot.
                     for cand in h2_pool:
                         if cand not in target_block_idxs:
                             block_idx = cand
                             break
                 target_block_idxs.append(block_idx)
         else:
-            # No H2s found — fall back to the old behaviour so at
-            # least the images land somewhere sensible.
+            # No H2s found — fall back: place only the FIRST image,
+            # drop the rest. Stacking N images at block[1] is exactly
+            # what created the "2 連続" complaint.
+            if n_imgs > 1:
+                dropped = image_paths[1:]
+                image_paths = image_paths[:1]
+                n_imgs = 1
+                logger.warning(
+                    "No H2 headings found; dropping %d trailing inline "
+                    "image(s) to avoid stacking: %s",
+                    len(dropped), [Path(p).name for p in dropped],
+                )
             target_block_idxs = [1] * n_imgs
 
         logger.info(

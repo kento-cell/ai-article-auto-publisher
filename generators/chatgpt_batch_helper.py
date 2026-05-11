@@ -191,8 +191,28 @@ def chatgpt_image_batch(
     # which (a) burned ChatGPT daily quota and (b) left orphan PNGs
     # under data/images/covers/. Cap to actual H2 count so no image is
     # generated unless it has a section to live in.
-    all_h2 = re.findall(r"^##\s+(.+)$", content, re.MULTILINE)
-    effective_inline_count = min(inline_count, max(0, len(all_h2)))
+    #
+    # 2026-05-11: also extract the first ~200 chars under each H2 so
+    # the image prompt can describe the section's subject concretely
+    # instead of just echoing the H2 title (which is often abstract
+    # like "## まとめ" / "## 前提整理").
+    h2_pat = re.compile(r"^##\s+(.+)$", re.MULTILINE)
+    h2_matches = list(h2_pat.finditer(content))
+    h2_sections: list[tuple[str, str]] = []  # (title, lead_body)
+    for i, m in enumerate(h2_matches):
+        title_text = m.group(1).strip()
+        start = m.end()
+        end = h2_matches[i + 1].start() if i + 1 < len(h2_matches) else len(content)
+        body = content[start:end].strip()
+        # Strip markdown noise (code fences, image markers, quote
+        # blocks) before grabbing the lead — these are unhelpful for
+        # image prompting.
+        body_clean = re.sub(r"```[\s\S]*?```", "", body)
+        body_clean = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", body_clean)
+        body_clean = re.sub(r"^>.*$", "", body_clean, flags=re.MULTILINE)
+        body_clean = re.sub(r"\s+", " ", body_clean).strip()
+        h2_sections.append((title_text, body_clean[:220]))
+    effective_inline_count = min(inline_count, max(0, len(h2_sections)))
     if effective_inline_count < inline_count:
         logger.info(
             "[image] inline_count requested=%d → adjusted to %d "
@@ -200,7 +220,8 @@ def chatgpt_image_batch(
             inline_count, effective_inline_count,
         )
     inline_count = effective_inline_count
-    h2s = all_h2[:inline_count]
+    h2_sections = h2_sections[:inline_count]
+    h2s = [t for t, _ in h2_sections]  # title-only list, kept for back-compat
 
     # Style pack selection. Default 'ghibli' preserves the existing
     # visual identity; setting IMAGE_STYLE_PACK=game_homage swaps in
@@ -233,15 +254,27 @@ def chatgpt_image_batch(
         # Direct title-as-subject is what regen_eyecatch_smash_style.py
         # uses and it produces clean game-homage covers.
         cover_prompt = title
-        inline_prompts = [
-            f"{title} の「{h}」セクションを象徴する被写体を中央に配置"
-            for h in h2s
-        ]
+        inline_prompts = []
+        for h_title, h_body in h2_sections:
+            # 2026-05-11: pass the section body lead in addition to the
+            # H2 title so abstract headings ("## まとめ" / "## 前提整理")
+            # don't yield generic stock-look images. The body lead
+            # gives ChatGPT a concrete subject anchor.
+            subject_hint = h_body if h_body else h_title
+            inline_prompts.append(
+                f"記事「{title}」の「{h_title}」セクション。"
+                f"このセクションは具体的に: {subject_hint[:180]}。"
+                f"この内容を象徴する被写体を中央に配置。"
+            )
     else:
         cover_prompt = build_visual_prompt(title, genre_hint=genre_hint)
         inline_prompts = [
-            build_visual_prompt(title, section=h, genre_hint=genre_hint)
-            for h in h2s
+            build_visual_prompt(
+                title, section=h_title, genre_hint=genre_hint,
+                # body_lead is a soft additional hint — visual_prompt_builder
+                # tolerates an extra kwarg, falling back gracefully if unsupported.
+            )
+            for h_title, _ in h2_sections
         ]
     all_prompts = [cover_prompt] + inline_prompts
 
