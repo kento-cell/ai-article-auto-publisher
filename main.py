@@ -2359,7 +2359,12 @@ def _init_llm(token_manager: TokenManager):
     return None, local_llm, True
 
 
-def _build_regen_feedback(obj_result: dict, subj_result: dict, final: dict) -> str:
+def _build_regen_feedback(
+    obj_result: dict,
+    subj_result: dict,
+    final: dict,
+    length_target: dict | None = None,
+) -> str:
     """Build a Japanese feedback block to inject into a regen prompt.
 
     Names the weakest metrics so the LLM knows what to improve on.
@@ -2381,10 +2386,15 @@ def _build_regen_feedback(obj_result: dict, subj_result: dict, final: dict) -> s
     # achievable in one retry.
     wc = metrics.get("word_count") or {}
     current_chars = wc.get("count", 0)
-    if wc.get("grade") in ("B", "C") or current_chars < 4000:
-        shortfall = max(4500 - current_chars, 600)
+    # Length regen — honors per-topic length_target if provided.
+    _lt_min = int((length_target or {}).get("min") or 4000)
+    _lt_max = int((length_target or {}).get("max") or 5500)
+    _floor_for_regen = max(int(_lt_min * 0.9), 3000)  # don't push regen if topic is short by design
+    if wc.get("grade") in ("B", "C") or current_chars < _floor_for_regen:
+        shortfall = max(_lt_min - current_chars, 600)
         weak.append(
-            f"- 文字数が{current_chars}字しかない。**最低4500字、目標5000字**まで伸ばす"
+            f"- 文字数が{current_chars}字しかない。"
+            f"**最低{_lt_min}字、目標{_lt_max}字**まで伸ばす"
             f"(現在より{shortfall}字以上追加)。以下のいずれかで各H2セクションを厚くする:\n"
             f"    ・各セクションに固有名詞つきの具体例を2つ以上\n"
             f"    ・引用ブロック(>)で一次情報を直接引く(最低3箇所)\n"
@@ -2576,6 +2586,13 @@ def _generate_single_article(
             if outline_sections
             else outline
         )
+        # 2026-05-11 追加: トピック個別の length_target を尊重する。
+        # 短い・長いを許容するため、固定の 2800 字 floor を per-topic
+        # の min に置き換え、prompt 内に明示的な目標レンジを出す。
+        length_cfg = kt.get("length_target") or {}
+        target_min = int(length_cfg.get("min") or 3500)
+        target_max = int(length_cfg.get("max") or 6500)
+        per_section_min = max(400, target_min // max(1, len(outline_sections) or 4))
         parts = [
             "\n\n【この記事の設計書 — 必ず従うこと】",
             f"ペルソナ: {kt.get('persona', '')}",
@@ -2594,7 +2611,9 @@ def _generate_single_article(
                 "書いてはいけない角度: " + " / ".join(prohibited),
             )
         parts.append(
-            "骨子の各セクションは最低 500 字、全体 2800 字以上。"
+            f"目標文字数: {target_min}-{target_max}字 (このトピックは "
+            f"{'長尺' if target_min >= 5000 else '中尺' if target_min >= 3000 else '短尺'}型)。"
+            f"骨子の各セクションは最低 {per_section_min} 字。"
             "根拠のない固有名詞/URL/ブランド名を創作してはいけない。"
             "参考リンクに placeholder (『ここに入力』『実際には〜URLを』) を残すと不合格。",
         )
@@ -2799,7 +2818,17 @@ def _generate_single_article(
             or _thin_content
         )
     ):
-        feedback = _build_regen_feedback(obj_result, subj_result, final)
+        # Pass per-topic length_target through so the regen feedback
+        # text reflects the actual desired length range for THIS topic
+        # (短尺記事を 5000字目標で叩く誤った feedback を回避).
+        _kt = article.get("knowledge_topic") or {}
+        _length_target = (
+            _kt.get("length_target")
+            if isinstance(_kt, dict) else None
+        )
+        feedback = _build_regen_feedback(
+            obj_result, subj_result, final, _length_target,
+        )
         logger.info(
             "[%s] 自動再生成 試行%d (現スコア=%.1f): %s",
             platform,

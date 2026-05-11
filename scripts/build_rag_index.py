@@ -156,7 +156,10 @@ def _build_collection(
     # e5 passage prefix for asymmetric query/document encoding.
     passages = [f"passage: {c.text}" for c in chunks]
     embeddings = model.encode(passages, normalize_embeddings=True).tolist()
-    ids = [f"{collection_name}-{c.section_index:03d}" for c in chunks]
+    # Use enumerate-over-chunks so IDs are unique even when the same
+    # collection is built from multiple source files (each file resets
+    # section_index to 0, which would collide on insert).
+    ids = [f"{collection_name}-{i:04d}" for i in range(len(chunks))]
     metadatas = [
         {
             "source_file": c.source_file,
@@ -208,6 +211,36 @@ def main() -> int:
         count = _build_collection(client, model, collection_name, chunks)
         print(f"  {collection_name}: {count} chunk(s) from {source_path.name}")
         total += count
+
+    # 2026-05-11 Sprint 6: generation_guides collection — strategy /
+    # rule documents the writer + image + monetization paths can pull
+    # selectively. Intentionally excludes daily auto_learning snapshots
+    # and quality_insights_*.md (those are noise without consolidation).
+    # Hard rules stay in prompts.yaml (always-loaded), this is for
+    # softer guides the LLM can reference contextually.
+    guide_files = [
+        _REPO / "docs/knowledge/image-generation/2026-04-08_options_comparison.md",
+        _REPO / "docs/knowledge/monetization/2026-04-08_note_basics.md",
+        _REPO / "docs/knowledge/affiliate_strategies/2026-04-13_research.md",
+        _REPO / "docs/knowledge/note-trends/prompt_suggestions.md",
+        _REPO / "docs/knowledge/note-trends/learning_strategy.md",
+        _REPO / "docs/knowledge/note-trends/paid_analysis.md",
+        _REPO / "docs/knowledge/note-trends/top_authors.md",
+        _REPO / "docs/knowledge/note-trends/2026-04-09_intro_patterns.md",
+        _REPO / "docs/knowledge/note-trends/2026-04-09_monetization_methods.md",
+        _REPO / "docs/knowledge/note-trends/2026-04-09_monetize_ai_focus.md",
+        _REPO / "docs/knowledge/quality_codex_grounded_scoring.md",
+        _REPO / "docs/knowledge/quality_recurring_failures.md",
+        _REPO / "docs/membership_plans/01_ai_sidejob_lab.md",
+        _REPO / "docs/membership_plans/02_kbeauty_trend_circle.md",
+    ]
+    guide_chunks: list[Chunk] = []
+    for fp in guide_files:
+        loaded = _load_chunks(fp)
+        guide_chunks.extend(loaded)
+    g_count = _build_collection(client, model, "generation_guides", guide_chunks)
+    print(f"  generation_guides: {g_count} chunk(s) from {len(guide_files)} source file(s)")
+    total += g_count
 
     # Sprint 3 (2026-05-11): past_articles collection for duplicate
     # detection on new topic seeding. Indexed from data/articles/*.json,
