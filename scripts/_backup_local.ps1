@@ -22,7 +22,11 @@
 #   pwsh ... _backup_local.ps1 -Dest "D:\backups\ai-article"
 
 param(
-    [string]$Dest = "D:\backups\ai-article",
+    # 2026-05-11 default switched from D:\ (DVD drive on this machine,
+    # 0 free) to E:\backups — same volume as the project but at least
+    # outside the repo dir so a misconfigured rm won't take the backup
+    # with it. Pass -Dest to override.
+    [string]$Dest = "E:\backups\ai-article",
     [switch]$WithImages = $false,
     [int]$RetentionDays = 14
 )
