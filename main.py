@@ -688,6 +688,81 @@ def _load_failure_patterns(max_chars: int = 900) -> str:
     return block
 
 
+def _build_rag_learned_block(
+    query_seed: str,
+    platform: str,
+    top_k_each: int = 3,
+    score_threshold: float = 0.55,
+) -> str:
+    """RAG-augmented replacement for ``_load_learned_block``.
+
+    Sprint 4 (2026-05-11): when ``RAG_ENABLED=true`` is set, the
+    generation prompt's "learned patterns" block is built by semantic
+    retrieval over the ``anti_patterns`` and ``successes`` collections
+    instead of dumping the full static markdown. This narrows the LLM's
+    attention to patterns actually relevant to the topic at hand, which
+    should reduce both prompt-token cost and the "ignore the noise"
+    failure mode (cf. 2026-05-11 H2 全滅 incident).
+
+    The static path remains the default — the flag must be set
+    explicitly. Returns "" silently when:
+      - flag is off, OR
+      - RAG deps / index are missing, OR
+      - no chunks clear ``score_threshold``.
+    """
+    if os.environ.get("RAG_ENABLED", "false").lower() not in (
+        "true", "1", "yes", "on",
+    ):
+        return ""
+    try:
+        from generators.rag_retriever import RagRetriever
+    except ImportError:
+        return ""
+    try:
+        retriever = RagRetriever()
+        hits = retriever.retrieve_many(
+            query=query_seed,
+            plan=[
+                ("anti_patterns", top_k_each),
+                ("successes", top_k_each),
+            ],
+            score_threshold=score_threshold,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("RAG learned-block retrieval failed: %s", exc)
+        return ""
+
+    anti_hits = hits.get("anti_patterns", [])
+    succ_hits = hits.get("successes", [])
+    if not anti_hits and not succ_hits:
+        return ""
+
+    parts: list[str] = ["\n## 学習済みパターン (この記事に関連性 0.55+)\n"]
+    if succ_hits:
+        parts.append("### マネすべき (上位エンゲ実績)")
+        for h in succ_hits:
+            section = h.metadata.get("section_title", "") if h.metadata else ""
+            snippet = h.text.strip().replace("\n", " ")[:240]
+            parts.append(f"- (sim {h.score:.2f}) {section}: {snippet}")
+        parts.append("")
+    if anti_hits:
+        parts.append("### 避けるべき (下位エンゲ実績)")
+        for h in anti_hits:
+            section = h.metadata.get("section_title", "") if h.metadata else ""
+            snippet = h.text.strip().replace("\n", " ")[:240]
+            parts.append(f"- (sim {h.score:.2f}) {section}: {snippet}")
+        parts.append("")
+    parts.append(
+        "上記の「マネすべき」型を骨格に、「避けるべき」型は決して使わずに書くこと。"
+    )
+    block = "\n".join(parts) + "\n"
+    logger.info(
+        "[rag-learn:%s] success=%d, anti=%d (block=%d chars)",
+        platform, len(succ_hits), len(anti_hits), len(block),
+    )
+    return block
+
+
 def _retrieve_hallucination_warnings(
     article_content: str,
     top_k: int = 3,
@@ -2295,7 +2370,21 @@ def _generate_single_article(
     # Gated on experiments.yaml so A/B runs can compare w/ vs w/o.
     learned_block = ""
     if platform == "note" and _xp_enabled("learn.learned_block"):
-        learned_block = _load_learned_block()
+        # Sprint 4 (2026-05-11): when RAG_ENABLED is set, prefer
+        # semantic retrieval over static stuffing — narrows the LLM's
+        # attention to patterns relevant to *this* topic. Falls back
+        # transparently to the static block when RAG returns empty.
+        kt = article.get("knowledge_topic") or {}
+        query_seed = " ".join(
+            filter(None, [
+                article.get("title", "")[:120],
+                kt.get("promise", "") if isinstance(kt, dict) else "",
+            ])
+        )[:400]
+        if query_seed:
+            learned_block = _build_rag_learned_block(query_seed, platform)
+        if not learned_block:
+            learned_block = _load_learned_block()
 
     # Knowledge-topic injection — when the seed came from the evergreen
     # pool, pass the structured persona/pain/promise/outline to the LLM
