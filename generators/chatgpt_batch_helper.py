@@ -134,6 +134,127 @@ def is_brave_running() -> bool:
     return False
 
 
+_OPENING_HINTS = ("導入", "前提", "背景", "そもそも", "はじめに", "とは",
+                  "なぜ", "問題", "発端", "Why")
+_CONCLUDING_HINTS = ("まとめ", "結論", "総括", "おわりに", "最後に",
+                     "結び", "Wrap", "次のアクション", "次のステップ")
+_TWIST_HINTS = ("解決", "戦略", "対策", "提案", "実践", "コツ", "突破",
+                "ポイント", "How", "ハック")
+
+
+def _infer_narrative_role(idx: int, total: int, title: str) -> str:
+    """Map a section to one of {起, 承, 転, 結}.
+
+    Rules (in priority order):
+    1. Last section -> 結.
+    2. First section -> 起 (unless its title screams 結).
+    3. Title keywords (e.g. 「まとめ」 -> 結, 「戦略」 -> 転).
+    4. Fallback: 承 for the first half after 起, 転 for the second half
+       before 結.
+    """
+    t = title or ""
+    is_first = idx == 0
+    is_last = idx == total - 1
+    if any(h in t for h in _CONCLUDING_HINTS):
+        return "結"
+    if is_last:
+        return "結"
+    if any(h in t for h in _OPENING_HINTS):
+        return "起"
+    if is_first:
+        return "起"
+    if any(h in t for h in _TWIST_HINTS):
+        return "転"
+    # Midpoint heuristic
+    half = total / 2
+    return "承" if idx <= half else "転"
+
+
+_ROLE_FEELING = {
+    "起": "場面の発端、疑問の提示、これから何が起きるのか観察する状態",
+    "承": "事実の展開、深掘り、内容を読者に受け取らせる落ち着いた状態",
+    "転": "視点の転換、解決策の提示、行動を促す前向きな躍動感",
+    "結": "結論、達成感、まとめの安堵、次のアクションを示唆する空気",
+}
+
+
+def _distill_subject_via_gemma(
+    title: str, h_title: str, h_body: str,
+    role: str, idx: int, total: int,
+) -> str:
+    """Ask Gemma3 to name the concrete subject for ONE section's image.
+
+    Returns 60-char-ish Japanese subject string. Silent fallback to
+    ``h_title`` on any failure so the pipeline never breaks.
+    """
+    if os.environ.get("IMAGE_SECTION_DISTILL", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return h_title
+    try:
+        from generators.local_llm import LocalLLM
+    except ImportError:
+        return h_title
+    feeling = _ROLE_FEELING.get(role, "")
+    prompt = (
+        "あなたは記事に挿し絵を考えるアートディレクターです。\n"
+        f"記事タイトル: 「{title}」\n"
+        f"このセクションは全{total}個のうち{idx + 1}番目で、\n"
+        f"起承転結でいう「{role}」(={feeling})の位置にあたります。\n"
+        f"セクションタイトル: 「{h_title}」\n"
+        f"セクション本文 (冒頭抜粋):\n{(h_body or '')[:400]}\n\n"
+        "この 1 セクションを表現する挿し絵を 1 枚描くなら、"
+        "何を描けばよいか? 被写体 + 動作 + 雰囲気を 60 字以内の "
+        "日本語 1 行で答えてください。前置きや解説は不要、被写体の説明文だけを返してください。"
+    )
+    try:
+        llm = LocalLLM()
+        out = llm.generate(prompt, temperature=0.6)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("section subject distill failed: %s", exc)
+        return h_title
+    # Take only the first non-empty line, trim to 80 chars to be safe.
+    for line in (out or "").splitlines():
+        line = line.strip().lstrip("-•*・ ").strip()
+        if line and not line.startswith("#"):
+            return line[:80]
+    return h_title
+
+
+def _build_per_section_inline_prompts(
+    title: str, h2_sections: list[tuple[str, str]],
+) -> list[str]:
+    """Build N inline image prompts, one per H2 section, each carrying:
+    (1) a Gemma3-distilled concrete subject for that section's body,
+    (2) the narrative role label (起 / 承 / 転 / 結) inferred from
+        section position + title keywords.
+
+    Each prompt is what ChatGPT image gen receives — keep it short
+    enough that the style_block (game_homage idiom) dominates the
+    visual style, while the per-section subject controls WHO/WHAT
+    appears in the frame.
+    """
+    total = len(h2_sections)
+    prompts: list[str] = []
+    for i, (h_title, h_body) in enumerate(h2_sections):
+        role = _infer_narrative_role(i, total, h_title)
+        feeling = _ROLE_FEELING.get(role, "")
+        subject = _distill_subject_via_gemma(
+            title, h_title, h_body, role, i, total,
+        )
+        prompts.append(
+            f"記事「{title}」の「{h_title}」セクション (全{total}章中{i + 1}章、"
+            f"起承転結の「{role}」役、{feeling})。"
+            f"このセクションが伝えたい絵柄: {subject}。"
+            f"これを象徴する被写体を中央に配置。"
+        )
+        logger.info(
+            "[inline-prompt %d/%d role=%s] %s",
+            i + 1, total, role, subject[:60],
+        )
+    return prompts
+
+
 def chatgpt_image_batch(
     title: str,
     content: str,
@@ -257,18 +378,18 @@ def chatgpt_image_batch(
         # Direct title-as-subject is what regen_eyecatch_smash_style.py
         # uses and it produces clean game-homage covers.
         cover_prompt = title
-        inline_prompts = []
-        for h_title, h_body in h2_sections:
-            # 2026-05-11: pass the section body lead in addition to the
-            # H2 title so abstract headings ("## まとめ" / "## 前提整理")
-            # don't yield generic stock-look images. The body lead
-            # gives ChatGPT a concrete subject anchor.
-            subject_hint = h_body if h_body else h_title
-            inline_prompts.append(
-                f"記事「{title}」の「{h_title}」セクション。"
-                f"このセクションは具体的に: {subject_hint[:180]}。"
-                f"この内容を象徴する被写体を中央に配置。"
-            )
+        # 2026-05-11 PM: per-section subject distillation via Gemma3.
+        # Each H2 body (300 chars) gets distilled into a one-line
+        # concrete subject (60 chars) BEFORE going to ChatGPT image gen,
+        # AND tagged with a narrative role (起 / 承 / 転 / 結) inferred
+        # from section position + title keywords. ChatGPT then has both
+        # a concrete subject anchor AND a narrative mood hint, so each
+        # inline image reads as belonging to its section rather than
+        # being a topical illustration.
+        inline_prompts = _build_per_section_inline_prompts(
+            title=title,
+            h2_sections=h2_sections,
+        )
     else:
         cover_prompt = build_visual_prompt(title, genre_hint=genre_hint)
         inline_prompts = [
