@@ -862,11 +862,13 @@ class NotePublisher:
         """Add the just-published article to memberships from the
         creator dashboard (post-publish flow).
 
-        Path (per user 2026-05-12):
-          1. クリエーターページ → 記事 タブ
-          2. 「メンバー特典記事を追加する」 ボタン
-          3. 投稿済み記事一覧から該当記事を特定
-          4. 各記事サムネ右の ⋮ → 「メンバーシップに追加」
+        Path (per user 2026-05-12, corrected order):
+          1. クリエーターページ → 初期画面 = ホーム
+          2. ホーム のタブ列から メンバーシップ ページへ遷移
+          3. メンバーシップ ページ内の 記事 タブをクリック
+          4. 黒い 「メンバー特典記事を追加する」 ボタンを押下
+          5. 投稿済み記事一覧から該当記事の ⋮ を開く
+          6. 「メンバーシップに追加」 を選択
 
         ``article_url`` is used to find the target row — the slug at
         the end of the URL is the most stable identifier.
@@ -877,11 +879,8 @@ class NotePublisher:
         slug = article_url.rstrip("/").split("/")[-1]
         logger.info("[note] dashboard membership-add for slug=%s", slug)
 
-        # 1. Navigate to creator membership-add page directly. note
-        # exposes this under /membership/edit_article or similar; we
-        # try the menu-driven path first, then fall back to direct nav.
+        # 1. Navigate to クリエーターページ (avatar → menu → クリエーターページ)
         try:
-            # Open user menu (header avatar)
             avatar_selectors = [
                 "header img[alt*='プロフィール']",
                 "header [aria-label*='メニュー']",
@@ -897,7 +896,6 @@ class NotePublisher:
                 except (PlaywrightTimeoutError, PlaywrightError):
                     continue
 
-            # Click クリエーターページ
             creator_link = page.locator(
                 "a:has-text('クリエーターページ'), "
                 "button:has-text('クリエーターページ')"
@@ -905,25 +903,44 @@ class NotePublisher:
             if creator_link.is_visible(timeout=2_000):
                 creator_link.click(timeout=3_000)
             else:
-                logger.warning(
-                    "クリエーターページ リンクが見つからない — 続行",
-                )
+                logger.warning("クリエーターページ リンクが見つからない")
             page.wait_for_load_state("networkidle", timeout=15_000)
         except (PlaywrightTimeoutError, PlaywrightError) as exc:
             logger.warning("クリエーターページ navigation 失敗: %s", exc)
 
-        # 2. Click 記事 tab
+        # 2. From クリエーター ホーム, navigate to メンバーシップ tab.
+        # The membership feature is its own section; the 記事 tab inside
+        # this section is different from the top-level 記事 tab.
         try:
-            tab = page.locator(
-                "a:has-text('記事'), button:has-text('記事')"
+            membership_tab = page.locator(
+                "a:has-text('メンバーシップ'), "
+                "nav a:has-text('メンバーシップ'), "
+                "[role='tab']:has-text('メンバーシップ')"
             ).first
-            tab.wait_for(state="visible", timeout=5_000)
-            tab.click(timeout=3_000)
+            membership_tab.wait_for(state="visible", timeout=5_000)
+            membership_tab.click(timeout=3_000)
+            page.wait_for_load_state("networkidle", timeout=10_000)
+            page.wait_for_timeout(500)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning("メンバーシップ ナビが見つかりません: %s", exc)
+            return
+
+        # 3. Inside メンバーシップ section, click 記事 tab
+        try:
+            articles_tab = page.locator(
+                "[role='tab']:has-text('記事'), "
+                "nav a:has-text('記事'), "
+                "button:has-text('記事')"
+            ).first
+            articles_tab.wait_for(state="visible", timeout=5_000)
+            articles_tab.click(timeout=3_000)
             page.wait_for_timeout(800)
         except (PlaywrightTimeoutError, PlaywrightError) as exc:
-            logger.warning("記事 タブが見つかりません: %s", exc)
+            logger.warning("メンバーシップ内 記事 タブが見つかりません: %s", exc)
+            return
 
-        # 3. Click 「メンバー特典記事を追加する」
+        # 4. Click the prominent 「メンバー特典記事を追加する」 CTA (described
+        # as a black button by the user)
         try:
             add_btn = page.locator(
                 "button:has-text('メンバー特典記事を追加する'), "
@@ -939,8 +956,8 @@ class NotePublisher:
             )
             return
 
-        # 4. Find the row for the article (match by slug in the row's
-        # link href), then click the ⋮ menu next to its thumbnail.
+        # 5. Find the row for this article (match by slug in href), and
+        # click its ⋮ / overflow menu
         row_selector = (
             f"li:has(a[href*='/{slug}']), "
             f"tr:has(a[href*='/{slug}']), "
@@ -961,7 +978,7 @@ class NotePublisher:
             logger.warning("該当記事の ⋮ メニューが見つかりません: %s", exc)
             return
 
-        # 5. Click 「メンバーシップに追加」
+        # 6. Click 「メンバーシップに追加」
         try:
             menu_item = page.locator(
                 "button:has-text('メンバーシップに追加'), "
