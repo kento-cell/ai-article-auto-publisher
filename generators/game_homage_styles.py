@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 _STYLES: Final[list[dict]] = [
     {
         "name": "fighting_announce",
+        "fit_hint": (
+            "新規参入、デビュー、初登場、新商品リリース、新キャラクター解禁、"
+            "新ツール参戦、新機能発表など、新しく登場する話題の記事。"
+            "「ついに来た」「待望の」「期待の新人」系。"
+        ),
         "style_block": (
             "格闘ゲームの新キャラクター参戦発表風キービジュアル。"
             "シアン (鮮やかな青〜白の光) のスピード感あるグラデーション背景に、"
@@ -49,6 +54,10 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "monster_appeared",
+        "fit_hint": (
+            "意外な発見、隠れた事実、知られざる真実、初遭遇、未知のジャンル、"
+            "謎の現象、驚き系。「実は」「知らなかった」「衝撃」「これが噂の」系の記事。"
+        ),
         "style_block": (
             "対戦型モンスター育成RPGの野生モンスター遭遇シーン風キービジュアル。"
             "緑〜深い青の草原や森の背景に、白い吹き出し風の枠と「あらわれた!」の日本語テキストを"
@@ -61,6 +70,10 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "rpg_level_up",
+        "fit_hint": (
+            "スキルアップ、成長、ステップアップ、進化、レベルアップ、副業の単価上昇、"
+            "実力向上、キャリアアップ、英語学習進捗系。「一段階上の」「上達」「成長」系の記事。"
+        ),
         "style_block": (
             "ファンタジーRPGのレベルアップ演出風キービジュアル。"
             "暗紺色〜紫の星空背景に、中央から金色の光線が放射状に伸びる構図。"
@@ -72,6 +85,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "fighting_ko",
+        "fit_hint": (
+            "対立、論破、徹底批判、決着、敗北、勝負、優劣判定、撃破、"
+            "失敗事例の分析、危険警告系。「やめろ」「やってはいけない」「終わった」"
+            "「これが結論」「優勝」「圧勝」系の記事。"
+        ),
         "style_block": (
             "対戦格闘ゲームの決着画面 (K.O. 演出) 風キービジュアル。"
             "赤〜オレンジの放射状グラデーション背景に、中央から外へ向かって白い衝撃波が広がる。"
@@ -83,6 +101,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "stage_clear",
+        "fit_hint": (
+            "ゴール達成、完了、修了、卒業、完走、完成、ステージクリア、目標達成。"
+            "「ようやくここまで」「やっと終わった」「これで完成」「完結」"
+            "「無事達成」系の節目・終わりを祝う記事。"
+        ),
         "style_block": (
             "プラットフォーマー2Dアクションゲームのステージクリア演出風キービジュアル。"
             "明るい水色〜白の空背景に、紙吹雪と星型の光が舞う。"
@@ -95,6 +118,12 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "warning_alert",
+        "fit_hint": (
+            "注意喚起、警告、トラブル、危険性、リスク、詐欺注意、規約違反、"
+            "セキュリティ脅威、炎上事件、健康被害、税制リスクなど。"
+            "「気をつけろ」「危険」「注意」「警告」「やってはいけない」"
+            "「○○の罠」「○○に注意」系の記事。"
+        ),
         "style_block": (
             "8〜16ビット時代のロボットアクションゲームのボス出現警告画面風キービジュアル。"
             "黒背景に黄色と黒の斜めストライプ警告帯が画面上下を横切る。"
@@ -107,6 +136,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "quest_start",
+        "fit_hint": (
+            "始め方ガイド、入門、初心者向け、これから始める人、初回設定、"
+            "0から始める、スタートアップ系。「始めよう」「最初の一歩」"
+            "「ゼロから」「これから始める」「○○入門」系のチュートリアル/HOW-TO 記事。"
+        ),
         "style_block": (
             "オープンワールドRPGのクエスト開始通知風キービジュアル。"
             "古びた羊皮紙風の背景に、ファンタジー風の装飾枠 (ツタ・剣・盾) が縁を縁取る。"
@@ -119,6 +153,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "ready_fight",
+        "fit_hint": (
+            "2 つの選択肢の対決、ガチンコ対決、徹底比較、A vs B、"
+            "競合製品の対峙、ライバル関係、二択。「○○ vs ○○」「どっち」"
+            "「対決」「徹底比較」系のサシ比較記事。"
+        ),
         "style_block": (
             "対戦アーケードゲームの試合開始演出風キービジュアル。"
             "赤と青に二分割されたスピードラインの背景。中央には光るVS字。"
@@ -130,6 +169,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "rhythm_perfect",
+        "fit_hint": (
+            "完全攻略、全網羅、コンプリート、満点解説、完全ガイド、保存版、決定版、"
+            "完璧、ノーミス。「完全ガイド」「全○○まとめ」「決定版」「保存版」"
+            "「コンプリート」「網羅」系の網羅的記事。"
+        ),
         "style_block": (
             "リズムゲームの判定演出風キービジュアル。"
             "紫〜マゼンタのネオングラデーション背景に、"
@@ -144,6 +188,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "hunt_success",
+        "fit_hint": (
+            "目標達成、月収◯万円達成、◯日で結果、稼げた、収益化成功、副業実績、"
+            "資格取得、合格。「達成」「成功」「稼げた」「結果出た」「○○円達成」"
+            "「副業で月◯万円」系の達成 / 報告系記事。"
+        ),
         "style_block": (
             "モンスター討伐型アクションゲームの「狩猟成功!!」演出風キービジュアル。"
             "黄昏のオレンジ〜暗い赤の空に薄雲、地面は岩山シルエット。"
@@ -156,6 +205,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "gacha_ssr",
+        "fit_hint": (
+            "隠れた逸品、知る人ぞ知る、レアな発見、希少、超優良、本物の、究極の。"
+            "「隠れた名店」「絶品」「神アイテム」「殿堂入り」「至高の」"
+            "「コスパ最強」系のレア発見/推し記事。"
+        ),
         "style_block": (
             "ガチャゲームの最高レアリティ排出演出風キービジュアル。"
             "深い紫の背景に、中央から虹色 (赤・橙・黄・緑・青・紫) の七色光線が"
@@ -169,6 +223,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "chapter_opening",
+        "fit_hint": (
+            "新時代、新章、新パラダイム、2026 年版、最新トレンド、新潮流、変革、"
+            "次世代。「新時代」「○○年版」「次世代」「パラダイムシフト」"
+            "「これからの○○」系の時代論/トレンド総括記事。"
+        ),
         "style_block": (
             "JRPGの章タイトル開幕演出風キービジュアル。"
             "深い濃紺〜黒の夜空背景に、月や星のシルエットが薄く浮かぶ。"
@@ -182,6 +241,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "stream_thumbnail",
+        "fit_hint": (
+            "実体験、やってみた、検証、実況、実演、レビュー、リアル感想。"
+            "「やってみた」「実際に試した」「検証してみた」「実演」「○○使ってみた」"
+            "「リアル体験」「実況」系の体験談記事。"
+        ),
         "style_block": (
             "配信プラットフォームのライブ配信サムネイル風キービジュアル。"
             "鮮やかな赤〜オレンジのグラデーション背景に、巨大な太字テキストが画面の40%を占める。"
@@ -194,6 +258,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "character_select",
+        "fit_hint": (
+            "選び方、選択基準、ツール選定、商品比較 (複数選択肢)、ランキング、"
+            "おすすめ列挙。「○○の選び方」「おすすめ◯選」「○○ランキング」"
+            "「どれを選ぶ」「比較一覧」系の選定/列挙記事 (3 つ以上の選択肢)。"
+        ),
         "style_block": (
             "格闘ゲームのキャラクター選択画面風キービジュアル。"
             "暗い金属質の背景に、6〜9 マスのグリッドが画面下半分に並ぶ。"
@@ -207,6 +276,11 @@ _STYLES: Final[list[dict]] = [
     },
     {
         "name": "event_banner",
+        "fit_hint": (
+            "速報、緊急情報、期間限定、今だけ、新情報、開催中、ライブ更新、"
+            "本日付情報。「速報」「緊急」「期間限定」「今だけ」「開催!!」"
+            "「速攻まとめ」系のタイムリー / 鮮度重視記事。"
+        ),
         "style_block": (
             "ソーシャルゲームの期間限定イベント告知バナー風キービジュアル。"
             "鮮やかな水色〜ピンクの光沢グラデーション背景に、画面いっぱいの星型・キラキラエフェクト。"
@@ -221,19 +295,79 @@ _STYLES: Final[list[dict]] = [
 ]
 
 
-def pick_style_for_article(title: str) -> dict:
-    """Deterministically pick one game-homage style for *title*.
+def _pick_style_by_rag(title: str, content_excerpt: str = "") -> dict | None:
+    """RAG-driven style picker (2026-05-11).
 
-    SHA-256 keyed so retries / regenerations of the same article
-    pick the same style — important because all inline images for
-    one article must share the visual idiom for the set to read as
-    coherent.
+    Queries the `thumbnail_styles` chromadb collection with the article's
+    title + content excerpt and returns the style whose fit_hint scores
+    highest. Returns None when:
+      - chromadb / sentence-transformers not installed, OR
+      - `thumbnail_styles` collection not built, OR
+      - retrieval fails for any reason
+
+    Caller falls back to SHA-256 deterministic pick on None.
     """
+    if os.environ.get("STYLE_SELECT_MODE", "rag").lower() not in (
+        "rag", "auto", "semantic",
+    ):
+        return None
+    try:
+        from generators.rag_retriever import RagRetriever
+    except ImportError:
+        return None
+    try:
+        retriever = RagRetriever()
+        # Use title + first 600 chars of content so 「副業 月5万達成
+        # ロードマップ」 style hints map to hunt_success / quest_start
+        # at semantic level instead of literal-word match.
+        query = (title.strip() + "\n" + (content_excerpt or "").strip())[:1500]
+        hits = retriever.retrieve(
+            query=query,
+            collection="thumbnail_styles",
+            top_k=3,
+            score_threshold=0.50,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("RAG style pick failed: %s", exc)
+        return None
+    if not hits:
+        return None
+    # The top hit's metadata.section_title is the style name.
+    top_style_name = hits[0].metadata.get("section_title", "") if hits[0].metadata else ""
+    if not top_style_name:
+        return None
+    for s in _STYLES:
+        if s["name"] == top_style_name:
+            logger.info(
+                "RAG style pick for title=%r → %s (sim %.3f)",
+                title[:40], s["name"], hits[0].score,
+            )
+            return s
+    return None
+
+
+def pick_style_for_article(title: str, content_excerpt: str = "") -> dict:
+    """Pick one game-homage style for *title*.
+
+    Strategy (2026-05-11):
+    1. Try RAG-based semantic pick against `thumbnail_styles` collection
+       — yields content-aware selection (副業達成 → hunt_success,
+       比較記事 → ready_fight, etc.).
+    2. Fall back to SHA-256(title) deterministic pick when RAG is
+       unavailable or no hit clears the threshold.
+
+    Both branches are deterministic on the same title+content so
+    regenerations of the same article keep the same style — important
+    for visual consistency across cover + inline images.
+    """
+    rag_choice = _pick_style_by_rag(title, content_excerpt)
+    if rag_choice is not None:
+        return rag_choice
     h = hashlib.sha256(title.encode("utf-8")).digest()
     idx = h[0] % len(_STYLES)
     chosen = _STYLES[idx]
     logger.info(
-        "game-homage style for title=%r → %s",
+        "game-homage style (SHA-256 fallback) for title=%r → %s",
         title[:40], chosen["name"],
     )
     return chosen

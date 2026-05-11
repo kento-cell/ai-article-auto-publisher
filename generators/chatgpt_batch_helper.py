@@ -237,7 +237,10 @@ def chatgpt_image_batch(
             pick_style_for_article,
         )
         if is_game_homage_enabled():
-            chosen = pick_style_for_article(title)
+            # 2026-05-11: pass content excerpt for RAG-based style
+            # selection (副業 → hunt_success, 比較 → ready_fight 等).
+            # pick_style_for_article falls back to SHA-256 if RAG miss.
+            chosen = pick_style_for_article(title, (content or "")[:1000])
             style_block = chosen["style_block"]
             style_label = f"game_homage:{chosen['name']}"
     except Exception as exc:  # noqa: BLE001 — never block image gen on style pick

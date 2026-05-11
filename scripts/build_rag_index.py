@@ -251,6 +251,36 @@ def main() -> int:
     pa_count = _build_collection(client, model, "past_articles", article_chunks)
     print(f"  past_articles: {pa_count} chunk(s) from data/articles/*.json")
     total += pa_count
+
+    # 2026-05-11 PM: thumbnail_styles collection — each game-homage
+    # style becomes ONE chunk whose embedding represents the article
+    # types it fits. Allows pick_style_for_article() to do semantic
+    # auto-selection (副業達成 → hunt_success, 比較 → ready_fight, etc.)
+    # rather than the older SHA-256 random pick.
+    style_chunks: list[Chunk] = []
+    try:
+        from generators.game_homage_styles import _STYLES
+        for i, style in enumerate(_STYLES):
+            fit_hint = style.get("fit_hint") or ""
+            text = (
+                f"## {style['name']}\n"
+                f"用途: {fit_hint}\n"
+                # Include a digest of the visual block so the query embedding
+                # picks up on the visual feel too — helps when a query is
+                # phrased visually ("派手なネオン" → rhythm_perfect 等).
+                f"視覚: {style.get('style_block','')[:200]}"
+            )
+            style_chunks.append(Chunk(
+                text=text,
+                section_title=style["name"],  # critical: name is the key for lookup
+                section_index=i,
+                source_file="game_homage_styles.py",
+            ))
+    except Exception as exc:
+        print(f"  WARN: thumbnail_styles unavailable: {exc}")
+    ts_count = _build_collection(client, model, "thumbnail_styles", style_chunks)
+    print(f"  thumbnail_styles: {ts_count} chunk(s) from generators/game_homage_styles.py")
+    total += ts_count
     print(f"DONE - total chunks indexed: {total}")
     print(f"index: {_INDEX_PATH}")
 
