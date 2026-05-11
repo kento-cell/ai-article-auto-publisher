@@ -101,6 +101,44 @@ def _load_chunks(source_path: Path) -> list[Chunk]:
     return chunks
 
 
+def _load_past_article_chunks() -> list[Chunk]:
+    """Build chunks from data/articles/*.json — one per article.
+
+    Each chunk = title + first 300 chars of summary/content. Lean by
+    design: duplicate detection only needs topic-level similarity, not
+    surface-text matching. Skips placeholder/empty files.
+    """
+    import json as _json
+    chunks: list[Chunk] = []
+    articles_dir = _REPO / "data" / "articles"
+    if not articles_dir.exists():
+        print(f"  WARN: {articles_dir} missing — past_articles skipped")
+        return []
+    files = sorted(articles_dir.glob("*.json"))
+    for i, fp in enumerate(files):
+        try:
+            data = _json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, _json.JSONDecodeError):
+            continue
+        title = (data.get("title") or "").strip()
+        if not title:
+            continue
+        body = (
+            data.get("summary")
+            or (data.get("content") or "")[:600]
+        ).strip()
+        text = f"# {title}\n{body[:300]}"
+        chunks.append(
+            Chunk(
+                text=text,
+                section_title=title[:80],
+                section_index=i,
+                source_file=fp.name,
+            ),
+        )
+    return chunks
+
+
 def _build_collection(
     client, model, collection_name: str, chunks: list[Chunk],
 ) -> int:
@@ -170,6 +208,16 @@ def main() -> int:
         count = _build_collection(client, model, collection_name, chunks)
         print(f"  {collection_name}: {count} chunk(s) from {source_path.name}")
         total += count
+
+    # Sprint 3 (2026-05-11): past_articles collection for duplicate
+    # detection on new topic seeding. Indexed from data/articles/*.json,
+    # each article becomes ONE chunk: title + summary (or content head).
+    # We deliberately skip full content to keep the index lean and
+    # focused on topic similarity rather than surface phrasing.
+    article_chunks = _load_past_article_chunks()
+    pa_count = _build_collection(client, model, "past_articles", article_chunks)
+    print(f"  past_articles: {pa_count} chunk(s) from data/articles/*.json")
+    total += pa_count
     print(f"DONE - total chunks indexed: {total}")
     print(f"index: {_INDEX_PATH}")
 

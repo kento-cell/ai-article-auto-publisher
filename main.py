@@ -688,6 +688,79 @@ def _load_failure_patterns(max_chars: int = 900) -> str:
     return block
 
 
+def _check_topic_duplication(
+    title: str,
+    promise: str = "",
+    top_k: int = 3,
+    # Tuned 2026-05-11: same article re-titled scores ~0.93+ on
+    # multilingual-e5-base. Distinct articles in the same genre
+    # ("AI副業 ライティング" vs "AI副業 30日ロードマップ") score
+    # ~0.78-0.85. 0.88 catches near-duplicates without false-flagging
+    # legitimate companion pieces.
+    score_threshold: float = 0.88,
+) -> list[dict]:
+    """Sprint 3 (2026-05-11) — surface near-duplicate past articles.
+
+    Returns a list of records ``{score, title, source_file}`` for past
+    articles whose title+summary semantically match the proposed topic
+    above ``score_threshold``. Empty list when:
+      - ``RAG_DUPLICATE_CHECK=false`` env override, OR
+      - index missing, OR
+      - no hit clears the threshold.
+
+    The current pipeline only *logs* the result — no automatic
+    rejection — so operator can decide whether the new piece is a
+    legit follow-up or a true duplicate. Per 2026-05-11 requirements
+    doc, automatic blocking is deferred until false-positive rate is
+    measured.
+    """
+    if os.environ.get("RAG_DUPLICATE_CHECK", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return []
+    try:
+        from generators.rag_retriever import RagRetriever
+    except ImportError:
+        return []
+    query = (title.strip() + " " + (promise or "").strip()).strip()
+    if not query:
+        return []
+    try:
+        retriever = RagRetriever()
+        hits = retriever.retrieve(
+            query=query,
+            collection="past_articles",
+            top_k=top_k,
+            score_threshold=score_threshold,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("duplicate check retrieval failed: %s", exc)
+        return []
+    if not hits:
+        return []
+    flagged = []
+    for h in hits:
+        flagged.append(
+            {
+                "score": h.score,
+                "title": (h.metadata.get("section_title", "")
+                          if h.metadata else "")[:120],
+                "source_file": (h.metadata.get("source_file", "")
+                                if h.metadata else ""),
+            }
+        )
+    logger.warning(
+        "[dup-check] new topic %r matches %d past article(s) >= %.2f",
+        title[:80], len(flagged), score_threshold,
+    )
+    for f in flagged:
+        logger.warning(
+            "  similar: (sim %.3f) %s",
+            f["score"], f["title"],
+        )
+    return flagged
+
+
 def _build_rag_learned_block(
     query_seed: str,
     platform: str,
@@ -2300,6 +2373,19 @@ def _generate_single_article(
         スコアリング済み記事dict (with "rejected" key if failed),
         or None on generation failure.
     """
+    # Sprint 3 (2026-05-11): pre-generation duplicate detection.
+    # Surfaces past articles that semantic-match the new topic above
+    # the threshold so the operator sees the warning in logs. Runs only
+    # on the first attempt (regen-loop articles are by definition
+    # not duplicates) and never blocks — logs only.
+    if _regen_attempt == 0:
+        kt = article.get("knowledge_topic") or {}
+        promise = kt.get("promise", "") if isinstance(kt, dict) else ""
+        _check_topic_duplication(
+            title=article.get("title", ""),
+            promise=promise,
+        )
+
     # --- 構成パターン選択 ---
     structure = _select_structure(
         article.get("title", ""),
