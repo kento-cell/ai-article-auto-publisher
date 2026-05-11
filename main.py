@@ -3625,8 +3625,19 @@ def publish_approved(
                     )
                     url = _save_scrap_draft(article_id, title, content, stored)
             elif platform == "note":
-                # 本人情報登録を回避するため当面は全記事無料公開
-                url = _publish_note(title, content, config, source=str(source), price=0)
+                # 2026-05-12: メンバーシップ + 有料記事の審査が通過。
+                # determine_price で grade × evidence から価格決定し、
+                # _set_memberships が「メンバー会員に公開」「プラン限定公開」
+                # を自動で付与する。C 評価以下も ¥200 floor で paid。
+                _scores = stored.get("scores", {}) or {}
+                note_price = NotePublisher.determine_price(
+                    overall_grade=str(_scores.get("overall_grade", "")),
+                    evidence_level=str(_scores.get("evidence_level", "")),
+                )
+                url = _publish_note(
+                    title, content, config,
+                    source=str(source), price=note_price,
+                )
             else:
                 logger.warning("不明なplatform: %s", platform)
                 continue

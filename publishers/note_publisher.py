@@ -161,6 +161,7 @@ class NotePublisher:
             self._input_tags(tags)
             if price > 0:
                 self._set_price(price)
+            self._set_memberships()
             url = self._click_publish()
             logger.info("Article published: %s", url)
             return url
@@ -175,12 +176,16 @@ class NotePublisher:
     def determine_price(overall_grade: str, evidence_level: str) -> int:
         """Calculate the article price from quality grades.
 
+        Membership approval landed 2026-05-12 — every article is now
+        paid, and the C / fallback tier is the floor that nudges
+        readers toward membership rather than competing with free posts.
+
         Pricing tiers (by overall_grade + evidence_level):
           A + A evidence: 1,980 yen (premium)
           A + B evidence: 980 yen
           B + A evidence: 500 yen
           B + B evidence: 300 yen
-          Otherwise: free
+          C / below: 200 yen (membership-driver floor; note minimum is 100)
         """
         if overall_grade == "A" and evidence_level == "A":
             return 1980
@@ -190,7 +195,7 @@ class NotePublisher:
             return 500
         if overall_grade == "B":
             return 300
-        return 0
+        return 200
 
     def close(self) -> None:
         """Close the Playwright browser context and release resources."""
@@ -759,6 +764,92 @@ class NotePublisher:
             logger.warning("価格設定UIが見つかりません。無料で公開します")
         except PlaywrightError as exc:
             logger.warning("価格設定に失敗: %s。無料で公開します", exc)
+
+    def _set_memberships(self) -> bool:
+        """Attach the article to membership plans.
+
+        Under the 「記事の追加」 section, open メンバーシップ and tick both
+        「メンバー会員に公開」 and 「プラン限定公開」. Best-effort: if the
+        UI is not present (e.g. the account has no active membership)
+        the call returns False and the publish flow continues.
+        """
+        assert self._page is not None
+        page = self._page
+
+        page.wait_for_timeout(400)
+
+        membership_open_selectors = [
+            "button:has-text('メンバーシップ')",
+            "[data-testid='membership']",
+            "[aria-label*='メンバーシップ']",
+            "div:has-text('記事の追加') >> .. >> button:has-text('メンバーシップ')",
+        ]
+        opened = False
+        for selector in membership_open_selectors:
+            try:
+                loc = page.locator(selector).first
+                if loc.is_visible(timeout=2_000):
+                    loc.scroll_into_view_if_needed(timeout=2_000)
+                    loc.click(timeout=3_000)
+                    opened = True
+                    logger.info("Opened membership picker via: %s", selector)
+                    break
+            except (PlaywrightTimeoutError, PlaywrightError):
+                continue
+        if not opened:
+            logger.warning(
+                "メンバーシップ追加ボタンが見つかりません — スキップ"
+            )
+            return False
+
+        page.wait_for_timeout(700)
+
+        target_labels = ("メンバー会員に公開", "プラン限定公開")
+        selected = 0
+        for label in target_labels:
+            candidates = [
+                f"label:has-text('{label}')",
+                f"[role='checkbox']:has-text('{label}')",
+                f"div:has-text('{label}'):has(input[type='checkbox'])",
+                f"text='{label}'",
+            ]
+            picked = False
+            for selector in candidates:
+                try:
+                    loc = page.locator(selector).first
+                    if loc.is_visible(timeout=1_500):
+                        loc.scroll_into_view_if_needed(timeout=2_000)
+                        loc.click(timeout=3_000)
+                        page.wait_for_timeout(250)
+                        logger.info("Selected membership option: %s", label)
+                        selected += 1
+                        picked = True
+                        break
+                except (PlaywrightTimeoutError, PlaywrightError):
+                    continue
+            if not picked:
+                logger.warning(
+                    "メンバーシップ オプション %r が見つかりません", label,
+                )
+
+        close_selectors = [
+            "button:has-text('完了')",
+            "button:has-text('追加')",
+            "button:has-text('保存')",
+            "button:has-text('OK')",
+            "button[aria-label='閉じる']",
+        ]
+        for selector in close_selectors:
+            try:
+                loc = page.locator(selector).first
+                if loc.is_visible(timeout=1_000):
+                    loc.click(timeout=2_000)
+                    page.wait_for_timeout(300)
+                    break
+            except (PlaywrightTimeoutError, PlaywrightError):
+                continue
+
+        return selected > 0
 
     def _click_publish(self) -> str:
         """Click the publish button and return the resulting article URL."""
