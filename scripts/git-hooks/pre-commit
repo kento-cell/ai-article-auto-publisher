@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run the hallucination regression suite before any
+# commit lands. Repo-versioned so cloning + running:
+#   git config core.hooksPath scripts/git-hooks
+# wires it up. No pre-commit framework / no new pip dep.
+#
+# Skip with:
+#   SKIP_PRECOMMIT=1 git commit ...
+# Only when truly needed (broken Python deps etc.) — never in normal flow.
+
+set -e
+
+if [[ "${SKIP_PRECOMMIT:-0}" == "1" ]]; then
+    echo "pre-commit: skipped via SKIP_PRECOMMIT=1"
+    exit 0
+fi
+
+# Resolve the repo root from the hook's path so this works regardless
+# of where git invokes it from.
+hook_dir="$(cd "$(dirname "$0")" && pwd)"
+repo="$(cd "$hook_dir/../.." && pwd)"
+cd "$repo"
+
+# Only run regression when a Python source / config has been touched.
+# Pure-docs / pure-data commits skip the suite (faster commits, and
+# the suite doesn't care about those files anyway).
+changed=$(git diff --cached --name-only --diff-filter=ACMR)
+need_run=0
+while IFS= read -r f; do
+    case "$f" in
+        *.py|config/settings.yaml*|config/prompts.yaml|main.py)
+            need_run=1
+            break
+            ;;
+    esac
+done <<< "$changed"
+
+if [[ "$need_run" == "0" ]]; then
+    echo "pre-commit: no source files changed — regression skipped"
+    exit 0
+fi
+
+# Pick the same python the rest of the project uses (Windows: py
+# launcher, otherwise python3).
+if command -v py >/dev/null 2>&1; then
+    PY=py
+elif command -v python3 >/dev/null 2>&1; then
+    PY=python3
+else
+    PY=python
+fi
+
+echo "pre-commit: running scripts/test_hallucination_deny.py ..."
+if ! "$PY" scripts/test_hallucination_deny.py >/tmp/pre-commit-out.log 2>&1; then
+    echo "pre-commit: FAILED — regression suite did not pass"
+    tail -20 /tmp/pre-commit-out.log
+    echo
+    echo "Fix the failures above before committing, or bypass with"
+    echo "  SKIP_PRECOMMIT=1 git commit ..."
+    echo "(use the bypass sparingly — the suite catches real regressions)"
+    exit 1
+fi
+
+echo "pre-commit: OK"
