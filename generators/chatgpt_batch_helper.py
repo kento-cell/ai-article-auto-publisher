@@ -137,9 +137,72 @@ def is_brave_running() -> bool:
 _OPENING_HINTS = ("導入", "前提", "背景", "そもそも", "はじめに", "とは",
                   "なぜ", "問題", "発端", "Why")
 _CONCLUDING_HINTS = ("まとめ", "結論", "総括", "おわりに", "最後に",
-                     "結び", "Wrap", "次のアクション", "次のステップ")
+                     "結び", "Wrap", "次のアクション", "次のステップ",
+                     "ご利用にあたって", "注意事項", "免責")
 _TWIST_HINTS = ("解決", "戦略", "対策", "提案", "実践", "コツ", "突破",
                 "ポイント", "How", "ハック")
+
+# Patterns that mark a section as "main item" content — for listicle /
+# comparison / multi-shop articles the per-item sections deserve image
+# slots over the intro/outro frame. Matched against the H2 title.
+_ITEM_PATTERNS = (
+    r"^\s*\d+\s*軒目",            # 1軒目, 2軒目 (gourmet shop counter)
+    r"^\s*\d+\s*店舗目",          # 1店舗目
+    r"^\s*\d+\s*品目",            # 1品目
+    r"^\s*\d+\s*位",              # 1位, 2位 (ranking)
+    r"^\s*Top\s*\d+",             # Top 1, Top 10
+    r"^\s*Case\s*\d+",            # Case 1
+    r"^\s*ケース\s*\d+",           # ケース 1
+    r"^\s*Pattern\s*\d+",         # Pattern 1
+    r"^\s*パターン\s*\d+",         # パターン 1
+    r"^\s*\d+\s*\.\s",            # 1. xxx (numbered list)
+    r"^\s*第\s*\d+\s*[軒位章]",    # 第1軒, 第1位, 第1章
+)
+
+
+def _section_image_priority(title: str) -> int:
+    """Score an H2 by how strongly it should claim an image slot.
+
+    +100: matches an item-listing pattern (N軒目, N位, Case N …) —
+          these are the per-item main content sections that benefit
+          most from a section-specific image.
+       0: normal main content section.
+    -100: opening/intro hint (背景, はじめに, 前提 …).
+    -200: concluding hint (まとめ, おわりに, ご利用にあたって …).
+    """
+    t = (title or "").strip()
+    for pat in _ITEM_PATTERNS:
+        if re.match(pat, t):
+            return 100
+    if any(h in t for h in _CONCLUDING_HINTS):
+        return -200
+    if any(h in t for h in _OPENING_HINTS):
+        return -100
+    return 0
+
+
+def _select_image_sections(
+    h2_sections: list[tuple[str, str]],
+    inline_count: int,
+) -> list[tuple[str, str]]:
+    """Pick the top-priority H2 sections for ``inline_count`` image slots.
+
+    Sections are scored by :func:`_section_image_priority`; ties are
+    broken by article order. The returned list is re-sorted into reading
+    order so inline images appear in the same flow as the article.
+    """
+    if not h2_sections or inline_count <= 0:
+        return []
+    indexed = [
+        (i, t, b, _section_image_priority(t))
+        for i, (t, b) in enumerate(h2_sections)
+    ]
+    # Priority desc, then original index asc for stable ties.
+    indexed.sort(key=lambda x: (-x[3], x[0]))
+    chosen = indexed[:inline_count]
+    # Restore reading order.
+    chosen.sort(key=lambda x: x[0])
+    return [(t, b) for _, t, b, _ in chosen]
 
 
 def _infer_narrative_role(idx: int, total: int, title: str) -> str:
@@ -341,7 +404,18 @@ def chatgpt_image_batch(
             inline_count, effective_inline_count,
         )
     inline_count = effective_inline_count
-    h2_sections = h2_sections[:inline_count]
+    # Priority-based selection: when an article has more H2 sections
+    # than image slots, prefer "main item" sections (1軒目, 2軒目, Case
+    # 1 …) over background / outro frame sections. Falls back to the
+    # original head-take for articles without item patterns.
+    h2_sections_full = h2_sections
+    h2_sections = _select_image_sections(h2_sections, inline_count)
+    if [t for t, _ in h2_sections] != [t for t, _ in h2_sections_full[:inline_count]]:
+        logger.info(
+            "[image] section priority kicked in: %d/%d sections re-routed to per-item content",
+            sum(1 for t, _ in h2_sections if _section_image_priority(t) == 100),
+            inline_count,
+        )
     h2s = [t for t, _ in h2_sections]  # title-only list, kept for back-compat
 
     # Style pack selection. Default 'ghibli' preserves the existing
