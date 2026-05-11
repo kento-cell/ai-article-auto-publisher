@@ -4412,6 +4412,48 @@ def _run_pipeline_inner(config: dict, prompts: dict, mode: str):
     except Exception as e:
         logger.warning("Cleanup failed: %s", e)
 
+    # 2026-05-11: trigger a local backup at the end of state-changing
+    # pipeline runs (--generate / --publish). This replaces a daily
+    # Task Scheduler entry the operator chose to drop in favour of
+    # "backup when the data actually changed" semantics. Skipped:
+    # - on --learn (learn doesn't change article store)
+    # - on --dry-run / collect-only (no state mutation)
+    # - when AUTO_BACKUP=false (operator opt-out)
+    # Backup is fire-and-forget: errors are logged but never block.
+    if mode in ("generate", "publish") and os.environ.get(
+        "AUTO_BACKUP", "true"
+    ).lower() in ("true", "1", "yes", "on"):
+        try:
+            import subprocess
+            backup_script = (
+                Path(__file__).resolve().parent
+                / "scripts" / "_backup_local.ps1"
+            )
+            if backup_script.exists():
+                logger.info("=== auto-backup 開始 (mode=%s) ===", mode)
+                r = subprocess.run(
+                    [
+                        "powershell", "-NoProfile",
+                        "-ExecutionPolicy", "Bypass",
+                        "-File", str(backup_script),
+                    ],
+                    capture_output=True, text=True, timeout=600,
+                )
+                if r.returncode == 0:
+                    # Echo the DONE line only; full robocopy chatter
+                    # would flood the main log.
+                    for line in (r.stdout or "").splitlines():
+                        if line.startswith("DONE:") or line.startswith("backup ->"):
+                            logger.info("  %s", line.strip())
+                    logger.info("=== auto-backup 完了 ===")
+                else:
+                    logger.warning(
+                        "auto-backup exit %d: %s",
+                        r.returncode, (r.stderr or "")[:300],
+                    )
+        except Exception as _exc:  # noqa: BLE001
+            logger.warning("auto-backup skipped: %s", _exc)
+
     logger.info("=" * 50)
     logger.info("パイプライン完了 (mode=%s)", mode)
     logger.info("=" * 50)
