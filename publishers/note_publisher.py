@@ -161,8 +161,20 @@ class NotePublisher:
             self._input_tags(tags)
             if price > 0:
                 self._set_price(price)
-            self._set_memberships()
             url = self._click_publish()
+            # Membership inclusion is a separate post-publish flow under
+            # the creator dashboard (記事 → メンバー特典記事を追加する →
+            # ⋮ → メンバーシップに追加). Best-effort: if it fails, the
+            # article is already live and the user can add it manually
+            # from the dashboard.
+            if url and "/n/" in url:
+                try:
+                    self._add_to_memberships_via_dashboard(url)
+                except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                    logger.warning(
+                        "[note] dashboard membership-add failed: %s "
+                        "(article is published; add manually)", exc,
+                    )
             logger.info("Article published: %s", url)
             return url
         except PlaywrightTimeoutError as exc:
@@ -744,112 +756,226 @@ class NotePublisher:
                 logger.warning("タグ '%s' の追加に失敗: %s", tag, exc)
 
     def _set_price(self, price: int) -> None:
-        """Enable paid-article mode and set the price."""
-        assert self._page is not None
-        page = self._page
-        try:
-            paid_toggle = page.locator(
-                "text=有料"
-            ).first
-            paid_toggle.wait_for(state="visible", timeout=5_000)
-            paid_toggle.click()
+        """Enable paid-article mode and set the price.
 
-            price_input = page.locator(
-                "input[type='number'], [data-testid='price-input']"
-            ).first
-            price_input.wait_for(state="visible", timeout=5_000)
-            price_input.fill(str(price))
-            logger.debug("Price set to %d yen", price)
-        except PlaywrightTimeoutError:
-            logger.warning("価格設定UIが見つかりません。無料で公開します")
-        except PlaywrightError as exc:
-            logger.warning("価格設定に失敗: %s。無料で公開します", exc)
-
-    def _set_memberships(self) -> bool:
-        """Attach the article to membership plans.
-
-        Under the 「記事の追加」 section, open メンバーシップ and tick both
-        「メンバー会員に公開」 and 「プラン限定公開」. Best-effort: if the
-        UI is not present (e.g. the account has no active membership)
-        the call returns False and the publish flow continues.
+        The publish-settings page shows a 記事タイプ section with 無料 /
+        有料 radio buttons. Selecting 有料 reveals a 価格 input plus a
+        「有料エリア設定」 step. The price input is a plain text field
+        with `inputmode="numeric"` rather than `type="number"` — the
+        previous selector missed it and the price stayed at the 300-yen
+        placeholder. Multiple selector fallbacks cover note UI revisions.
         """
         assert self._page is not None
         page = self._page
 
-        page.wait_for_timeout(400)
+        # Step 1: switch from 無料 to 有料 (radio button)
+        try:
+            paid_radio_selectors = [
+                "label:has-text('有料') input[type='radio']",
+                "input[type='radio'][value='paid']",
+                "label:has-text('有料')",
+                "text=有料",
+            ]
+            switched = False
+            for selector in paid_radio_selectors:
+                try:
+                    loc = page.locator(selector).first
+                    if loc.is_visible(timeout=2_000):
+                        loc.scroll_into_view_if_needed(timeout=2_000)
+                        loc.click(timeout=3_000)
+                        switched = True
+                        logger.debug("Switched to 有料 via: %s", selector)
+                        break
+                except (PlaywrightTimeoutError, PlaywrightError):
+                    continue
+            if not switched:
+                logger.warning("有料 ラジオが見つかりません。価格設定スキップ")
+                return
+            page.wait_for_timeout(500)
+        except PlaywrightError as exc:
+            logger.warning("有料切替に失敗: %s", exc)
+            return
 
-        membership_open_selectors = [
-            "button:has-text('メンバーシップ')",
-            "[data-testid='membership']",
-            "[aria-label*='メンバーシップ']",
-            "div:has-text('記事の追加') >> .. >> button:has-text('メンバーシップ')",
+        # Step 2: fill the price input — note uses a text input with
+        # numeric inputmode, so type=number selectors miss it.
+        price_input_selectors = [
+            "input[inputmode='numeric']",
+            "input[type='number']",
+            "[data-testid='price-input']",
+            "input[placeholder*='100']",
+            "label:has-text('価格') >> .. >> input",
         ]
-        opened = False
-        for selector in membership_open_selectors:
+        filled = False
+        for selector in price_input_selectors:
             try:
                 loc = page.locator(selector).first
                 if loc.is_visible(timeout=2_000):
                     loc.scroll_into_view_if_needed(timeout=2_000)
-                    loc.click(timeout=3_000)
-                    opened = True
-                    logger.info("Opened membership picker via: %s", selector)
+                    loc.click(timeout=2_000)
+                    loc.fill("")
+                    loc.fill(str(price))
+                    filled = True
+                    logger.info("Price set to %d yen via %s", price, selector)
                     break
             except (PlaywrightTimeoutError, PlaywrightError):
                 continue
-        if not opened:
+        if not filled:
             logger.warning(
-                "メンバーシップ追加ボタンが見つかりません — スキップ"
+                "価格入力欄が見つかりません。デフォルト価格(¥300?)で進行",
             )
-            return False
 
-        page.wait_for_timeout(700)
+        # Step 3: confirm the paid-area selection. note shows a
+        # 「有料エリア設定」 button after enabling 有料; clicking it
+        # opens a modal where you pick which portion of the article is
+        # paywalled. Default = 全文有料 — just confirm.
+        try:
+            paid_area_btn = page.locator(
+                "button:has-text('有料エリア設定')"
+            ).first
+            if paid_area_btn.is_visible(timeout=1_500):
+                paid_area_btn.scroll_into_view_if_needed(timeout=2_000)
+                paid_area_btn.click(timeout=3_000)
+                logger.info("Opened 有料エリア設定 modal")
+                page.wait_for_timeout(800)
+                # Confirm with default selection
+                confirm_selectors = [
+                    "button:has-text('決定')",
+                    "button:has-text('設定する')",
+                    "button:has-text('保存')",
+                    "button:has-text('OK')",
+                    "button:has-text('完了')",
+                ]
+                for selector in confirm_selectors:
+                    try:
+                        btn = page.locator(selector).first
+                        if btn.is_visible(timeout=1_000):
+                            btn.click(timeout=2_000)
+                            logger.info("Confirmed 有料エリア via: %s", selector)
+                            page.wait_for_timeout(500)
+                            break
+                    except (PlaywrightTimeoutError, PlaywrightError):
+                        continue
+        except (PlaywrightTimeoutError, PlaywrightError):
+            logger.debug("有料エリア設定 ボタンは出現せず（必須でない可能性）")
 
-        target_labels = ("メンバー会員に公開", "プラン限定公開")
-        selected = 0
-        for label in target_labels:
-            candidates = [
-                f"label:has-text('{label}')",
-                f"[role='checkbox']:has-text('{label}')",
-                f"div:has-text('{label}'):has(input[type='checkbox'])",
-                f"text='{label}'",
+    def _add_to_memberships_via_dashboard(self, article_url: str) -> None:
+        """Add the just-published article to memberships from the
+        creator dashboard (post-publish flow).
+
+        Path (per user 2026-05-12):
+          1. クリエーターページ → 記事 タブ
+          2. 「メンバー特典記事を追加する」 ボタン
+          3. 投稿済み記事一覧から該当記事を特定
+          4. 各記事サムネ右の ⋮ → 「メンバーシップに追加」
+
+        ``article_url`` is used to find the target row — the slug at
+        the end of the URL is the most stable identifier.
+        """
+        assert self._page is not None
+        page = self._page
+
+        slug = article_url.rstrip("/").split("/")[-1]
+        logger.info("[note] dashboard membership-add for slug=%s", slug)
+
+        # 1. Navigate to creator membership-add page directly. note
+        # exposes this under /membership/edit_article or similar; we
+        # try the menu-driven path first, then fall back to direct nav.
+        try:
+            # Open user menu (header avatar)
+            avatar_selectors = [
+                "header img[alt*='プロフィール']",
+                "header [aria-label*='メニュー']",
+                "header button:has(img)",
             ]
-            picked = False
-            for selector in candidates:
+            for selector in avatar_selectors:
                 try:
                     loc = page.locator(selector).first
                     if loc.is_visible(timeout=1_500):
-                        loc.scroll_into_view_if_needed(timeout=2_000)
-                        loc.click(timeout=3_000)
-                        page.wait_for_timeout(250)
-                        logger.info("Selected membership option: %s", label)
-                        selected += 1
-                        picked = True
+                        loc.click(timeout=2_000)
+                        page.wait_for_timeout(500)
                         break
                 except (PlaywrightTimeoutError, PlaywrightError):
                     continue
-            if not picked:
+
+            # Click クリエーターページ
+            creator_link = page.locator(
+                "a:has-text('クリエーターページ'), "
+                "button:has-text('クリエーターページ')"
+            ).first
+            if creator_link.is_visible(timeout=2_000):
+                creator_link.click(timeout=3_000)
+            else:
                 logger.warning(
-                    "メンバーシップ オプション %r が見つかりません", label,
+                    "クリエーターページ リンクが見つからない — 続行",
                 )
+            page.wait_for_load_state("networkidle", timeout=15_000)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning("クリエーターページ navigation 失敗: %s", exc)
 
-        close_selectors = [
-            "button:has-text('完了')",
-            "button:has-text('追加')",
-            "button:has-text('保存')",
-            "button:has-text('OK')",
-            "button[aria-label='閉じる']",
-        ]
-        for selector in close_selectors:
-            try:
-                loc = page.locator(selector).first
-                if loc.is_visible(timeout=1_000):
-                    loc.click(timeout=2_000)
-                    page.wait_for_timeout(300)
-                    break
-            except (PlaywrightTimeoutError, PlaywrightError):
-                continue
+        # 2. Click 記事 tab
+        try:
+            tab = page.locator(
+                "a:has-text('記事'), button:has-text('記事')"
+            ).first
+            tab.wait_for(state="visible", timeout=5_000)
+            tab.click(timeout=3_000)
+            page.wait_for_timeout(800)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning("記事 タブが見つかりません: %s", exc)
 
-        return selected > 0
+        # 3. Click 「メンバー特典記事を追加する」
+        try:
+            add_btn = page.locator(
+                "button:has-text('メンバー特典記事を追加する'), "
+                "a:has-text('メンバー特典記事を追加する')"
+            ).first
+            add_btn.wait_for(state="visible", timeout=5_000)
+            add_btn.click(timeout=3_000)
+            page.wait_for_timeout(1_000)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning(
+                "「メンバー特典記事を追加する」 ボタンが見つかりません: %s",
+                exc,
+            )
+            return
+
+        # 4. Find the row for the article (match by slug in the row's
+        # link href), then click the ⋮ menu next to its thumbnail.
+        row_selector = (
+            f"li:has(a[href*='/{slug}']), "
+            f"tr:has(a[href*='/{slug}']), "
+            f"div:has(> a[href*='/{slug}'])"
+        )
+        try:
+            row = page.locator(row_selector).first
+            row.wait_for(state="visible", timeout=5_000)
+            menu_btn = row.locator(
+                "button[aria-label*='メニュー'], "
+                "button[aria-label*='設定'], "
+                "button:has-text('⋮'), "
+                "button:has-text('…')"
+            ).first
+            menu_btn.click(timeout=3_000)
+            page.wait_for_timeout(500)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning("該当記事の ⋮ メニューが見つかりません: %s", exc)
+            return
+
+        # 5. Click 「メンバーシップに追加」
+        try:
+            menu_item = page.locator(
+                "button:has-text('メンバーシップに追加'), "
+                "[role='menuitem']:has-text('メンバーシップに追加')"
+            ).first
+            menu_item.wait_for(state="visible", timeout=5_000)
+            menu_item.click(timeout=3_000)
+            page.wait_for_timeout(800)
+            logger.info("[note] メンバーシップに追加 完了 (slug=%s)", slug)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            logger.warning(
+                "「メンバーシップに追加」 メニュー項目が見つかりません: %s",
+                exc,
+            )
 
     def _click_publish(self) -> str:
         """Click the publish button and return the resulting article URL."""
