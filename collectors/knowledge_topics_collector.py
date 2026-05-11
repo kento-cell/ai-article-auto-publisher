@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -49,7 +50,18 @@ class KnowledgeTopicsCollector:
         max_results: Upper bound on the number of topic-articles emitted.
             The generation pipeline only picks a handful per run so a
             modest default keeps the candidate list readable.
+            Overridable via env ``KNOWLEDGE_TOPICS_MAX_RESULTS`` for
+            ad-hoc batch runs (e.g., themed mass-production).
         rng: Optional ``random.Random`` for reproducibility in tests.
+
+    Env overrides (intentionally undocumented in CLAUDE.md — these are
+    ad-hoc knobs for operator batches, not part of the steady-state
+    pipeline contract):
+
+    - ``KNOWLEDGE_TOPICS_MAX_RESULTS`` — bump the pick count for one run.
+    - ``KNOWLEDGE_TOPICS_CATEGORY`` — restrict sampling to a single
+      ``category`` value (e.g. ``ai_sidejob``). Comma-separated list also
+      accepted. Empty string disables the filter.
     """
 
     def __init__(
@@ -57,8 +69,31 @@ class KnowledgeTopicsCollector:
         max_results: int = 8,
         rng: random.Random | None = None,
     ) -> None:
+        env_max = os.environ.get("KNOWLEDGE_TOPICS_MAX_RESULTS", "").strip()
+        if env_max:
+            try:
+                max_results = int(env_max)
+                logger.info(
+                    "knowledge topics: KNOWLEDGE_TOPICS_MAX_RESULTS=%d (env override)",
+                    max_results,
+                )
+            except ValueError:
+                logger.warning(
+                    "KNOWLEDGE_TOPICS_MAX_RESULTS=%r is not int — ignored",
+                    env_max,
+                )
         self.max_results = max_results
         self._rng = rng or random.Random()
+        env_cat = os.environ.get("KNOWLEDGE_TOPICS_CATEGORY", "").strip()
+        self._category_filter: set[str] | None = None
+        if env_cat:
+            self._category_filter = {
+                c.strip() for c in env_cat.split(",") if c.strip()
+            }
+            logger.info(
+                "knowledge topics: KNOWLEDGE_TOPICS_CATEGORY=%s (filter active)",
+                sorted(self._category_filter),
+            )
 
     def collect(self) -> list[dict[str, Any]]:
         if not _POOL_PATH.exists():
@@ -75,6 +110,19 @@ class KnowledgeTopicsCollector:
         topics = pool.get("topics") or []
         if not topics:
             return []
+
+        if self._category_filter:
+            before = len(topics)
+            topics = [
+                t for t in topics
+                if str(t.get("category", "")) in self._category_filter
+            ]
+            logger.info(
+                "knowledge topics: category filter %s reduced pool %d -> %d",
+                sorted(self._category_filter), before, len(topics),
+            )
+            if not topics:
+                return []
 
         cooldown_map = self._load_cooldown_map()
         now = datetime.now(timezone.utc)
