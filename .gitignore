@@ -9,10 +9,11 @@ ai-publisher-*.json
 *.key
 config/settings.yaml
 
-# ブラウザ永続セッション（note.com / Selenium / Playwright）
+# ブラウザ永続セッション（note.com / Selenium / Playwright / Brave CDP）
 # — 認証済みCookieやIndexedDBが含まれるため絶対にコミットしない
 data/note-profile/
 data/selenium-profile/
+.brave-cdp-profile/
 *_cookies.json
 cookies/
 
