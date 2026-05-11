@@ -1916,6 +1916,82 @@ _QUERY_SUBJECT_VOCAB: list[tuple[str, frozenset[str]]] = [
 ]
 
 
+_SEMANTIC_ALT_MODEL = None  # lazy-loaded SentenceTransformer
+
+
+def _alt_matches_article_semantically(
+    alt: str,
+    title: str,
+    content: str,
+    threshold: float = 0.75,
+) -> bool:
+    """Sprint 5 (2026-05-11) — semantic complement to vocabulary alt check.
+
+    Compares the (English) image alt text against the (Japanese) article
+    title + content head via the same multilingual embedder used for
+    RAG retrieval. e5-base supports cross-lingual similarity so
+    "robot arm assembly line" and "ヒューマノイドが工場で動く記事" land
+    in the same region of vector space.
+
+    Returns True when:
+      - env ``RAG_IMAGE_ALT_CHECK`` is not set to a true value (default OFF —
+        the vocabulary gate is the production default for now), OR
+      - the chromadb / sentence-transformers deps aren't installed, OR
+      - cos sim is above ``threshold``.
+
+    Returns False (= drop the image) only when the check is explicitly
+    enabled AND cos sim is below the threshold AND we managed to load
+    the model.
+
+    Threshold rationale & known limitation: alt texts are short
+    English phrases and articles are long Japanese. Empirical
+    measurement on e5-base shows OFFTOPIC pairs (gravestone alt vs
+    rest article) land at 0.72-0.75 while ONTOPIC pairs land at
+    0.77-0.79 — a tight 0.04 margin. With threshold 0.75 we catch
+    egregious mismatches (墓石 / sewing machine / mic on coffee
+    article) but borderline ones may slip. Larger embedders
+    (e5-large, BGE-M3, Ruri) should widen this margin — re-evaluate
+    after the model-selection benchmark completes.
+    Default OFF for this reason; flip on only after observing log
+    behaviour on real articles.
+    """
+    global _SEMANTIC_ALT_MODEL
+    if os.environ.get("RAG_IMAGE_ALT_CHECK", "false").lower() not in (
+        "true", "1", "yes", "on",
+    ):
+        return True
+    if not alt or not (title or content):
+        return True
+    try:
+        if _SEMANTIC_ALT_MODEL is None:
+            from sentence_transformers import SentenceTransformer
+            _SEMANTIC_ALT_MODEL = SentenceTransformer(
+                "intfloat/multilingual-e5-base",
+            )
+    except ImportError:
+        return True
+    try:
+        import numpy as np  # local — keep import scoped
+        article_text = f"{title}\n{content[:600]}"
+        emb = _SEMANTIC_ALT_MODEL.encode(
+            [f"query: {alt}", f"passage: {article_text}"],
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        sim = float(np.dot(emb[0], emb[1]))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("semantic alt check failed: %s", exc)
+        return True
+    if sim < threshold:
+        logger.warning(
+            "[image] dropping off-subject alt (semantic): "
+            "alt=%r sim=%.3f < %.2f",
+            alt[:60], sim, threshold,
+        )
+        return False
+    return True
+
+
 def _alt_matches_query_subject(alt: str, query: str) -> bool:
     """Return True if `alt` contains at least one expected vocabulary
     word for the given image-search `query`. False = the image is
@@ -2003,6 +2079,9 @@ def _insert_stock_images(
         and img.get("platform") != "Placeholder"
         and _alt_is_relevant(img.get("alt_text", ""), title, content)
         and _alt_matches_query_subject(img.get("alt_text", ""), query)
+        and _alt_matches_article_semantically(
+            img.get("alt_text", ""), title, content,
+        )
     ]
     if not usable:
         logger.info("[image] No usable stock images for query '%s' — skipping.", query)
@@ -3690,6 +3769,9 @@ def _fetch_topic_cover(title: str, content: str = "") -> Path | None:
             and r.get("platform") != "Placeholder"
             and _alt_is_relevant(r.get("alt_text", ""), title, content)
             and _alt_matches_query_subject(r.get("alt_text", ""), query)
+            and _alt_matches_article_semantically(
+                r.get("alt_text", ""), title, content,
+            )
         ]
         if not results:
             logger.info(
