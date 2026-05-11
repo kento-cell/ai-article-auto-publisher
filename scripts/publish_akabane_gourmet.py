@@ -96,8 +96,15 @@ def main() -> int:
             logger.warning("settings.yaml unreadable (%s)", exc)
 
     from main import _publish_note  # noqa: E402
+    from publishers.note_publisher import NotePublisher  # noqa: E402
 
-    logger.info("starting note publish (price=0, free tier)")
+    # Hand-written content (no auto-scorer record), but the article
+    # has real shops + historical context + curated 4-shop selection.
+    # Grade it B with A-level evidence → 500 yen via the standard
+    # tier table so it matches the rest of the catalog and routes
+    # through the new membership flow added 2026-05-12.
+    note_price = NotePublisher.determine_price("B", "A")
+    logger.info("starting note publish (price=%d, paid + membership)", note_price)
     url = None
     try:
         url = _publish_note(
@@ -105,7 +112,7 @@ def main() -> int:
             content=content,
             config=config,
             source=SOURCE,
-            price=0,
+            price=note_price,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("_publish_note raised: %s", exc)
