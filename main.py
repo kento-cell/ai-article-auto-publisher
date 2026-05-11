@@ -2788,6 +2788,37 @@ def _generate_single_article(
         },
     )
 
+    # Sprint 6-B (2026-05-11): record this scoring attempt into the
+    # telemetry SQLite for later A/B + grade-curve analysis. Silent
+    # on failure — never blocks generation. `_regen_attempt` is the
+    # caller-supplied counter (0 = initial, 1+ = regen retry).
+    try:
+        from utils.telemetry_db import record_regen, init_db
+        init_db()
+        _wc_metric = (obj_result.get("metrics") or {}).get("word_count") or {}
+        record_regen(
+            article_id=slug,
+            attempt=_regen_attempt,
+            grades={
+                "objective_grade": obj_result.get("overall_grade"),
+                "subjective_grade": subj_result.get("overall_grade"),
+                "overall_grade": final.get("overall_grade"),
+                "numeric_score": final.get("numeric_score"),
+            },
+            trigger_reason=(
+                "initial" if _regen_attempt == 0
+                else (
+                    "thin_content" if (_wc_metric.get("count", 9999) < 1900)
+                    else "B_borderline"
+                )
+            ),
+            word_count=int(_wc_metric.get("count") or 0),
+            feedback_summary=_regen_feedback[:200] if _regen_feedback else "",
+            blocking_issues=obj_result.get("blocking_issues") or [],
+        )
+    except Exception as _exc:  # noqa: BLE001
+        logger.debug("regen telemetry record failed: %s", _exc)
+
     # --- 自動再生成ループ (OptiBlogAi pattern) ---
     # Borderline B articles get one retry with a feedback prompt that
     # names the weakest metrics. Compare numeric scores and keep the

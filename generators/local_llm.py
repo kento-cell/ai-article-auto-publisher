@@ -100,6 +100,13 @@ class LocalLLM:
     ) -> str:
         """Generate a completion from the Ollama API.
 
+        2026-05-11: on transient failure (connection / HTTP error /
+        empty response), automatically falls back to the OpenAI
+        Codex CLI (covered by the operator's existing OpenAI
+        subscription — no metered API key billing). Disable with
+        ``LLM_CODEX_FALLBACK=false`` to keep the original strict
+        behaviour.
+
         Args:
             prompt: The input prompt.
             model: Override the default model for this call.
@@ -109,8 +116,10 @@ class LocalLLM:
             The generated text.
 
         Raises:
-            ConnectionError: If the server is unreachable.
-            RuntimeError: On a non-200 HTTP response.
+            ConnectionError: If the server is unreachable AND Codex
+                fallback is disabled OR also fails.
+            RuntimeError: On a non-200 HTTP response when Codex
+                fallback is disabled OR also fails.
         """
         model = model or self.default_model
         url = f"{self.base_url}/api/generate"
@@ -127,26 +136,83 @@ class LocalLLM:
             len(prompt),
         )
 
+        primary_exc: Exception | None = None
+        text: str = ""
         try:
             resp = requests.post(url, json=payload, timeout=self.timeout)
+            if resp.status_code != 200:
+                logger.error(
+                    "Ollama returned HTTP %d: %s",
+                    resp.status_code, resp.text[:300],
+                )
+                primary_exc = RuntimeError(
+                    f"Ollama API error (HTTP {resp.status_code})"
+                )
+            else:
+                data = resp.json()
+                text = data.get("response", "") or ""
+                if not text.strip():
+                    primary_exc = RuntimeError(
+                        "Ollama returned empty response"
+                    )
         except requests.exceptions.RequestException as exc:
             logger.error("Ollama request failed at %s: %s", self.base_url, exc)
-            raise ConnectionError(
+            primary_exc = ConnectionError(
                 f"Ollama request failed at {self.base_url}: {exc}"
-            ) from exc
-
-        if resp.status_code != 200:
-            logger.error(
-                "Ollama returned HTTP %d: %s", resp.status_code, resp.text
-            )
-            raise RuntimeError(
-                f"Ollama API error (HTTP {resp.status_code}): {resp.text}"
             )
 
-        data = resp.json()
-        text: str = data.get("response", "")
+        if primary_exc is not None:
+            fallback_text = self._codex_fallback(prompt)
+            if fallback_text:
+                logger.warning(
+                    "Ollama failed (%s) — recovered via Codex CLI fallback (%d chars)",
+                    primary_exc, len(fallback_text),
+                )
+                return fallback_text
+            # No fallback or also failed — re-raise the original error
+            # so existing callers' error-handling paths still trip.
+            raise primary_exc
+
         logger.info("Generation complete (%d chars).", len(text))
         return text
+
+    @staticmethod
+    def _codex_fallback(prompt: str) -> str:
+        """Invoke OpenAI Codex CLI as a fallback. Returns "" on any
+        failure so the caller decides whether to error or continue.
+
+        Cost: covered by the operator's OpenAI subscription (the CLI
+        uses the subscription, NOT a metered API key). Disabled when
+        ``LLM_CODEX_FALLBACK=false``.
+        """
+        if os.getenv("LLM_CODEX_FALLBACK", "true").lower() in (
+            "false", "0", "no", "off",
+        ):
+            return ""
+        codex_bin = os.getenv("CODEX_CLI_PATH") or "codex"
+        try:
+            import subprocess
+            # ``codex exec`` runs the CLI in headless mode with the
+            # supplied prompt and returns the assistant text on stdout.
+            # We add --sandbox read-only so the fallback cannot
+            # accidentally modify files in this repo.
+            r = subprocess.run(
+                [codex_bin, "exec", "--sandbox", "read-only", prompt],
+                capture_output=True, text=True, timeout=900,
+            )
+            if r.returncode != 0:
+                logger.warning(
+                    "Codex fallback exited %d: %s",
+                    r.returncode, (r.stderr or "")[:300],
+                )
+                return ""
+            return (r.stdout or "").strip()
+        except FileNotFoundError:
+            logger.debug("Codex CLI not on PATH; fallback skipped")
+            return ""
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Codex fallback raised: %s", exc)
+            return ""
 
     def generate_code(
         self,
