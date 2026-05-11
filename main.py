@@ -2237,12 +2237,27 @@ def _generate_single_article(
         outline = kt.get("outline", "")
         prohibited = kt.get("prohibited_angles") or []
         evidence_required = kt.get("evidence_required") or []
+        # Render outline as explicit "## section name" lines so Gemma3
+        # treats each slash-separated item as an independent H2 instead
+        # of nesting them under a single big H2 (observed 2026-05-11:
+        # all 5 AI×副業 articles failed heading_structure with only 1
+        # H2). Empty splits and noise tokens are dropped.
+        outline_sections = [
+            s.strip() for s in outline.split("/") if s.strip()
+        ]
+        outline_block = (
+            "\n".join(f"## {s}" for s in outline_sections)
+            if outline_sections
+            else outline
+        )
         parts = [
             "\n\n【この記事の設計書 — 必ず従うこと】",
             f"ペルソナ: {kt.get('persona', '')}",
             f"読者の課題: {kt.get('pain', '')}",
             f"約束する価値: {kt.get('promise', '')}",
-            f"構成の骨子: {outline}",
+            "構成の骨子 — 以下の各 `##` 見出しを **独立した H2 セクション** "
+            "として本文に含めること (H2 を 1 個にまとめず、必ずこの順序で複数の H2 を出力する):",
+            outline_block,
         ]
         if evidence_required:
             parts.append(
