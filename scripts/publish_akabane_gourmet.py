@@ -95,27 +95,56 @@ def main() -> int:
         except Exception as exc:
             logger.warning("settings.yaml unreadable (%s)", exc)
 
-    from main import _publish_note  # noqa: E402
     from publishers.note_publisher import NotePublisher  # noqa: E402
+    from generators.hashtag_generator import HashtagGenerator  # noqa: E402
 
-    # Hand-written content (no auto-scorer record), but the article
-    # has real shops + historical context + curated 4-shop selection.
-    # Grade it B with A-level evidence → 500 yen via the standard
-    # tier table so it matches the rest of the catalog and routes
-    # through the new membership flow added 2026-05-12.
+    # 2026-05-12: this run uses pre-generated images on disk (the
+    # cover the user approved at 100/100 + 4 inline images from the
+    # priority-based regen run). Skip _publish_note so we bypass its
+    # automatic ChatGPT image batch + body-harvest cap, and call
+    # note_pub.publish_article directly with explicit paths.
+    cover_path = _REPO / "data" / "images" / "covers" / (
+        "chatgpt_akabane_inline_test_20260512_075721_373790_8200_cover.png"
+    )
+    inline_paths = [
+        _REPO / "data" / "images" / "covers" / (
+            f"chatgpt_akabane_inline_regen_20260512_082032_064871_20352_"
+            f"inline_{i:02d}.png"
+        )
+        for i in range(4)
+    ]
+    for p in [cover_path] + inline_paths:
+        if not p.exists():
+            logger.error("missing pre-generated image: %s", p)
+            return 5
+
     note_price = NotePublisher.determine_price("B", "A")
-    logger.info("starting note publish (price=%d, paid + membership)", note_price)
+    logger.info(
+        "starting note publish (price=%d, paid + membership, "
+        "cover + %d inline pre-generated)",
+        note_price, len(inline_paths),
+    )
+
+    tags = HashtagGenerator(max_tags=10).generate(
+        title=TITLE, content=content, source=SOURCE,
+    )
+    if not tags:
+        tags = ["居酒屋", "もつ焼き", "うなぎ", "立ち飲み", "赤羽"]
+    logger.info("hashtags: %s", tags)
+
     url = None
     try:
-        url = _publish_note(
-            title=TITLE,
-            content=content,
-            config=config,
-            source=SOURCE,
-            price=note_price,
-        )
+        with NotePublisher() as note_pub:
+            url = note_pub.publish_article(
+                title=TITLE,
+                content=content,
+                tags=tags,
+                price=note_price,
+                cover_image_path=str(cover_path),
+                inline_image_paths=[str(p) for p in inline_paths],
+            )
     except Exception as exc:  # noqa: BLE001
-        logger.exception("_publish_note raised: %s", exc)
+        logger.exception("publish_article raised: %s", exc)
         return 3
 
     if not url:
