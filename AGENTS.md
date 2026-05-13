@@ -396,3 +396,88 @@ C: 客観にCあり or 主観平均C → ユーザーに提示しない（自動
 - `docs/context/` — 背景情報・プロトコル
 - `docs/adr/` — アーキテクチャ決定記録
 - `.codex/skills/` — エージェントスキル定義
+
+---
+
+## 🎯 Compound Workflow Playbook
+
+(CLAUDE.md の同名セクションと同期。Codex 経由でも同じプロンプトで同じ結果を出すためのマッピング。
+両者を更新するときは必ず両方に反映。)
+
+### 1. 「ジェネレートして全部承認してパブリッシュ」
+
+```bash
+PYTHONIOENCODING=utf-8 py main.py --generate
+PYTHONIOENCODING=utf-8 py scripts/_bulk_approve_sheet.py
+PYTHONIOENCODING=utf-8 py scripts/_publish_free_first.py --free-first 0
+```
+
+### 2. 「無料 N 本 + 有料 M 本」 (note のみ)
+
+`_publish_free_first.py --free-first N` で先頭 N 本の note を ¥0 強制。残りは `determine_price()`。
+
+```bash
+PYTHONIOENCODING=utf-8 py scripts/_publish_free_first.py --free-first 2
+```
+
+### 3. 「スクラップ記事投稿」
+
+```bash
+PYTHONIOENCODING=utf-8 py scripts/_publish_pending_scraps.py --limit 10
+```
+
+`data/scraps/*.md` の未投稿ドラフト (= ArticleStore に `published_url` が無いもの) を ZennScrapPublisher で post。
+
+### 4. 「画像を ChatGPT で生成し直して」
+
+直近 4 本: `scripts/_regen_today_note_with_chatgpt.py`。任意の既存記事: `scripts/regen_eyecatch_with_chatgpt.py` (cover のみ)。
+
+```bash
+taskkill /F /IM brave.exe  # CDP モード未設定なら必要
+PYTHONIOENCODING=utf-8 py scripts/_regen_today_note_with_chatgpt.py
+```
+
+**known bug**: `edit_article` が「更新ボタンが見つかりません」で FAIL を返しても、note 側では大半保存されている (`og:image` 更新で実証)。FAIL ログ無視して live page 確認。
+
+### 5. Brave CDP モード
+
+`scripts/launch_brave_cdp.bat` で Brave を `--remote-debugging-port=9222` で起動。`.env` の `CHATGPT_CDP_PORT=9222` が読まれて CDP attach。Brave 開きっぱでも ChatGPT 画像生成が動く。
+
+---
+
+## 📜 Scripts カタログ
+
+| script | 用途 |
+|--------|------|
+| `_bulk_approve_sheet.py` | Sheets の ⏳承認待ち を一括 ✅承認 (guard なし) |
+| `bulk_approve.py` | グレード C / SNS hallucination guard 付き bulk approve |
+| `_publish_free_first.py` | `publish_approved` + `--free-first N` で note の最初 N 本を ¥0 |
+| `_publish_pending_scraps.py` | 未投稿の scrap ドラフトを ZennScrapPublisher で投稿 |
+| `_regen_today_note_with_chatgpt.py` | 直近 4 本の note の cover+inline を ChatGPT で差し替え |
+| `_retry_membership_add.py` | post-publish の membership-add リトライ (helper selector バグ持ち、要 fix) |
+| `launch_brave_cdp.bat` | Brave を CDP port で起動 |
+| `regen_eyecatch_with_chatgpt.py` | 既存 note の cover のみ ChatGPT 差し替え |
+| `fix_recent_note_images.py` | 既存 note の inline を Unsplash で差し替え |
+| `publish_scraps_as_articles.py` | scrap を full article として publish (cap 中は不可) |
+| `telemetry_report.py` | 投稿パフォーマンス + token + grade 分布レポート → docs/knowledge/ |
+| `scrape_note_performance.py` | note のクリエーター API から view/like を取得 → data/article_performance.jsonl |
+
+---
+
+## 🚧 既知の運用上の罠
+
+### Zenn article cap (2026-04-15 以降)
+
+12 本程度を超えると git push しても **silently 404**。`publish_approved` は 1 本目で 404 検出 → batch flag → 残り全部 scrap fallback。次回 publish 前にダッシュボード確認推奨。
+
+### note `_set_price` UI drift
+
+「価格入力欄が見つかりません」で ¥300 default 進行。determine_price 表で B+B = ¥300 なので一致するケースは多いが、A+A の ¥1980 でも ¥300 になる false-path。publish 後に note ダッシュボードで価格確認。
+
+### note membership-add ボタン消失
+
+`_add_to_memberships_via_dashboard` の selector 漂流。「クリエーターページ リンクが見つからない」「メンバー特典記事を追加する ボタンが見つかりません」で各ステップ silent return。当面はダッシュボードから手動追加。
+
+### edit_article 更新ボタン false-negative
+
+「更新ボタンが見つかりません」と FAIL を返すが、note 側では実際保存されている (2026-05-13 og:image 検証で確認)。FAIL ログ無視して live page で実態確認。

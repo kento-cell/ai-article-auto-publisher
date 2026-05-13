@@ -61,4 +61,26 @@ if ! "$PY" scripts/test_hallucination_deny.py >/tmp/pre-commit-out.log 2>&1; the
     exit 1
 fi
 
+echo "pre-commit: checking import main ..."
+if ! "$PY" -c "import main" >/tmp/pre-commit-import.log 2>&1; then
+    echo "pre-commit: FAILED — import main raised"
+    tail -20 /tmp/pre-commit-import.log
+    echo
+    echo "Fix the import error above before committing."
+    exit 1
+fi
+
+# Syntax check on any changed scripts/*.py — catches typos that the
+# deny suite wouldn't import.
+script_files=$(echo "$changed" | grep -E '^scripts/.*\.py$' || true)
+if [[ -n "$script_files" ]]; then
+    echo "pre-commit: py_compile on changed scripts/*.py ..."
+    if ! "$PY" -m py_compile $script_files >/tmp/pre-commit-compile.log 2>&1; then
+        echo "pre-commit: FAILED — syntax error in one of:"
+        echo "$script_files"
+        tail -20 /tmp/pre-commit-compile.log
+        exit 1
+    fi
+fi
+
 echo "pre-commit: OK"
