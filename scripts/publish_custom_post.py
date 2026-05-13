@@ -195,6 +195,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("spec", help="Path to JSON spec file")
     parser.add_argument("--inline-count", type=int, default=4)
+    parser.add_argument(
+        "--price", type=int, default=None,
+        help="Override price in yen (defaults to spec.price or 0)",
+    )
     args = parser.parse_args()
 
     spec_path = Path(args.spec)
@@ -272,13 +276,21 @@ def main() -> int:
         cover = str(cover_paths[0].resolve()) if cover_paths else None
         logger.info("Cover image (Unsplash fallback): %s", cover)
 
+    # Honor a "price" field on the spec — defaults to 0 (free) to preserve
+    # the legacy behaviour for posts that don't set it. Caller can also
+    # override via --price.
+    price = int(spec.get("price", 0))
+    if args.price is not None:
+        price = int(args.price)
+    logger.info("Publishing at ¥%d", price)
+
     pub = NotePublisher(headless=False)
     try:
         url = pub.publish_article(
             title=title,
             content=content,
             tags=tags,
-            price=0,
+            price=price,
             inline_image_paths=[str(p.resolve()) for p in inline_paths],
             cover_image_path=cover,
         )
