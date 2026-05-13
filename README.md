@@ -2,6 +2,50 @@
 
 完全自動のAI記事生成・投稿システム。Zenn（技術記事）とnote（一般向け記事）に対応。
 
+## ⚡ Quick Start (別マシン / 新規 clone から始める場合)
+
+### Windows
+
+```powershell
+git clone https://github.com/kento-cell/ai-article-auto-publisher.git
+cd ai-article-auto-publisher
+powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
+```
+
+### macOS / Linux
+
+```bash
+git clone https://github.com/kento-cell/ai-article-auto-publisher.git
+cd ai-article-auto-publisher
+chmod +x setup.sh
+./setup.sh
+```
+
+`bootstrap.ps1` / `setup.sh` は: venv 作成 → pip install → Playwright Chromium →
+Ollama gemma3:12b pull → `.env` / `config/settings.yaml` の雛形コピーまで自動。
+手動セットアップが必要なのは: API キー (`.env`)、Google Sheets サービスアカウント
+(`config/credentials.json`)、Brave での note/Zenn/ChatGPT ログイン。詳細は出力末尾
+の「次のステップ」を参照。
+
+### 通常運用 (clone 済 / セットアップ完了後)
+
+| やりたいこと | コマンド |
+|------------|---------|
+| 1 日 1 サイクル (収集 → 生成 → 承認待ち登録) | `py main.py --generate` |
+| 承認待ち全部承認 | `py scripts/_bulk_approve_sheet.py` |
+| 承認済を publish (無料 N + 有料 M) | `py scripts/_publish_free_first.py --free-first 2` |
+| 未投稿 scrap を一括 push | `py scripts/_publish_pending_scraps.py --limit 10` |
+| 直近 4 本の note 画像を ChatGPT で差し替え | `py scripts/_regen_today_note_with_chatgpt.py` |
+| Brave を CDP モードで起動 | `scripts/launch_brave_cdp.bat` |
+| デグレチェック | `py -c "import main" && py scripts/test_hallucination_deny.py` |
+
+複合指示 (「ジェネレートして承認してパブリッシュ無料 N 有料 M スクラップ」など) は
+**`CLAUDE.md` / `AGENTS.md` の Compound Workflow Playbook** に正規化されている。
+運用上の罠 (Zenn cap、note 価格 UI drift、edit_article false-negative) は
+**`docs/knowledge/operations.md`** に集約。
+
+---
+
 ## 特徴
 
 - **自動収集**: arXiv論文、Reddit等からトレンド記事を自動収集
@@ -92,11 +136,11 @@ OLLAMA_API_URL=http://localhost:11434
 1. [Zenn CLIでのリポジトリ連携](https://zenn.dev/zenn/articles/connect-to-github)に従いGitHubリポジトリを作成
 2. `.env` の `ZENN_REPO_PATH` にローカルクローンパスを設定
 
-### 5. Ollama（オプション）
+### 5. Ollama
 
 ```bash
 # Ollamaインストール後
-ollama pull codellama
+ollama pull gemma3:12b
 ```
 
 ## 使い方
