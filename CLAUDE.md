@@ -222,6 +222,114 @@ config/
 - チェーン店ブラックリストは `config/settings.yaml` の `evidence.gourmet_rules.chain_blacklist`
 - 構成パターンは `config/prompts.yaml` の `article_structures` + `structure_selection`
 
+---
+
+## 🎯 Compound Workflow Playbook (他セッションから同じ結果を出すための定型)
+
+ユーザーの自然言語指示 → 実行手順の正規化マッピング。新しいセッションから resume/compound 指示が来たとき、この表に沿って自走する。
+
+### 1. 「ジェネレートして全部承認してパブリッシュ」
+
+```bash
+# Phase 1: 収集→生成→スコアリング→Sheets登録
+PYTHONIOENCODING=utf-8 py main.py --generate
+
+# Phase 2: 承認待ち全行を ✅承認 に
+PYTHONIOENCODING=utf-8 py scripts/_bulk_approve_sheet.py
+
+# Phase 3: 承認済みを投稿 (note は全部 paid、zenn は cap で scrap fallback)
+PYTHONIOENCODING=utf-8 py scripts/_publish_free_first.py --free-first 0
+```
+
+### 2. 「無料 N 本 + 有料 M 本」 (note のみ)
+
+`_publish_free_first.py --free-first N` で **note の最初 N 本のみ price=0**、残りは `determine_price()` で paid。N は note 承認行数を超えると残り無視。
+
+```bash
+PYTHONIOENCODING=utf-8 py scripts/_publish_free_first.py --free-first 2
+```
+
+note 4 本承認なら 2 free + 2 paid になる。zenn は cap で scrap に落ちる (`_zenn_cap_exhausted` の batch flag)。
+
+### 3. 「スクラップ記事投稿」
+
+承認 publish ではなく、data/scraps/ にあるが未公開のドラフトを ZennScrapPublisher で post する。
+
+```bash
+# 未投稿の最新スクラップを N 本投稿 (デフォルト 20)
+PYTHONIOENCODING=utf-8 py scripts/_publish_pending_scraps.py --limit 10
+
+# 期間制限したい場合
+PYTHONIOENCODING=utf-8 py scripts/_publish_pending_scraps.py --limit 10 --max-age-hours 168
+```
+
+判定: `data/articles/{aid}.json` の `published_url` が空 (or 未存在) なら未投稿。タイトル抽出は H1 → 本文先頭 plain text → ファイル名の fallback 順。
+
+### 4. 「画像を ChatGPT で生成し直して」
+
+直近投稿した 4 本に対しては:
+
+```bash
+# Brave 完全停止 (CDP モード未設定なら必須)
+taskkill /F /IM brave.exe
+
+# 4 本固定の regen (cover + inline) — TARGETS は適宜編集
+PYTHONIOENCODING=utf-8 py scripts/_regen_today_note_with_chatgpt.py
+```
+
+任意の最近記事には `scripts/fix_recent_note_images.py` (Unsplash) または `scripts/regen_eyecatch_with_chatgpt.py` (cover のみ)。
+
+**known bug (2026-05-13 実証):** edit_article が「更新ボタンが見つかりません」で FAIL を返しても、note 側では大半保存されている (og:image 更新済)。FAIL ログ無視して `curl` / og:image 確認で真偽判定。
+
+### 5. Brave CDP モード (Brave 開きっぱで ChatGPT 画像生成)
+
+```bash
+scripts/launch_brave_cdp.bat
+```
+
+`.env` の `CHATGPT_CDP_PORT=9222` が読まれて `connect_over_cdp` 経由 attach。Brave を常駐運用したい場合の既定モード。`launch_persistent_context` (Brave kill が必要) は CDP 接続失敗時の自動フォールバック。
+
+---
+
+## 📜 Scripts カタログ (新しめのもの)
+
+`_` (underscore) prefix = 一回限り / 状況限定の one-shot。継続運用するなら明示 prefix を外す。
+
+| script | 用途 |
+|--------|------|
+| `_bulk_approve_sheet.py` | Sheets の ⏳承認待ち を batch_update で一括 ✅承認。guard なし版 (バリデーション必要なら `bulk_approve.py`) |
+| `_publish_free_first.py` | `publish_approved` を呼ぶ。`--free-first N` で note の最初 N 本だけ ¥0 に override |
+| `_publish_pending_scraps.py` | `data/scraps/*.md` の未投稿ドラフトを ZennScrapPublisher で投稿。タイトル抽出 + deny check 内蔵 |
+| `_regen_today_note_with_chatgpt.py` | 直近 publish の 4 本に対し ChatGPT 画像で cover+inline を再生成 → `edit_article` で差し替え |
+| `launch_brave_cdp.bat` | Brave を `--remote-debugging-port=9222` で起動 (CDP attach 用) |
+
+定常運用スクリプト (継続):
+- `scripts/bulk_approve.py` — グレード C / SNS hallucination guard 付きの bulk approve
+- `scripts/fix_recent_note_images.py` — note 既存記事のインライン Unsplash 差し替え
+- `scripts/regen_eyecatch_with_chatgpt.py` — note 既存記事の eyecatch だけ ChatGPT で差し替え
+- `scripts/publish_scraps_as_articles.py` — scrap を full article として publish (cap 中は使えない)
+
+---
+
+## 🚧 既知の運用上の罠 (publish 関連)
+
+### Zenn article cap (2026-04-15 以降)
+
+- 12 本程度を超えると git push しても **silently 404** になる
+- `publish_approved` は 1 本目で 404 検出 → `_zenn_cap_exhausted=True` flag → 同 batch の残りは scrap fallback
+- 次回 publish 前にダッシュボードで cap 状況確認するまで scrap-only モード推奨
+
+### note `_set_price` の price input 不可視 (2026-05-13)
+
+- ¥300 default で進行する false-path がある (UI セレクタ漂流)
+- determine_price 表で B+B = ¥300 なので一致するケースが多いが、A+A の ¥1980 articles でも ¥300 で publish されると損失
+- 検証: publish 後に note ダッシュボードで価格確認、間違っていれば edit で修正
+
+### note membership-add ボタン消失
+
+- 「メンバー特典記事を追加する」ボタンが post-publish flow で見つからない (タイミング or UI 変更)
+- best-effort なので publish 自体は成功、ただし membership には未追加 → ダッシュボードから手動追加が必要
+
 ## Monitor / バックグラウンドタスクの後始末
 
 Claude Code の `Monitor` ツール (`tail -F ... | grep ...`) を使った後は、
