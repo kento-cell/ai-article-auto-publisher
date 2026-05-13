@@ -37,7 +37,13 @@ ai-article-auto-publisher — 2026-05-13 セッション。compound publish flow
 2. **AI 開示 footer 26 件の修復** — `scripts/strip_ai_disclaimer_from_published.py --apply` 未実行 (1-2 時間枠が必要)
 3. **Places API キー貼付待ち** — 本人作業のみ
 4. **アフィリ広告主 ASP 申請 15 件待ち** — 本人作業のみ
-5. **note 4 本のメンバーシップ追加** — `_add_to_memberships_via_dashboard` がボタン取得失敗で skip。ダッシュボードから手動追加が必要 (URL ↓)
+5. **note 4 本のメンバーシップ追加** — `_add_to_memberships_via_dashboard`
+   が「クリエーターページ リンクが見つからない」「メンバー特典記事を追加する
+   ボタンが見つかりません」で skip。ホームページから retry しても同症状
+   (`scripts/_retry_membership_add.py` で確認済)。**helper 内が UI セレクタ
+   漂流に弱く silent-return するため、retry スクリプトが ok=4 を誤報する
+   バグも併発**。当面ダッシュボードから手動追加 (URL ↓) + helper の
+   selector 更新は次回 live DOM 調査タスク。
    - https://note.com/note-user/n/nebdb6edacb1e
    - https://note.com/note-user/n/n5a0a2ad50965
    - https://note.com/note-user/n/n536e614dc601
