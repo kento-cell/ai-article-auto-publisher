@@ -73,9 +73,19 @@ _EMPTY_BULLET_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
 # lines like `* Cisco公式サイト: ` that the LLM emits when it has only
 # one reference. Strip them too — they trip the forbidden_phrases gate
 # (`*   Cisco公式サイト: \n`) and waste a regen attempt.
+# 2026-05-14 evening (Codex Medium): scope to *URL/reference placeholder*
+# labels only, so `- メリット:` (parent of a nested list) and other
+# legitimate section labels aren't deleted. The label must contain at
+# least one of {公式|サイト|ニュース|URL|資料|出典|引用|ウェブ|HP|web|news}
+# OR be a clearly-name + suffix shape (`〇〇公式`, `〇〇ニュース`).
 _EMPTY_BULLET_SINGLE_RE: Final[re.Pattern[str]] = re.compile(
-    r"^(?:\*|-|\d+\.)\s+\*{0,2}[^*:\n]{2,60}(?::\*{0,2}|\*{0,2}:)\s*$",
-    re.MULTILINE,
+    r"^(?:\*|-|\d+\.)\s+\*{0,2}"
+    r"[^*:\n]{2,60}?"  # non-greedy label
+    r"(?:公式|サイト|ニュース|URL|資料|出典|引用|ウェブ|HP|web|news|"
+    r"ホームページ|レポート|論文|article)"
+    r"[^*:\n]{0,20}"
+    r"(?::\*{0,2}|\*{0,2}:)\s*$",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 

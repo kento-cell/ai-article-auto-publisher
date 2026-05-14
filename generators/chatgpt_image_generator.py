@@ -472,6 +472,19 @@ class ChatGPTImageGenerator:
             new-chat URL (creating a tab here would conflict with the
             launch context's lifecycle).
 
+        2026-05-14 evening (Codex Critical #3 / High #8):
+        `goto("https://chatgpt.com/")` in launch mode restored the
+        PREVIOUS chat instead of starting a new one, so the URL
+        detector kept finding the same image element across all 11
+        batch iterations — same MD5 every time, all yellow note-logo
+        placeholders. Fix in three steps:
+          1. Navigate to about:blank first so chatgpt.com remount is
+             forced (a same-origin goto can be a soft refresh).
+          2. After landing on chatgpt.com, click the "新しいチャット" /
+             "New chat" button to force a blank conversation.
+          3. Verify the assistant-turn count is 0 before returning —
+             logs a warning if state is unexpectedly populated.
+
         Either way, ``self._page`` ends up pointing at the active
         composer ready for ``_send_prompt``.
         """
@@ -497,12 +510,62 @@ class ChatGPTImageGenerator:
         if self._page is None:
             return
         try:
+            # Step 1: force-remount via about:blank so the next chatgpt.com
+            # goto is a real navigation, not a soft refresh that restores
+            # the prior chat. Only matters in launch mode (CDP path used
+            # a fresh tab already).
+            if not self._cdp_attached:
+                try:
+                    self._page.goto("about:blank", wait_until="commit")
+                except PlaywrightError:
+                    pass
+
             self._page.goto(
                 _DEFAULT_CHATGPT_URL, wait_until="domcontentloaded",
             )
             # Composer needs a beat to mount its prompt-textarea.
             self._page.wait_for_timeout(1_500)
             self._dismiss_blocking_dialogs()
+
+            # Step 2: click "新しいチャット" / "New chat" to force a fresh
+            # conversation. The sidebar button has different selectors
+            # across locales / layouts, so we try several.
+            new_chat_selectors = (
+                "a[href='/']:has-text('新しいチャット')",
+                "button:has-text('新しいチャット')",
+                "a[href='/']:has-text('New chat')",
+                "button:has-text('New chat')",
+                "a[data-testid='create-new-chat-button']",
+                "button[data-testid='create-new-chat-button']",
+            )
+            for sel in new_chat_selectors:
+                try:
+                    loc = self._page.locator(sel).first
+                    if loc.count() > 0 and loc.is_visible(timeout=500):
+                        loc.click(timeout=2000)
+                        self._page.wait_for_timeout(900)
+                        break
+                except PlaywrightError:
+                    continue
+
+            # Step 3: verify the assistant-turn count is 0. If it isn't,
+            # the new-chat click didn't take (UI drift); log it so
+            # batch-MD5-uniqueness check below catches the resulting
+            # dup-image situation.
+            try:
+                turn_count = self._page.evaluate(
+                    """() => document.querySelectorAll(
+                        '[data-message-author-role=\"assistant\"]'
+                    ).length"""
+                )
+                if turn_count and int(turn_count) > 0:
+                    logger.warning(
+                        "_start_new_chat: %d assistant turn(s) present "
+                        "after new-chat click — state may be stale",
+                        int(turn_count),
+                    )
+            except PlaywrightError:
+                pass
         except PlaywrightTimeoutError as exc:
             logger.warning(
                 "_start_new_chat: nav timeout (%s) — staying on current tab",

@@ -2684,27 +2684,31 @@ def _build_regen_feedback(
     metrics = obj_result.get("metrics") or {}
 
     # Word count regen feedback — only fires when the article is
-    # below the A-grade window (4000-5500). Targets re-tuned 2026-05-01
-    # evening to match Gemma3 12B's realistic ceiling: aim for 4500
-    # rather than the original 5500 push so the regen prompt stays
-    # achievable in one retry.
+    # below the A-grade window. 2026-05-14 evening (Codex Medium): the
+    # window dropped from 4000-5500 → 2200-3500 to match note's
+    # empirical 0-correlation 30万件分析. Regen feedback was still
+    # pushing 4000-5500, which encouraged fabricated quotes/numbers
+    # for length and degraded density. Defaults now mirror objective_scorer.
     wc = metrics.get("word_count") or {}
     current_chars = wc.get("count", 0)
     # Length regen — honors per-topic length_target if provided.
-    _lt_min = int((length_target or {}).get("min") or 4000)
-    _lt_max = int((length_target or {}).get("max") or 5500)
-    _floor_for_regen = max(int(_lt_min * 0.9), 3000)  # don't push regen if topic is short by design
-    if wc.get("grade") in ("B", "C") or current_chars < _floor_for_regen:
-        shortfall = max(_lt_min - current_chars, 600)
+    _lt_min = int((length_target or {}).get("min") or 2200)
+    _lt_max = int((length_target or {}).get("max") or 3500)
+    _floor_for_regen = max(int(_lt_min * 0.85), 1700)  # don't push regen if topic is short by design
+    if wc.get("grade") == "C" and current_chars < _floor_for_regen:
+        # Only push regen when genuinely thin. Once we cross _floor_for_regen
+        # the article is "good enough length" — pushing harder costs
+        # hallucination risk (Codex Critical #2: word_count rescue feedback
+        # was a documented driver of SAP/2026年/Bluesky fabrications).
+        shortfall = max(_lt_min - current_chars, 400)
         weak.append(
             f"- 文字数が{current_chars}字しかない。"
             f"**最低{_lt_min}字、目標{_lt_max}字**まで伸ばす"
             f"(現在より{shortfall}字以上追加)。以下のいずれかで各H2セクションを厚くする:\n"
-            f"    ・各セクションに固有名詞つきの具体例を2つ以上\n"
-            f"    ・引用ブロック(>)で一次情報を直接引く(最低3箇所)\n"
-            f"    ・数値データ(再生回数/売上/割合)を本文に埋め込む\n"
+            f"    ・元ソース内の具体例・数値を厚く引用する (元ソース外の固有名詞は追加禁止)\n"
+            f"    ・元ソースの引用ブロック(>)で一次情報を直接引く\n"
             f"    ・読者への問いかけ→回答の往復で1段落追加\n"
-            f"    ・H2セクションの数を4個 → 5個程度に増やす"
+            f"    ・H2セクションの数を 3個 → 4個 程度に増やす (架空の固有名詞は使わない)"
         )
 
     for name, data in metrics.items():
@@ -3177,16 +3181,23 @@ def _generate_single_article(
                 "(matched: %s)",
                 _max_hit, _HALLU_VETO_THRESHOLD, _top_section[:60],
             )
-            # Patch the subjective dimensions in-place so the aggregator
-            # sees C and rejects in its usual path.
+            # Patch at the TOP-LEVEL key (where ScoreAggregator reads),
+            # not under a "dimensions" sub-key. Codex review 2026-05-14:
+            # `_collect_subjective_grades` calls `subjective.get(dim, {})`
+            # against the root dict, so writing to subj["dimensions"]
+            # was a no-op and the veto never reached aggregation.
             try:
-                _dims = subj_result.setdefault("dimensions", {})
-                _acc = _dims.setdefault("accuracy", {})
-                _acc["grade"] = "C"
-                _acc["reason"] = (
+                _reason = (
                     f"hallu-veto: matched past incident "
                     f"'{_top_section}' at sim={_max_hit:.3f}"
                 )
+                # Top-level accuracy slot — this is what aggregator reads.
+                subj_result["accuracy"] = {"grade": "C", "reason": _reason}
+                # Also push to blocking_issues so it surfaces in the
+                # rejection_reasons string that Sheets / Slack receive.
+                _b = subj_result.setdefault("blocking_issues", [])
+                if isinstance(_b, list):
+                    _b.append(f"hallu-veto: {_top_section} sim={_max_hit:.3f}")
                 subj_result["overall_grade"] = "C"
             except Exception as exc:  # noqa: BLE001
                 logger.warning("hallu-veto patch failed: %s", exc)
@@ -4563,14 +4574,19 @@ def _process_regeneration_requests(
                     "[hallu-veto:regen] sim=%.3f → forcing accuracy=C (%s)",
                     _max_hit, _top_section[:60],
                 )
+                # Patch top-level — same wiring fix as the generate path.
                 try:
-                    _dims = subj_result.setdefault("dimensions", {})
-                    _acc = _dims.setdefault("accuracy", {})
-                    _acc["grade"] = "C"
-                    _acc["reason"] = (
+                    _reason = (
                         f"hallu-veto: matched '{_top_section}' "
                         f"at sim={_max_hit:.3f}"
                     )
+                    subj_result["accuracy"] = {"grade": "C", "reason": _reason}
+                    _b = subj_result.setdefault("blocking_issues", [])
+                    if isinstance(_b, list):
+                        _b.append(
+                            f"hallu-veto:regen: {_top_section} "
+                            f"sim={_max_hit:.3f}"
+                        )
                     subj_result["overall_grade"] = "C"
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("hallu-veto patch failed: %s", exc)
