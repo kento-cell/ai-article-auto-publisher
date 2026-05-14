@@ -727,12 +727,35 @@ def _check_topic_duplication(
         return []
     try:
         retriever = RagRetriever()
-        hits = retriever.retrieve(
-            query=query,
-            collection="past_articles",
-            top_k=top_k,
-            score_threshold=score_threshold,
-        )
+        # 2026-05-14 evening: rerank past_articles dup detection. The
+        # bi-encoder was missing paraphrased duplicates (e.g. "AI 副業
+        # 月10万" vs "AI で月収10万円稼ぐ" embed differently in e5 but
+        # are the same article topic). Pull a wider candidate pool and
+        # let the cross-encoder pick true duplicates. Falls back to
+        # plain retrieve when RAG_RERANKER=false or model unavailable.
+        _use_rerank = os.environ.get(
+            "RAG_RERANKER", "true",
+        ).lower() in ("true", "1", "yes", "on")
+        if _use_rerank:
+            hits = retriever.retrieve_with_rerank(
+                query=query,
+                collection="past_articles",
+                top_k=top_k,
+                candidate_k=20,
+                # Lower the bi-encoder floor so rerank does the heavy
+                # filtering. score_threshold is still the dup tripwire
+                # but applied to the RERANK score, which is sigmoid
+                # 0..1: 0.85+ = very confident duplicate.
+                score_threshold=0.55,
+                rerank_threshold=score_threshold,
+            )
+        else:
+            hits = retriever.retrieve(
+                query=query,
+                collection="past_articles",
+                top_k=top_k,
+                score_threshold=score_threshold,
+            )
     except Exception as exc:  # noqa: BLE001
         logger.debug("duplicate check retrieval failed: %s", exc)
         return []
@@ -740,13 +763,13 @@ def _check_topic_duplication(
         return []
     flagged = []
     for h in hits:
+        meta = h.metadata or {}
         flagged.append(
             {
                 "score": h.score,
-                "title": (h.metadata.get("section_title", "")
-                          if h.metadata else "")[:120],
-                "source_file": (h.metadata.get("source_file", "")
-                                if h.metadata else ""),
+                "bi_score": meta.get("bi_score"),
+                "title": (meta.get("section_title", ""))[:120],
+                "source_file": meta.get("source_file", ""),
             }
         )
     logger.warning(
@@ -754,10 +777,16 @@ def _check_topic_duplication(
         title[:80], len(flagged), score_threshold,
     )
     for f in flagged:
-        logger.warning(
-            "  similar: (sim %.3f) %s",
-            f["score"], f["title"],
-        )
+        if f.get("bi_score") is not None:
+            logger.warning(
+                "  similar: (rerank %.3f bi %.3f) %s",
+                f["score"], f["bi_score"], f["title"],
+            )
+        else:
+            logger.warning(
+                "  similar: (sim %.3f) %s",
+                f["score"], f["title"],
+            )
     return flagged
 
 
@@ -992,30 +1021,78 @@ def _retrieve_hallucination_warnings(
         body = article_content[:1500]
         mid_start = max(0, len(article_content) // 2 - 500)
         mid = article_content[mid_start: mid_start + 1000]
-        query = (body + "\n" + mid)[:3000]
-        hits = retriever.retrieve(
-            query=query,
-            collection="hallucinations",
-            top_k=top_k,
-            score_threshold=score_threshold,
-        )
+        canonical = (body + "\n" + mid)[:3000]
+        # 2026-05-14 evening: multi-query expansion for hallu-guard
+        # recall improvement. Single-query bi-encoder retrieval missed
+        # hallucinations that paraphrased the known incidents (Codex
+        # H#6: threshold uncalibrated). Two variants — both pure
+        # article content, NO synthetic hallu-keyword query (the
+        # synthetic query pulled hallu chunks into the candidate pool
+        # of clean articles too, breaking the regression suite):
+        #   1. canonical body+mid — covers general topical match
+        #   2. first 600 chars — covers lead hallucinations (店名/
+        #      伏字/AI開示 footer typically appear in the head)
+        # Rerank explicitly OFF for hallu-guard — see comment below.
+        queries = [
+            canonical,
+            article_content[:600],
+        ]
+        _use_rerank = os.environ.get(
+            "RAG_RERANKER", "true",
+        ).lower() in ("true", "1", "yes", "on")
+        # Empirical lesson 2026-05-14 evening: BGE-reranker is a
+        # *relevance* model, not a hallucination classifier. The
+        # description chunks in `hallucinations` collection are META
+        # text about past incidents (「## 13. AI が構成 footer 事象:
+        # 過去にXが起きた」) — the article itself reads like the
+        # incident («本記事はAIで生成しました»). Reranker scores those
+        # as "not relevant" because they're textually different in
+        # style, and meanwhile scores topic-matching but pattern-
+        # different chunks as 1.0 ("clean tech article" → 「回帰テスト」
+        # chunk). Net: reranker hurts hallu-guard precision AND recall.
+        # For *duplicate detection* on past_articles the reranker is
+        # exactly right — same topic = duplicate is the question. But
+        # for hallu-guard, keep multi-query for recall, drop rerank.
+        if _use_rerank:
+            hits = retriever.retrieve_multi_query(
+                queries=queries,
+                collection="hallucinations",
+                top_k=top_k,
+                candidate_k_per_query=10,
+                # Bi-encoder threshold matches the long-tuned 0.85
+                # cosine value (deliberately back where it was before
+                # this evening's rerank experiment — multi-query alone
+                # is the recall improvement, kept at the precision
+                # bar the regression suite trusts).
+                score_threshold=score_threshold,
+                use_rerank=False,
+            )
+        else:
+            hits = retriever.retrieve(
+                query=canonical,
+                collection="hallucinations",
+                top_k=top_k,
+                score_threshold=score_threshold,
+            )
     except Exception as exc:  # noqa: BLE001
         logger.debug("hallucination retrieval failed: %s", exc)
         return []
     warnings: list[dict] = []
     for h in hits:
+        meta = h.metadata or {}
         warnings.append(
             {
                 "score": h.score,
-                "section_title": h.metadata.get("section_title", "")
-                if h.metadata else "",
+                "bi_score": meta.get("bi_score"),
+                "section_title": meta.get("section_title", ""),
                 "snippet": (h.text or "").strip().replace("\n", " ")[:240],
             }
         )
     if warnings:
         logger.info(
-            "[hallu-guard] %d past incident(s) flagged for critic review",
-            len(warnings),
+            "[hallu-guard] %d past incident(s) flagged for critic review "
+            "(top rerank=%.3f)",
+            len(warnings), warnings[0].get("score", 0.0),
         )
     return warnings
 
@@ -3167,19 +3244,43 @@ def _generate_single_article(
     # critic returning B+A despite hits. When the *max* similarity hit
     # is ≥ 0.92 we're highly confident the article reproduces a past
     # incident; force-downgrade accuracy to C so the aggregator rejects.
-    _HALLU_VETO_THRESHOLD = 0.92
+    # 2026-05-14 evening: thresholds redefined for the new reranker
+    # pipeline. The "score" coming out of hallu-guard is now the
+    # BGE-reranker score (sigmoid-normalised), not raw cosine. BGE
+    # scale: >0.95 ≈ near-duplicate, 0.80-0.95 ≈ very similar, 0.5+
+    # ≈ relevant. Set veto at 0.85 to catch paraphrased hallucinations
+    # that the prior cosine-0.92 gate let through. Falls back to the
+    # bi_score (cosine) when reranker not loaded.
+    _HALLU_VETO_THRESHOLD_RERANK = 0.85
+    _HALLU_VETO_THRESHOLD_BI = 0.92  # legacy fallback when no reranker
+
+    def _hallu_veto_hit(w: dict) -> bool:
+        rerank = float(w.get("score", 0.0) or 0.0)
+        bi = w.get("bi_score")
+        if bi is None:
+            # No reranker — score IS the cosine similarity.
+            return rerank >= _HALLU_VETO_THRESHOLD_BI
+        # Reranker active. Require BOTH strong bi-encoder match AND
+        # strong cross-encoder reranker score — defends against
+        # rerank false positives on near-zero cosine matches.
+        return (
+            rerank >= _HALLU_VETO_THRESHOLD_RERANK
+            and float(bi or 0.0) >= 0.72
+        )
+
     if hallu_warnings:
-        _max_hit = max((w.get("score", 0.0) for w in hallu_warnings), default=0.0)
-        if _max_hit >= _HALLU_VETO_THRESHOLD:
-            _top_section = next(
-                (w.get("section_title", "") for w in hallu_warnings
-                 if w.get("score", 0.0) >= _HALLU_VETO_THRESHOLD),
-                "",
-            )
+        _veto_hit = next(
+            (w for w in hallu_warnings if _hallu_veto_hit(w)),
+            None,
+        )
+        if _veto_hit is not None:
+            _max_hit = float(_veto_hit.get("score", 0.0) or 0.0)
+            _bi_hit = _veto_hit.get("bi_score")
+            _top_section = _veto_hit.get("section_title", "")
             logger.warning(
-                "[hallu-veto] sim=%.3f >= %.2f → forcing subjective:accuracy=C "
+                "[hallu-veto] rerank=%.3f bi=%s → forcing subjective:accuracy=C "
                 "(matched: %s)",
-                _max_hit, _HALLU_VETO_THRESHOLD, _top_section[:60],
+                _max_hit, _bi_hit, _top_section[:60],
             )
             # Patch at the TOP-LEVEL key (where ScoreAggregator reads),
             # not under a "dimensions" sub-key. Codex review 2026-05-14:
