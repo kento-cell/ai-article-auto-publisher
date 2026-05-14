@@ -1307,6 +1307,28 @@ class NotePublisher:
             self._dismiss_personal_info_modal()
             page.wait_for_timeout(1500)
 
+            # Paid-article edit flow adds an extra step: the publish-settings
+            # page shows "有料エリア設定" as the only enabled forward button.
+            # Without clicking it the next page (where 更新する lives) never
+            # appears and we screenshot a publish-settings page wondering
+            # why the update button isn't there (observed 2026-05-14).
+            # For free articles this selector simply doesn't match, so the
+            # loop is a no-op.
+            paywall_step_selectors = [
+                "button:has-text('有料エリア設定')",
+                "a:has-text('有料エリア設定')",
+            ]
+            for sel in paywall_step_selectors:
+                try:
+                    btn = page.locator(sel).first
+                    if btn.is_visible(timeout=1500):
+                        logger.info("paid-article: clicking 有料エリア設定")
+                        btn.click(timeout=3000)
+                        page.wait_for_timeout(2500)
+                        break
+                except Exception:
+                    continue
+
             # Click final update button
             update_selectors = [
                 "button:has-text('更新する')",
