@@ -204,6 +204,13 @@ def main() -> int:
         ("anti_patterns", _REPO / "docs/knowledge/quality_anti_patterns.md"),
         ("successes", _REPO / "docs/knowledge/quality_successes.md"),
         ("hallucinations", _REPO / "docs/knowledge/hallucination_registry.md"),
+        # 2026-05-14: ops_incidents — operational rework (orphan publish,
+        # selector drift, env-var syntax traps, MD5-identical "ChatGPT
+        # images", etc.). Separate from hallucinations because these are
+        # tooling / flow bugs, not content fabrication. Indexed so the
+        # next session can semantically query "edit_article paid article
+        # not saving" and surface the 有料エリア設定 fix.
+        ("ops_incidents", _REPO / "docs/knowledge/ops_incidents.md"),
     ]
     total = 0
     for collection_name, source_path in plan:

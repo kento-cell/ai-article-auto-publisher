@@ -2904,6 +2904,40 @@ def _generate_single_article(
     })
     token_manager.record_usage(estimate_tokens(content))
 
+    # Hallu-guard hard veto (2026-05-14): observed today that the critic
+    # LLM was given hallu warnings but routinely failed to downgrade —
+    # Cisco / Lake Tahoe / Utah articles drifted off-source with the
+    # critic returning B+A despite hits. When the *max* similarity hit
+    # is ≥ 0.92 we're highly confident the article reproduces a past
+    # incident; force-downgrade accuracy to C so the aggregator rejects.
+    _HALLU_VETO_THRESHOLD = 0.92
+    if hallu_warnings:
+        _max_hit = max((w.get("score", 0.0) for w in hallu_warnings), default=0.0)
+        if _max_hit >= _HALLU_VETO_THRESHOLD:
+            _top_section = next(
+                (w.get("section_title", "") for w in hallu_warnings
+                 if w.get("score", 0.0) >= _HALLU_VETO_THRESHOLD),
+                "",
+            )
+            logger.warning(
+                "[hallu-veto] sim=%.3f >= %.2f → forcing subjective:accuracy=C "
+                "(matched: %s)",
+                _max_hit, _HALLU_VETO_THRESHOLD, _top_section[:60],
+            )
+            # Patch the subjective dimensions in-place so the aggregator
+            # sees C and rejects in its usual path.
+            try:
+                _dims = subj_result.setdefault("dimensions", {})
+                _acc = _dims.setdefault("accuracy", {})
+                _acc["grade"] = "C"
+                _acc["reason"] = (
+                    f"hallu-veto: matched past incident "
+                    f"'{_top_section}' at sim={_max_hit:.3f}"
+                )
+                subj_result["overall_grade"] = "C"
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("hallu-veto patch failed: %s", exc)
+
     # --- 集約判定 ---
     aggregator = ScoreAggregator()
     final = aggregator.aggregate(
@@ -4232,6 +4266,34 @@ def _process_regeneration_requests(
             "hallucination_warnings": hallu_warnings,
         })
         token_manager.record_usage(estimate_tokens(content) * 2)
+
+        # Hallu-guard hard veto (mirrors the generate-time path; see notes
+        # in generate_and_score). Apply the same 0.92 similarity threshold
+        # to the re-generation flow so regenerated content can't slip
+        # past on borderline B grades from the critic.
+        if hallu_warnings:
+            _max_hit = max((w.get("score", 0.0) for w in hallu_warnings), default=0.0)
+            if _max_hit >= 0.92:
+                _top_section = next(
+                    (w.get("section_title", "") for w in hallu_warnings
+                     if w.get("score", 0.0) >= 0.92),
+                    "",
+                )
+                logger.warning(
+                    "[hallu-veto:regen] sim=%.3f → forcing accuracy=C (%s)",
+                    _max_hit, _top_section[:60],
+                )
+                try:
+                    _dims = subj_result.setdefault("dimensions", {})
+                    _acc = _dims.setdefault("accuracy", {})
+                    _acc["grade"] = "C"
+                    _acc["reason"] = (
+                        f"hallu-veto: matched '{_top_section}' "
+                        f"at sim={_max_hit:.3f}"
+                    )
+                    subj_result["overall_grade"] = "C"
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("hallu-veto patch failed: %s", exc)
 
         # Aggregate scores
         aggregator = ScoreAggregator()
