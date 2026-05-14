@@ -2,78 +2,73 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — 2026-05-13 セッション。compound publish flow
-完走 (generate → bulk approve → free+paid mix → scrap → ChatGPT 画像 regen) +
-他セッション portability のための CLAUDE.md playbook 整備。
+ai-article-auto-publisher — 2026-05-14 セッション。Writer 構造的不具合
+集中対応 + ハルシネーション 4 事案 (16-19) 追記 + cross-session-portable
+な 知識トピック exclude 機構を追加。
 
 ## Current Status
 
-- **Phase**: 量産運用期。1 日 8 本 publish + 10 scrap + 4 本画像 regen が
-  1 セッションで完走するレベルに整備済み。
-- **Pipeline 健全性**: note 投稿 healthy、Zenn は cap で article publish 不可 →
-  scrap fallback で迂回中。
-- **Recent commits** (push 待ち):
-  - `cecf594` chore(scripts): one-shot operational utilities
-  - `864c47c` docs(knowledge): auto-learning snapshots
-  - `83a1d92` feat(images): per-image fresh chat + game-homage + CDP attach
-  - `6584cb6` fix(quality): masked-name + AI-disclosure deny patterns
-  - `329a81d` fix(zenn): cap-detection pre-flight + bulk publish helper
-  - `0dfe940` fix(images): security + divergence-prevention pass
+- **Phase**: 量産運用期 (継続)。今日は generate 4 回回しても note は
+  Writer 構造コンプライアンス問題で 0 件合格 → zenn 3 本 publish (cap で
+  scrap fallback)。
+- **Pipeline 健全性**: note は Writer の H2 不足 / visual 不足 / word_count
+  不足が頻発。zenn は ~25% 通過 (各 run 1/2-3 件)。
+- **Recent commits** (today, push 待ち):
+  - feat(quality): Writer prompt 構造強化 + hallu 16-19 + cooldown +
+    knowledge_topic excludes (cross-session portable)
+  - その他 1-2 件は今日中に最終 commit
 
-## 今日 (2026-05-13) の成果
+## 今日 (2026-05-14) の成果
 
-1. **generate**: 1 件採用 / 6 件却下 (CのリーダビリティC/アキュラシーCなど)
-2. **bulk approve**: 5 行 (note×4 + zenn×1)
-3. **publish**: note 4 本 (¥0×2 + ¥300×2) + zenn 4 本 (cap fallback → scrap)
-4. **scrap 追加投稿**: 10 本 (未投稿ドラフトから) ※3 本タイトルが「参考文献」になる不具合 → スクリプト修正済 (`_extract_title` 改善)
-5. **ChatGPT 画像 regen**: 4 本の note 全部 cover+inline 差し替え (Bug 3 false-neg 2 件あり、og:image 更新で実証済 → 実態 4/4 success)
-6. **新スクリプト 4 本追加**: `_publish_free_first.py` / `_publish_pending_scraps.py` / `_regen_today_note_with_chatgpt.py` / `launch_brave_cdp.bat`
-7. **CDP attach モード活性化**: `.env` に `CHATGPT_CDP_PORT=9222` 追加、Brave 起動中でも ChatGPT 画像生成可能に
-8. **CLAUDE.md playbook 追加**: 「ジェネレートして承認してパブリッシュ」「無料 N+有料 M」「画像 regen」を他セッションでも同じに再現できる手順表
+1. **generate 4 回**: zenn 合格 3 / note 合格 0 (赤羽 1 件は ❌ユーザー却下)
+2. **publish**: Zenn cap で全部 scrap fallback:
+   - https://zenn.dev/zenn-user/scraps/a8e6012f945bce (Aspire)
+   - https://zenn.dev/zenn-user/scraps/7541d0bcfebe3a (Medicare)
+   - https://zenn.dev/zenn-user/scraps/b8d8b54897236a (Human Action Space)
+3. **バグ修正**:
+   - `config/prompts.yaml` (zenn + note 両方): `## H2 必須`、`太字での見出し代用禁止`、
+     `元ソース外の数値捏造禁止 (Lake Tahoe 1645m 事案)`、`架空大学/組織引用禁止 (Utah BYU 事案)`、
+     `元記事スコープから逸脱しない (Lake Tahoe 観光化事案)` を追加
+   - `main.py`: 不合格題材の 24h cooldown フィルタ (`_filter_recently_rejected`).
+     Sheets 不合格タブから timestamp を読んで title-match で除外
+   - `main.py` timestamp parse: Sheets が `08:34` を `8:34` に表示変換するため
+     `fromisoformat` 失敗 → `strptime` 多形式フォールバック追加
+   - `collectors/knowledge_topics_collector.py`: `rotation_weight=0` /
+     `disabled_reason` セット時に sampling から完全除外 (元コードは 0.01 でフロアして
+     disabled topic も 0.01 確率で抽選していた)
+   - `config/knowledge_topic_excludes.yaml` 新設: cross-session portable な永久
+     exclude リスト。data/ は gitignored なので fresh clone でも適用される
+4. **ハルシ・レジストリ更新**: 事象 16-19 追加 (架空大学引用 / 数値捏造 / 見出し誤構文 /
+   スコープ逸脱)。`docs/knowledge/hallucination_registry.md`
+5. **Sheets 整理**: 赤羽行 (row 208) を ❌却下 に変更
+6. **新スクリプト**: `scripts/_reject_akabane_row.py` (one-shot reject helper)
 
 ## Open Items
 
-1. **Zenn article cap** — ユーザーがダッシュボード確認するまで article publish 控える
-2. **AI 開示 footer 26 件の修復** — `scripts/strip_ai_disclaimer_from_published.py --apply` 未実行 (1-2 時間枠が必要)
-3. **Places API キー貼付待ち** — 本人作業のみ
-4. **アフィリ広告主 ASP 申請 15 件待ち** — 本人作業のみ
-5. **note 4 本のメンバーシップ追加** — `_add_to_memberships_via_dashboard`
-   が「クリエーターページ リンクが見つからない」「メンバー特典記事を追加する
-   ボタンが見つかりません」で skip。ホームページから retry しても同症状
-   (`scripts/_retry_membership_add.py` で確認済)。**helper 内が UI セレクタ
-   漂流に弱く silent-return するため、retry スクリプトが ok=4 を誤報する
-   バグも併発**。当面ダッシュボードから手動追加 (URL ↓) + helper の
-   selector 更新は次回 live DOM 調査タスク。
-   - https://note.com/note-user/n/nebdb6edacb1e
-   - https://note.com/note-user/n/n5a0a2ad50965
-   - https://note.com/note-user/n/n536e614dc601
-   - https://note.com/note-user/n/nd5812c715125
-6. **「参考文献」タイトルの Zenn scrap 3 本** — タイトル間違いで投稿された。Zenn UI で手動編集 or 削除
-   - https://zenn.dev/zenn-user/scraps/d304dfc7fc6c16
-   - https://zenn.dev/zenn-user/scraps/2e6a66de165713
-   - https://zenn.dev/zenn-user/scraps/ea17391664fcf8
+1. **Zenn article cap** — 継続中。article publish 不可
+2. **Writer 構造コンプライアンス** — Gemma3 が note の構造要件 (H2 2+, visual 2+,
+   word 2200+) を **絶対に守らない**。prompt 修正だけでは解決不能。
+   選択肢:
+   - (a) Writer post-processor で `**N. heading**` → `## N. heading` 自動変換
+   - (b) Writer を Codex/Claude API に切替 (compliance 改善、コストアップ)
+   - (c) 構造 strict 化を諦めて scorer 緩和
+3. **AI 開示 footer 26 件の修復** — 引き続き未実施
+4. **note 4 本のメンバーシップ追加** — UI 漂流、引き続きダッシュボード手動
 
-## Next Resume Actions（自走で実行すること）
+## Next Resume Actions
 
-### 1. 起動時デグレチェック
-
+### 1. デグレチェック
 ```bash
 py -c "import main"
 py scripts/test_hallucination_deny.py
 ```
 
-### 2. ユーザー指示の正規化マッピング
+### 2. 4回目以降の動作確認
+- `_filter_recently_rejected` の cooldown 動作確認 (Sheets 不合格に書かれた title が次回 generate で除外されるか)
+- `_load_excluded_ids` の portable exclude 動作確認 (fresh clone でも `hg_akabane` が除外されるか)
 
-CLAUDE.md の **Compound Workflow Playbook** セクションを参照。よく来る指示:
-
-- 「ジェネレートして全部承認してパブリッシュ」 → `main.py --generate` → `_bulk_approve_sheet.py` → `_publish_free_first.py --free-first 0`
-- 「無料 N 本 + 有料 M 本」 → `_publish_free_first.py --free-first N`
-- 「スクラップ記事投稿」 → `_publish_pending_scraps.py --limit 10`
-- 「画像 ChatGPT で差し替え」 → Brave 終了 (or CDP) → regen スクリプト
-
-### 3. push 待ち commit を origin に反映
-
-`git push` (ユーザー指示があれば)。今は手元に 7 本 commit 積み上げ済み。
+### 3. Writer 構造コンプライアンス問題に着手 (Open Items #2)
+post-processor で `**N\.` パターンを `## N.` に変換するだけでも H2 count は改善する可能性が高い。
 
 ## Key Documents
 
@@ -82,11 +77,12 @@ CLAUDE.md の **Compound Workflow Playbook** セクションを参照。よく�
 | **CLAUDE.md** | セットアップ、デグレチェック、**Compound Workflow Playbook**、Scripts カタログ |
 | AGENTS.md | ディスカッション型アーキテクチャ、スコアリング基準 |
 | docs/requirements.md | 要件定義 v1.1 |
-| docs/knowledge/hallucination_registry.md | ハルシネーション事故レジストリ (canonical) |
+| docs/knowledge/hallucination_registry.md | ハルシネーション事故レジストリ (canonical、事象 19 まで) |
 | docs/knowledge/quality_insights_2026-05-09.md | 最新のエンゲージメント学習スナップショット |
-| config/prompts.yaml | プロンプト (理念、構成パターン、禁止ルール) |
+| config/prompts.yaml | プロンプト (理念、構成パターン、禁止ルール、2026-05-14 強化済) |
+| config/knowledge_topic_excludes.yaml | cross-session portable な knowledge_topic 永久除外リスト |
 | config/settings.yaml.example | 48 forbidden_phrases、伏字+業態語、AI 開示 footer 等 |
 
 ## Updated At
 
-2026-05-13 09:30 JST
+2026-05-14 10:15 JST

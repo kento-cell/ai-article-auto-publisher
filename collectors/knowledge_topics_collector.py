@@ -41,6 +41,28 @@ logger = logging.getLogger(__name__)
 _REPO = Path(__file__).resolve().parent.parent
 _POOL_PATH = _REPO / "data" / "knowledge_topics.json"
 _COOLDOWN_PATH = _REPO / "data" / "knowledge_cooldown.jsonl"
+_EXCLUDES_PATH = _REPO / "config" / "knowledge_topic_excludes.yaml"
+
+
+def _load_excluded_ids() -> set[str]:
+    """Load the committed cross-session topic exclusion list.
+
+    The topics pool itself lives in ``data/knowledge_topics.json`` which
+    is gitignored, so an operator decision like "stop generating this
+    topic" needs a portable home. ``config/knowledge_topic_excludes.yaml``
+    is that home. Returns an empty set if the file is missing or
+    unreadable — soft-fail so missing config doesn't break collection.
+    """
+    if not _EXCLUDES_PATH.exists():
+        return set()
+    try:
+        import yaml  # local import to avoid hard-dep at module import time
+        with _EXCLUDES_PATH.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        ids = data.get("excluded_ids") or []
+        return {str(x) for x in ids if x}
+    except Exception:  # noqa: BLE001
+        return set()
 
 
 class KnowledgeTopicsCollector:
@@ -125,11 +147,27 @@ class KnowledgeTopicsCollector:
                 return []
 
         cooldown_map = self._load_cooldown_map()
+        excluded_ids = _load_excluded_ids()
         now = datetime.now(timezone.utc)
         eligible: list[dict[str, Any]] = []
         for t in topics:
             tid = t.get("id")
             if not tid:
+                continue
+            # Cross-session permanent exclude (committed in
+            # config/knowledge_topic_excludes.yaml). data/ is gitignored
+            # so the pool itself isn't portable; this list is.
+            if tid in excluded_ids:
+                continue
+            # Honour explicit disable: rotation_weight=0 or disabled_reason
+            # set means "don't sample this topic at all". Pre-2026-05-14 the
+            # weighted sampler floored to 0.01, so disabled topics still
+            # trickled through. Filter here so disable actually disables.
+            try:
+                rw = float(t.get("rotation_weight") or 1.0)
+            except (TypeError, ValueError):
+                rw = 1.0
+            if rw <= 0 or t.get("disabled_reason"):
                 continue
             last_used = cooldown_map.get(tid)
             cooldown_days = int(t.get("cooldown_days") or 30)
