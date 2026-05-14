@@ -163,10 +163,19 @@ class KnowledgeTopicsCollector:
             # set means "don't sample this topic at all". Pre-2026-05-14 the
             # weighted sampler floored to 0.01, so disabled topics still
             # trickled through. Filter here so disable actually disables.
-            try:
-                rw = float(t.get("rotation_weight") or 1.0)
-            except (TypeError, ValueError):
+            # 2026-05-14 evening (Codex Critical #4): `float(... or 1.0)`
+            # was treating `0` as falsy and substituting 1.0 — so a topic
+            # with `rotation_weight: 0` in YAML silently re-enabled itself.
+            # Distinguish "key missing / empty string" (→ default 1.0) from
+            # "explicit zero" (→ honour as disable).
+            _raw_rw = t.get("rotation_weight")
+            if _raw_rw is None or _raw_rw == "":
                 rw = 1.0
+            else:
+                try:
+                    rw = float(_raw_rw)
+                except (TypeError, ValueError):
+                    rw = 1.0
             if rw <= 0 or t.get("disabled_reason"):
                 continue
             last_used = cooldown_map.get(tid)

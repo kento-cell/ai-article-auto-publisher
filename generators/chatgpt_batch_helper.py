@@ -529,6 +529,42 @@ def chatgpt_image_batch(
         except OSError:
             return False
 
+    # Batch MD5 uniqueness check (Codex Critical 2026-05-14 finding).
+    # When _start_new_chat() failed to reset the conversation, the URL
+    # detector kept hitting the same image element across batch
+    # iterations — all 11 outputs had the SAME md5 (yellow note logo).
+    # File-size validation alone passed because the placeholder was
+    # > _MIN_VALID_IMAGE_BYTES. Cross-check md5 of each saved file: if
+    # any two files match, every collision is invalidated so we fall
+    # through to Pollinations / fail rather than ship duplicates.
+    import hashlib as _hashlib
+    md5_to_paths: dict[str, list[Path]] = {}
+    for p in results:
+        if not _is_valid(p):
+            continue
+        try:
+            h = _hashlib.md5(p.read_bytes()).hexdigest()
+        except OSError:
+            continue
+        md5_to_paths.setdefault(h, []).append(p)
+    _dup_md5s = {h for h, ps in md5_to_paths.items() if len(ps) > 1}
+    if _dup_md5s:
+        dup_count = sum(len(ps) for h, ps in md5_to_paths.items() if h in _dup_md5s)
+        logger.warning(
+            "ChatGPT batch: %d duplicate-MD5 image(s) detected across %d "
+            "hash group(s) — invalidating so caller falls through to "
+            "Pollinations/Unsplash instead of shipping placeholders",
+            dup_count, len(_dup_md5s),
+        )
+        # Mark every duplicate as invalid by None-ing the slot.
+        results = [
+            None if (
+                p is not None and _is_valid(p)
+                and any(p in md5_to_paths[h] for h in _dup_md5s)
+            ) else p
+            for p in results
+        ]
+
     cover = results[0] if _is_valid(results[0]) else None
     inlines = [p for p in results[1:] if _is_valid(p)]
     logger.info(

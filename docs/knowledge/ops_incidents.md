@@ -25,6 +25,13 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 5  | Sheets 不合格 cooldown の timestamp parse 失敗 | 2026-05-14 | main.py `_recently_rejected_titles` に strptime 多形式 fallback | ✅ 修正済 |
 | 6  | Writer Gemma3 が `## H2` 構文を ~50% で守らない | 2026-05-14 | main.py `_fix_bold_pseudo_headings` post-processor | ✅ 修正済 |
 | 7  | Writer が短いソース → 一般解説に Scope Drift | 2026-05-14 | prompts.yaml に「スコープから逸脱しない」+「架空引用禁止」 | ✅ 修正済 (prompt 層) |
+| 8  | hallu-veto wiring が ScoreAggregator に効いていない | 2026-05-14 夜 | main.py で `subj_result["accuracy"]` を top-level に書く + blocking_issues に追加 (Codex Critical #1) | ✅ 修正済 |
+| 9  | `rotation_weight: 0` が `float(... or 1.0)` で 1.0 に戻る | 2026-05-14 夜 | knowledge_topics_collector.py で `raw is None or raw == ""` チェック分離 (Codex Critical #4) | ✅ 修正済 |
+| 10 | ChatGPT `_start_new_chat()` がチャットを実リセットしない | 2026-05-14 夜 | about:blank 経由 + 「新しいチャット」ボタン click + assistant-turn count 検証 (Codex High #8) | ✅ 修正済 |
+| 11 | ChatGPT batch で MD5 同一画像 11連検出されず通る | 2026-05-14 夜 | chatgpt_batch_helper.py で batch 内 md5 衝突を検出し全 collisions を invalidate (Codex Critical #3 part) | ✅ 修正済 |
+| 12 | sanitizer `_EMPTY_BULLET_SINGLE_RE` 誤爆 (`- メリット:` 削除) | 2026-05-14 夜 | URL/reference label (公式/サイト/ニュース/URL/出典 等) 限定に変更 (Codex Medium) | ✅ 修正済 |
+| 13 | borderline-B regen feedback が旧 4000-5500 target で「具体例厚く」と促す → 偽引用増殖 | 2026-05-14 夜 | new 2200-3500 target + 「元ソース外の固有名詞は追加禁止」明記 (Codex Critical #2) | ✅ 修正済 |
+| 14 | Writer prompt の「△△の専門家は〜と指摘」型が架空引用誘発 | 2026-05-14 夜 | prompts.yaml で 「肩書きベース引用は元ソース URL 裏取り必須」明示 (Codex High #5) | ✅ 修正済 |
 
 ---
 
