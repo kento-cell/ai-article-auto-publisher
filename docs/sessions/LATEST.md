@@ -86,3 +86,40 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 ## Updated At
 
 2026-05-14 10:15 JST
+
+
+---
+
+## 2026-05-15 morning briefing (autonomous overnight run)
+
+**ユーザーが寝ている間に走ったタスク** (`scripts/_overnight_orchestrator.py`):
+1. 13th generate (variant=v3_codex) の完了待機
+2. 合格分を bulk approve → free-first publish
+3. LATEST.md 更新 + commit + push
+
+**Sheets 状態 (現時点):**
+- 全 ✅投稿済み 行 (直近 30 行のうち今日分): 0
+
+**publish 直近ログ:**
+```
+2026-05-15 00:33:48 [INFO] sheets_manager: Authorized with Google Sheets API
+[free-first] starting publish — first 99 note article(s) will be free
+2026-05-15 00:33:50 [INFO] main: === Phase 4: 承認済み記事の投稿 ===
+2026-05-15 00:34:06 [INFO] main: [ops-banner:publish] 3 relevant past incident(s) — review before proceeding:
+2026-05-15 00:34:06 [INFO] main:   - (sim 0.83) 1. killed publish → orphan note URL
+2026-05-15 00:34:06 [INFO] main:   - (sim 0.82) 2. edit_article 有料記事 → 「有料エリア設定」ステップ欠落
+2026-05-15 00:34:06 [INFO] main:   - (sim 0.81) 7. Writer が短いソース → 一般解説に Scope Drift
+2026-05-15 00:34:06 [ERROR] main: 記事コンテンツが見つかりません: note-I asked 4 AIs to pic-f8f3f755
+[free-first] done — {'zenn': [], 'note': []}
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 3807.92it/s]
+Article not found: note-I asked 4 AIs to pic-f8f3f755
+```
+
+**確認事項:**
+- note ダッシュボードで cover 画像 (ChatGPT 生成 vs Unsplash fallback) を目視
+- 「キャラ + デカ文字 + 絵」のいつものスタイルが復活しているか
+- もし黄色矢印プレースホルダーや Unsplash 写真風なら、`_start_new_chat` 修正がまだ
+  足りていない → `_test_rag_rerank.py` のような診断スクリプトを書いて原因絞り込み
