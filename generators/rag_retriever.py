@@ -205,3 +205,190 @@ class RagRetriever:
                 score_threshold=score_threshold,
             )
         return out
+
+    # ------------------------------------------------------------------
+    # Re-ranking layer (2026-05-14 evening — Codex H#6 + Stage 2 of RAG
+    # advancement). CrossEncoder re-scores (query, candidate) pairs
+    # jointly so semantic-near-duplicates can be told apart from real
+    # matches. The bi-encoder kNN above is recall-oriented; the
+    # cross-encoder layer is precision-oriented.
+    #
+    # Default off. Set RAG_RERANKER=true (or pass a model name) to
+    # enable. Lazy-loaded so import cost stays zero when unused.
+    # ------------------------------------------------------------------
+
+    _DEFAULT_RERANKER_MODEL = "BAAI/bge-reranker-base"
+
+    def _ensure_reranker_loaded(self) -> bool:
+        """Lazy-load the cross-encoder reranker. Returns False on any
+        failure so callers can transparently fall back to bi-encoder hits.
+        """
+        if getattr(self, "_reranker", None) is not None:
+            return True
+        import os
+        model_name = (
+            os.environ.get("RAG_RERANKER_MODEL")
+            or self._DEFAULT_RERANKER_MODEL
+        )
+        try:
+            from sentence_transformers import CrossEncoder
+        except ImportError as exc:
+            logger.warning(
+                "reranker deps missing (%s) — retrieve_with_rerank "
+                "falls back to bi-encoder ranking", exc,
+            )
+            self._reranker = False  # sentinel: tried-and-failed
+            return False
+        try:
+            self._reranker = CrossEncoder(model_name)
+            logger.info("reranker loaded: %s", model_name)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "reranker load failed (%s) — falling back to bi-encoder",
+                exc,
+            )
+            self._reranker = False
+            return False
+
+    def retrieve_with_rerank(
+        self,
+        query: str,
+        collection: str,
+        top_k: int = 5,
+        candidate_k: int = 20,
+        score_threshold: float = 0.0,
+        rerank_threshold: float | None = None,
+    ) -> list[RetrievedChunk]:
+        """Two-stage retrieval: bi-encoder kNN → cross-encoder rerank.
+
+        Args:
+            query: Natural-language query.
+            collection: chromadb collection name.
+            top_k: Final number of chunks to return after rerank.
+            candidate_k: How many candidates to pull from kNN before
+                rerank. Larger = better recall at the cost of latency.
+                15-30 is the usual sweet spot for chromadb-sized indices.
+            score_threshold: Floor on the initial bi-encoder cos sim.
+                Same semantics as ``retrieve()``.
+            rerank_threshold: Optional floor on the cross-encoder score
+                (its own scale — usually 0..1 for sigmoid-normalised
+                models, but raw logits otherwise). ``None`` means "no
+                second floor".
+
+        Returns:
+            Up to ``top_k`` chunks sorted high-to-low by rerank score.
+            ``RetrievedChunk.score`` carries the RERANK score, and the
+            original bi-encoder score is stashed in ``metadata["bi_score"]``
+            so callers can compare.
+
+        Falls back to ``retrieve(top_k=top_k)`` transparently when the
+        reranker model can't load (no internet, deps missing, etc.).
+        """
+        candidates = self.retrieve(
+            query=query,
+            collection=collection,
+            top_k=candidate_k,
+            score_threshold=score_threshold,
+        )
+        if not candidates:
+            return []
+        if not self._ensure_reranker_loaded() or not candidates:
+            # Fallback: trim to top_k and return bi-encoder ranking as-is.
+            return candidates[:top_k]
+        try:
+            pairs = [(query, c.text) for c in candidates]
+            scores = self._reranker.predict(pairs)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "rerank predict failed (%s) — bi-encoder fallback", exc,
+            )
+            return candidates[:top_k]
+        # Pair scores back to candidates, sort, optional threshold,
+        # trim to top_k.
+        ranked: list[RetrievedChunk] = []
+        for cand, s in zip(candidates, scores):
+            new_meta = dict(cand.metadata or {})
+            new_meta["bi_score"] = round(cand.score, 4)
+            ranked.append(
+                RetrievedChunk(
+                    text=cand.text,
+                    metadata=new_meta,
+                    score=float(s),
+                )
+            )
+        ranked.sort(key=lambda r: r.score, reverse=True)
+        if rerank_threshold is not None:
+            ranked = [r for r in ranked if r.score >= rerank_threshold]
+        return ranked[:top_k]
+
+    def retrieve_multi_query(
+        self,
+        queries: Sequence[str],
+        collection: str,
+        top_k: int = 5,
+        candidate_k_per_query: int = 10,
+        score_threshold: float = 0.0,
+        use_rerank: bool = True,
+        rerank_threshold: float | None = None,
+    ) -> list[RetrievedChunk]:
+        """Multi-query expansion: run several query variants, union the
+        candidate pools (dedup on identical chunk text), then rerank
+        (if available) and return top_k.
+
+        Why: a single Japanese query embedding can miss paraphrases
+        ("○○大学の教授によれば" vs "○○大学の研究者は〜と指摘"). Running
+        2-3 variants and merging boosts recall before precision-ranking.
+
+        ``queries[0]`` is treated as the canonical query for rerank
+        scoring (the other variants are only used to widen the candidate
+        pool). Caller usually passes the original query first, then
+        paraphrases / sub-questions.
+        """
+        if not queries:
+            return []
+        # Pool candidates from each query variant; dedup by chunk text.
+        seen_texts: set[str] = set()
+        merged: list[RetrievedChunk] = []
+        for q in queries:
+            for c in self.retrieve(
+                query=q,
+                collection=collection,
+                top_k=candidate_k_per_query,
+                score_threshold=score_threshold,
+            ):
+                if c.text in seen_texts:
+                    continue
+                seen_texts.add(c.text)
+                merged.append(c)
+        if not merged:
+            return []
+        if not use_rerank or not self._ensure_reranker_loaded():
+            # Sort merged pool by bi-encoder score and trim.
+            merged.sort(key=lambda r: r.score, reverse=True)
+            return merged[:top_k]
+        try:
+            canonical = queries[0]
+            pairs = [(canonical, c.text) for c in merged]
+            scores = self._reranker.predict(pairs)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "multi-query rerank failed (%s) — bi-encoder fallback", exc,
+            )
+            merged.sort(key=lambda r: r.score, reverse=True)
+            return merged[:top_k]
+        ranked: list[RetrievedChunk] = []
+        for cand, s in zip(merged, scores):
+            new_meta = dict(cand.metadata or {})
+            new_meta["bi_score"] = round(cand.score, 4)
+            ranked.append(
+                RetrievedChunk(
+                    text=cand.text,
+                    metadata=new_meta,
+                    score=float(s),
+                )
+            )
+        ranked.sort(key=lambda r: r.score, reverse=True)
+        if rerank_threshold is not None:
+            ranked = [r for r in ranked if r.score >= rerank_threshold]
+        return ranked[:top_k]
