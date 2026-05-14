@@ -18,7 +18,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # Fix Windows cp932 encoding for Unicode output
@@ -2330,6 +2330,93 @@ def rank_articles(collected: dict) -> dict:
     return ranked
 
 
+def _recently_rejected_titles(
+    sheets: SheetsManager, hours: int = 24
+) -> set[str]:
+    """Return the set of titles rejected within the last *hours* hours.
+
+    Used to prevent the trend detector from picking the same failing
+    topic over and over (observed 2026-05-14: Lake Tahoe / Utah /
+    AI画像 / TikTok all fell on identical rejection reasons across
+    multiple generate runs because the trend score is deterministic
+    and rejected articles have no cooldown signal).
+
+    Reads the '不合格' sheet directly (timestamp column D, title column A).
+    """
+    ws = getattr(sheets, "_rejected_sheet", None)
+    if ws is None:
+        return set()
+    try:
+        rows = ws.get_all_values()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("recently-rejected fetch failed: %s", exc)
+        return set()
+
+    cutoff = datetime.now() - timedelta(hours=hours)
+    out: set[str] = set()
+    # Sheets reformats display timestamps (e.g. "2026-05-14 8:34:49" — single-
+    # digit hour), which fromisoformat rejects. Try a few common formats.
+    fmts = (
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y/%m/%d %H:%M:%S",
+    )
+    for r in rows[1:]:
+        if len(r) < 4:
+            continue
+        title = (r[0] or "").strip()
+        ts_str = (r[3] or "").strip()
+        if not title or not ts_str:
+            continue
+        ts: datetime | None = None
+        try:
+            ts = datetime.fromisoformat(ts_str)
+        except ValueError:
+            pass
+        if ts is None:
+            for f in fmts:
+                try:
+                    ts = datetime.strptime(ts_str, f)
+                    break
+                except ValueError:
+                    continue
+        if ts is None:
+            # last resort: parse YYYY-MM-DD prefix only
+            try:
+                ts = datetime.strptime(ts_str.split(" ")[0], "%Y-%m-%d")
+            except ValueError:
+                continue
+        if ts >= cutoff:
+            out.add(title)
+    return out
+
+
+def _filter_recently_rejected(
+    ranked: dict, sheets: SheetsManager, hours: int = 24
+) -> dict:
+    """Drop articles from *ranked* whose title was rejected within *hours*.
+
+    Skipped silently when Sheets is offline.
+    """
+    rejected_titles = _recently_rejected_titles(sheets, hours=hours)
+    if not rejected_titles:
+        return ranked
+
+    filtered: dict = {}
+    for platform, articles in ranked.items():
+        kept = [a for a in articles if (a.get("title") or "").strip() not in rejected_titles]
+        dropped = len(articles) - len(kept)
+        if dropped:
+            logger.info(
+                "[cooldown] %s: dropped %d recently-rejected candidate(s)",
+                platform, dropped,
+            )
+        filtered[platform] = kept
+    return filtered
+
+
 # =====================================================================
 # Phase 2: 生成 + スコアリング
 # =====================================================================
@@ -4367,6 +4454,7 @@ def _run_pipeline_inner(config: dict, prompts: dict, mode: str):
             return
 
         ranked = rank_articles(collected)
+        ranked = _filter_recently_rejected(ranked, sheets, hours=24)
         approved, rejected = generate_and_score(ranked, config, prompts, token_manager)
         logger.info("スコアリング合格: %d件, 不合格: %d件", len(approved), len(rejected))
 

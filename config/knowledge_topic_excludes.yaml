@@ -1,0 +1,20 @@
+# Permanently disabled knowledge_topics IDs.
+#
+# The pool itself lives in data/knowledge_topics.json which is gitignored
+# (the whole data/ directory is). This file is the portable, committed
+# source of truth for "topics we don't want to generate anymore."
+#
+# The KnowledgeTopicsCollector reads this list at startup and drops any
+# matching topic before sampling — regardless of rotation_weight or
+# cooldown state. Use this when a topic is fatigued for the operator
+# (not a transient cooldown).
+#
+# Format: list of topic IDs (the `id` field in knowledge_topics.json).
+# Add a comment explaining why and when each entry was added.
+
+excluded_ids:
+  # 2026-05-14: User said "赤羽名店はもういいよ". Topic has been generated
+  # many times across runs and the user is fatigued. Cross-session-portable
+  # disable lives here so a fresh clone (where data/knowledge_topics.json
+  # is regenerated from seed) still respects the exclusion.
+  - hg_akabane
