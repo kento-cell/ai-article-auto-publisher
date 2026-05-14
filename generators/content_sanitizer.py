@@ -61,8 +61,21 @@ _AI_DISCLOSURE_LINE_RE: Final[re.Pattern[str]] = re.compile(
 # Pattern that detects 2+ consecutive bullet lines whose value after
 # `:` is blank or whitespace. We collapse the entire run.
 # Matches both `*` and `-` bullets, optional bold around the label.
+# 2026-05-14: relaxed to allow `:` to appear either INSIDE the closing
+# bold (`* **Valve公式:** \n`) or OUTSIDE (`* Valve公式: \n`). Prior
+# regex required colon after the closing `**` and silently skipped
+# the inside variant, leaving placeholders like `* **Valve公式:** ` in
+# rejected articles. Also accepts numbered bullets (`1. label:`).
 _EMPTY_BULLET_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
-    r"(?:(?:\*|-)\s+\*{0,2}[^*:\n]{2,60}\*{0,2}:\s*\n){2,}",
+    r"(?:(?:\*|-|\d+\.)\s+\*{0,2}[^*:\n]{2,60}(?::\*{0,2}|\*{0,2}:)\s*\n){2,}",
+)
+# Single empty-bullet placeholder. The 2+ rule above misses standalone
+# lines like `* Cisco公式サイト: ` that the LLM emits when it has only
+# one reference. Strip them too — they trip the forbidden_phrases gate
+# (`*   Cisco公式サイト: \n`) and waste a regen attempt.
+_EMPTY_BULLET_SINGLE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:\*|-|\d+\.)\s+\*{0,2}[^*:\n]{2,60}(?::\*{0,2}|\*{0,2}:)\s*$",
+    re.MULTILINE,
 )
 
 
@@ -98,6 +111,17 @@ def sanitize(content: str) -> tuple[str, list[str]]:
         return "\n"
 
     cleaned = _EMPTY_BULLET_BLOCK_RE.sub(_replace_block, cleaned)
+
+    # 2b. Strip single (non-consecutive) empty-value bullets. The block
+    #     regex above only catches runs of 2+; standalone lines like
+    #     `* Cisco公式サイト: ` slip through and trip publish-time
+    #     forbidden_phrases. We can drop them safely because they carry
+    #     no information.
+    def _replace_single(m: re.Match[str]) -> str:
+        removed.append(f"empty_bullet_single: {m.group(0).strip()[:80]!r}")
+        return ""
+
+    cleaned = _EMPTY_BULLET_SINGLE_RE.sub(_replace_single, cleaned)
 
     # 3. Strip AI-disclosure footer lines. The matching is line-scoped
     #    via `^...$` + re.MULTILINE so we don't accidentally swallow

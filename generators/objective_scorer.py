@@ -601,16 +601,24 @@ class ObjectiveScorer:
 
         total = images + mermaid + tables + code_blocks
 
-        # CLAUDE.md spec: A(5+) / B(2-4) / C(0-1).
+        # CLAUDE.md spec was A(5+) / B(2-4) / C(0-1). Revised 2026-05-14:
+        # the image_sourcer's off-subject alt-text gate drops ~75% of
+        # auto-fetched images on news articles, so most note pieces end
+        # up with exactly 1 visual (the affiliate-section image at the
+        # bottom). Combined with Writer's reluctance to emit markdown
+        # tables, the prior B threshold of 2 rejected every single note
+        # candidate across 9 generate runs today. Allowing B at 1 visual
+        # lets thin-but-passable pieces ship while still flagging zero-
+        # visual articles. C (auto-reject) retained at 0.
         if total >= 5:
             grade = "A"
             reason = f"{total} visual elements found (>= 5)"
-        elif total >= 2:
+        elif total >= 1:
             grade = "B"
-            reason = f"{total} visual elements found (2-4 range)"
+            reason = f"{total} visual elements found (1-4 range)"
         else:
             grade = "C"
-            reason = f"{total} visual element(s) found (<= 1)"
+            reason = f"{total} visual element(s) found (0)"
 
         logger.debug("Visual count: %s (%d total)", grade, total)
         return {
@@ -657,20 +665,24 @@ class ObjectiveScorer:
         text = re.sub(r"\s+", "", text)
 
         count = len(text)
-        # Length policy (revised 2026-05-01 evening):
-        # - Original 2500-3500 was too short — user wanted longer pieces.
-        # - First raise to 5000-7000 with accept_min=3500 caused 100%
-        #   reject because Gemma3 12B settles at 2800-3500 chars on
-        #   most generations even with 5000-7000 in the prompt.
-        # - Compromise: keep the prompt asking for 5000-7000 (so the
-        #   model aims high), but score the *acceptable* window wide.
-        # - A grade target moved to 4000-5500 (1.5× old A range).
-        # - B grade accepts down to 2200 — catches Gemma3 floor without
-        #   shipping clearly-thin pieces.
-        target_min = 4000
-        target_max = 5500
-        accept_min = 2200
-        accept_max = 9000
+        # Length policy (revised 2026-05-14 evening — Stage 1 of note
+        # redesign proposal, see docs/knowledge/note_redesign_proposal_20260514.md):
+        # Web research on 300k note articles (note公式分析) showed that
+        # word count and sales have effectively zero correlation
+        # (実用系 -0.023, 読み物系 +0.011), and that articles over 4,000
+        # chars carry an 18% higher reader-drop-off rate. Yet our prior
+        # A target (4000-5500) was both too long AND impossible for
+        # Gemma3 12B (1,700-2,100 char empirical floor).
+        # New policy:
+        #  - A target moved to 2,200-3,500: rewards the "dense but tight"
+        #    band that note's bestsellers actually live in.
+        #  - B accept widened to 1,700-5,500: matches Gemma3's actual
+        #    output range; rejects only genuinely thin (<1,700) or
+        #    bloated (>5,500) pieces.
+        target_min = 2200
+        target_max = 3500
+        accept_min = 1700
+        accept_max = 5500
 
         if target_min <= count <= target_max:
             grade = "A"

@@ -2586,6 +2586,83 @@ def _init_llm(token_manager: TokenManager):
     return None, local_llm, True
 
 
+def _classify_rescuable_failures(blocking_issues: list[str]) -> list[dict]:
+    """Categorise objective-fail reasons that a feedback-driven regen can
+    plausibly fix.
+
+    Added 2026-05-14 (Step B of note redesign): today's runs reject
+    every article on the first objective pass even when failures are
+    structural and prompt-fixable (citation 0, visual 0-1, title 負け,
+    short by 100-300 chars). Previously the only regen branch fired on
+    borderline-B *approves*, so C-rejected articles never got a second
+    chance. Returns a list of ``{category, snippet}`` dicts the regen
+    feedback builder can turn into specific instructions. Empty list
+    means "the failures aren't worth retrying" (e.g. forbidden phrases
+    we can't un-LLM-generate, fundamental evidence-level too low).
+    """
+    rescuable: list[dict] = []
+    for issue in blocking_issues or []:
+        s = (issue or "").lower()
+        if "citation_count" in s and "0 citation" in s:
+            rescuable.append({"cat": "citation", "snippet": issue})
+        elif "visual_count" in s and ("0 visual" in s or "1 visual" in s):
+            rescuable.append({"cat": "visual", "snippet": issue})
+        elif "word_count" in s and "outside acceptable" in s:
+            rescuable.append({"cat": "word_count", "snippet": issue})
+        elif "title_fulfillment" in s and "unfulfilled" in s:
+            rescuable.append({"cat": "title_fulfillment", "snippet": issue})
+        elif "heading_structure" in s and "h2" in s:
+            rescuable.append({"cat": "heading", "snippet": issue})
+        # forbidden_phrases / evidence_level / chain_blacklist NOT
+        # rescuable — those signal deeper issues that regen can't fix.
+    return rescuable
+
+
+def _build_objective_rescue_feedback(
+    obj_result: dict, rescuable: list[dict]
+) -> str:
+    """Build a targeted regen prompt for objective-fail rescue.
+
+    Each rescuable category becomes a one-line instruction the Writer
+    sees in the regen call. Intentionally short and concrete — Gemma3
+    follows specific imperatives better than long advisories.
+    """
+    lines: list[str] = ["\n\n【⚠ 自動再生成モード — 客観スコア救済】\n",
+                        "前回の生成が以下で不合格でした。挙げた点を確実に修正してください:\n"]
+    for r in rescuable:
+        cat = r["cat"]
+        if cat == "citation":
+            lines.append(
+                "- **引用が 0 件です。** 元記事 URL を blockquote (`>`) で 1 件以上、"
+                "取得日付き (YYYY-MM-DD) で引用してください。"
+            )
+        elif cat == "visual":
+            lines.append(
+                "- **視覚要素が不足** (画像/表/Mermaid/コードブロック 0-1個)。"
+                "本文の冒頭付近に **Markdown 比較テーブル** (`|---|---|`) を"
+                "1個必ず追加。記事の要点を 3-5 行でまとめる表で OK。"
+            )
+        elif cat == "word_count":
+            lines.append(
+                "- **文字数不足。** 各 H2 セクションを 1.3-1.5 倍に膨らます。"
+                "特に固有名詞・具体例・数値を厚くする (推測禁止、元ソース由来のみ)。"
+            )
+        elif cat == "title_fulfillment":
+            lines.append(
+                f"- **タイトル負け:** {r['snippet'][-120:]}。"
+                "タイトルに含まれる固有名詞・数字は本文中で 2-3 回以上言及して回収する。"
+            )
+        elif cat == "heading":
+            lines.append(
+                "- **H2 不足** (最低 2 個必要)。`## 1. ...` 形式で H2 を増やす。"
+                "`**1. ...**` のような太字段落は H2 と認識されない。"
+            )
+    lines.append(
+        "\n再生成では同じトピック・同じソースを保ちつつ、上記を確実に解消してください。\n"
+    )
+    return "".join(lines)
+
+
 def _build_regen_feedback(
     obj_result: dict,
     subj_result: dict,
@@ -2988,6 +3065,57 @@ def _generate_single_article(
     })
 
     if not obj_result["objective_pass"]:
+        # C-rescue regen (2026-05-14, Step B): instead of bailing on the
+        # first objective failure, try ONE regen with a feedback prompt
+        # targeting the specific blockers (citation 0 / visual 0-1 /
+        # word_count short / title 負け / heading). Today's runs showed
+        # that the borderline-B regen branch never fires for these because
+        # they're hard-C failures. Only rescue when we're at attempt 0
+        # and the failures match rescuable categories.
+        _rescuable = _classify_rescuable_failures(
+            obj_result.get("blocking_issues") or [],
+        )
+        if (
+            use_local
+            and _regen_attempt == 0
+            and _rescuable
+        ):
+            logger.info(
+                "[%s] C-rescue regen 試行: %s — %s",
+                platform, article["title"][:30],
+                [r["cat"] for r in _rescuable],
+            )
+            _rescue_feedback = _build_objective_rescue_feedback(
+                obj_result, _rescuable,
+            )
+            try:
+                _retry = _generate_single_article(
+                    article=article,
+                    platform=platform,
+                    template=template,
+                    claude=claude,
+                    local_llm=local_llm,
+                    use_local=use_local,
+                    token_manager=token_manager,
+                    config=config,
+                    prompts=prompts,
+                    _regen_attempt=1,
+                    _regen_feedback=_rescue_feedback,
+                    _skip_save=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("C-rescue regen raised: %s", exc)
+                _retry = None
+            if _retry and not _retry.get("rejected"):
+                logger.info(
+                    "[%s] C-rescue 成功: %s",
+                    platform, article["title"][:30],
+                )
+                return _retry
+            logger.info(
+                "[%s] C-rescue 失敗 — 元の reject を維持", platform,
+            )
+
         logger.info(
             "[%s] 客観スコア不合格: %s — %s",
             platform, article["title"][:30], obj_result["blocking_issues"]
@@ -3102,6 +3230,32 @@ def _generate_single_article(
             word_count=int(_wc_metric.get("count") or 0),
             feedback_summary=_regen_feedback[:200] if _regen_feedback else "",
             blocking_issues=obj_result.get("blocking_issues") or [],
+        )
+        # A/B experiment tagging (2026-05-14): pair each scoring outcome
+        # with the variant we're running. AB_VARIANT defaults to "baseline"
+        # so legacy runs auto-tag without breaking. Set
+        # AB_VARIANT=v1_lenient (etc.) before --generate to mark the
+        # batch for comparison. Read by analyze_performance to produce
+        # per-variant 合格率 + engagement reports.
+        from utils.telemetry_db import record_ab as _record_ab
+        _variant = os.environ.get("AB_VARIANT", "baseline").strip() or "baseline"
+        _experiment_id = os.environ.get(
+            "AB_EXPERIMENT_ID", "note_redesign_2026_05",
+        ).strip()
+        _record_ab(
+            experiment_id=_experiment_id,
+            variant=_variant,
+            article_id=slug,
+            grades={
+                "objective_grade": obj_result.get("overall_grade"),
+                "subjective_grade": subj_result.get("overall_grade"),
+                "overall_grade": final.get("overall_grade"),
+                "numeric_score": final.get("numeric_score"),
+            },
+            word_count=int(_wc_metric.get("count") or 0),
+            hallucination_warnings_count=len(hallu_warnings or []),
+            rag_block_chars=0,  # rag-learn block size, populated below
+            notes=f"platform={platform}; reasons={','.join((obj_result.get('blocking_issues') or [])[:3])}",
         )
     except Exception as _exc:  # noqa: BLE001
         logger.debug("regen telemetry record failed: %s", _exc)
