@@ -2330,6 +2330,33 @@ def rank_articles(collected: dict) -> dict:
     return ranked
 
 
+_BOLD_NUMBERED_HEADING_RE = re.compile(
+    # Line-start `**<digit><dot><space><text>**` with optional trailing
+    # whitespace. Match only when nothing else is on the line (no inline
+    # bold mid-paragraph). Examples that should match:
+    #   **1. なぜ今、Lake Tahoeなのか？**
+    #   **2. Stratosプロジェクトとは？**
+    # Examples that should NOT match:
+    #   ある研究では**1.5倍の効果**が見られた  (inline)
+    #   **重要な点**: 〇〇  (no number prefix)
+    r"^\*\*(\d+\.\s+[^\n*][^\n]*?)\*\*[ \t]*$",
+    re.MULTILINE,
+)
+
+
+def _fix_bold_pseudo_headings(content: str) -> str:
+    """Promote ``**N. heading**`` lines to ``## N. heading`` markdown H2.
+
+    Writer (Gemma3) ignores the prompt's H2 instruction for news-style
+    articles roughly half the time, producing bold pseudo-headings that
+    look like sections to a human reader but score as 0 H2 in objective
+    scorer. This deterministic post-processor fixes the syntax without
+    adding or changing any content. Added 2026-05-14 after 4 generate
+    runs (~100 min) yielded 0 note articles purely due to H2 mismatch.
+    """
+    return _BOLD_NUMBERED_HEADING_RE.sub(r"## \1", content)
+
+
 def _recently_rejected_titles(
     sheets: SheetsManager, hours: int = 24
 ) -> set[str]:
@@ -2740,6 +2767,20 @@ def _generate_single_article(
         logger.info(
             "[%s] content sanitizer: %d artifact(s) removed",
             platform, len(_stripped),
+        )
+
+    # --- Structural markdown fix: convert bold-numbered pseudo-headings
+    #     to proper ## H2. Writer (Gemma3) ignores the prompt's "use ##"
+    #     instruction roughly 50% of the time on news-style note articles,
+    #     producing `**1. heading**` and tripping H2-count rejection.
+    #     2026-05-14 added after 4 generate runs proved prompt alone insufficient.
+    _h2_before = len(re.findall(r"^##\s+\S", content, re.MULTILINE))
+    content = _fix_bold_pseudo_headings(content)
+    _h2_after = len(re.findall(r"^##\s+\S", content, re.MULTILINE))
+    if _h2_after > _h2_before:
+        logger.info(
+            "[%s] post-processor: promoted %d bold-headings to ## H2",
+            platform, _h2_after - _h2_before,
         )
 
     # --- Google Places API によるスポット検証（note グルメ/地域記事のみ） ---
