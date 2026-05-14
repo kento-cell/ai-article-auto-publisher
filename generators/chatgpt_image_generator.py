@@ -1026,6 +1026,15 @@ class ChatGPTImageGenerator:
         "chat.openai.com",
         "auth0.openai.com",   # ChatGPT login redirect
         "auth.openai.com",    # newer login host
+        # Cloudflare Turnstile challenge — ChatGPT now wraps login /
+        # session checks with Turnstile (observed 2026-05-14, blocking
+        # all image-gen runs). Without this entry the nav guard aborts
+        # the challenge iframe and the composer never loads — the
+        # script then falls back to a stale/error image (note's logo)
+        # for every "generated" output. Allowing the challenge host
+        # only widens exposure to Cloudflare's bot-management infra,
+        # which is the same risk surface as visiting chatgpt.com itself.
+        "challenges.cloudflare.com",
     )
 
     @classmethod
@@ -1479,9 +1488,30 @@ class ChatGPTImageGenerator:
         import base64 as _b64
         data = _b64.b64decode(b64)
         dest.write_bytes(data)
+        size = dest.stat().st_size
         logger.info(
-            "ChatGPT image saved: %s (%d bytes)", dest, dest.stat().st_size,
+            "ChatGPT image saved: %s (%d bytes)", dest, size,
         )
+        # Fail-loud on suspiciously small payloads. ChatGPT-generated PNGs
+        # are typically 500 KB – 3 MB. Anything under 50 KB is almost
+        # certainly an icon / error placeholder slipped through the URL
+        # detector (observed 2026-05-14: all 11 outputs were the 23 KB
+        # yellow-arrow note logo because Turnstile blocked the composer
+        # but the selector found a UI icon img anyway). Raising here lets
+        # the caller treat the batch as a failure instead of silently
+        # uploading the wrong cover.
+        _MIN_BYTES = 50 * 1024
+        if size < _MIN_BYTES:
+            # Check for PNG signature: only flag when bytes look like a
+            # real PNG. HTML error pages caught the same way would also
+            # be wrong but the caller's content_type check handles those.
+            is_png = data[:8] == b"\x89PNG\r\n\x1a\n"
+            if is_png:
+                raise PlaywrightError(
+                    f"ChatGPT image suspiciously small "
+                    f"({size} bytes < {_MIN_BYTES}); "
+                    f"likely an icon/placeholder, not a real generation"
+                )
 
     @staticmethod
     def _download(url: str, dest: Path) -> None:  # legacy / fallback
