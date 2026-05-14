@@ -836,6 +836,118 @@ def _build_rag_learned_block(
     return block
 
 
+def _log_ops_incidents_banner(phase: str) -> None:
+    """Surface the top ops_incidents relevant to the current pipeline phase.
+
+    The ops_incidents collection records operational bugs (orphan
+    publish, selector drift, env-var syntax traps, etc.) that aren't
+    content hallucinations but still cause real rework. Without a query
+    they sit in the index unread. Calling this at the start of each
+    phase prints a banner of the top-N most-similar past incidents so
+    the operator (human or future-Claude) sees them every run.
+
+    Phase strings are intentionally English so the embedding model
+    treats them as topical hints rather than chrome:
+        "publish" → matches publish-time UI / orphan / status issues
+        "generate" → matches Writer-compliance / drift / cooldown
+        "image" → matches ChatGPT / Pillow / Brave issues
+
+    Best-effort: silent on import / index failure.
+    """
+    if os.environ.get("RAG_OPS_BANNER", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return
+    try:
+        from generators.rag_retriever import RagRetriever
+    except ImportError:
+        return
+    try:
+        retriever = RagRetriever()
+        hits = retriever.retrieve(
+            query=f"passage: {phase} pipeline operational issues bugs rework",
+            collection="ops_incidents",
+            top_k=3,
+            # ops_incidents is small (~9 chunks today); a moderate
+            # threshold lets per-phase queries pick up the table /
+            # rules sections without flooding the log.
+            score_threshold=0.55,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("ops-banner retrieval failed: %s", exc)
+        return
+    if not hits:
+        logger.info("[ops-banner:%s] no relevant past incidents", phase)
+        return
+    logger.info(
+        "[ops-banner:%s] %d relevant past incident(s) — review before proceeding:",
+        phase, len(hits),
+    )
+    for h in hits:
+        title = h.metadata.get("section_title", "") if h.metadata else ""
+        logger.info("  - (sim %.2f) %s", h.score, title[:80])
+
+
+def _log_rag_coverage(
+    content: str,
+    title: str,
+    platform: str,
+    hallu_count: int,
+) -> None:
+    """Emit a per-article RAG-coverage summary line.
+
+    Why this exists (2026-05-14):
+    Audit of today's logs found 41 ``[hallu-guard]`` lines but 0
+    ``[rag-learn]`` lines — the anti_patterns / successes / ops_incidents
+    / generation_guides collections were ingested but never queried at
+    generation time. The user asked "are embeddings actually referenced
+    on each generation, and is that visible in logs?" The honest answer
+    was "only hallucinations." This function fixes the visibility half:
+    each article logs one line summarising how many chunks each
+    collection returned, so absent retrieval becomes obvious.
+
+    Best-effort: silent on any failure so it never blocks generation.
+    """
+    if os.environ.get("RAG_COVERAGE_LOG", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return
+    try:
+        from generators.rag_retriever import RagRetriever
+    except ImportError:
+        return
+    try:
+        retriever = RagRetriever()
+        # Build a representative query from title + content head.
+        query = (
+            f"passage: {title}\n"
+            f"{(content or '')[:1500]}"
+        )
+        hits = retriever.retrieve_many(
+            query=query,
+            plan=[
+                ("anti_patterns", 3),
+                ("successes", 3),
+                ("ops_incidents", 3),
+                ("generation_guides", 3),
+            ],
+            score_threshold=0.55,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("rag-coverage retrieval failed: %s", exc)
+        return
+    logger.info(
+        "[rag-coverage:%s] hallu=%d anti=%d success=%d ops=%d guides=%d "
+        "(threshold=0.55)",
+        platform,
+        hallu_count,
+        len(hits.get("anti_patterns", [])),
+        len(hits.get("successes", [])),
+        len(hits.get("ops_incidents", [])),
+        len(hits.get("generation_guides", [])),
+    )
+
+
 def _retrieve_hallucination_warnings(
     article_content: str,
     top_k: int = 3,
@@ -2224,6 +2336,7 @@ def load_prompts(prompts_path: str = "config/prompts.yaml") -> dict:
 def collect_articles(config: dict) -> dict:
     """各ソースから記事を収集する。"""
     logger.info("=== Phase 1: 記事収集 ===")
+    _log_ops_incidents_banner("generate")
     collected = {"zenn": [], "note": []}
 
     try:
@@ -2898,6 +3011,18 @@ def _generate_single_article(
     )
     subj_evaluator = SubjectiveEvaluator()
     hallu_warnings = _retrieve_hallucination_warnings(content)
+    # 2026-05-14: per-article RAG coverage log. The previous audit found
+    # rag-learn lines absent across 41 hallu-guard hits, meaning anti /
+    # success / ops collections were embedded but never queried at run
+    # time. Logging counts here makes the absence of retrieval visible
+    # in the same place each run — so we don't have to grep across logs
+    # to verify the system is using its own embeddings.
+    _log_rag_coverage(
+        content=content,
+        title=article.get("title", ""),
+        platform=platform,
+        hallu_count=len(hallu_warnings),
+    )
     subj_result = subj_evaluator.score(content, eval_fn, {
         "research_brief": article.get("content", ""),
         "hallucination_warnings": hallu_warnings,
@@ -3496,6 +3621,7 @@ def publish_approved(
 ) -> dict:
     """Sheetsで「✅承認」された記事を投稿する。"""
     logger.info("=== Phase 4: 承認済み記事の投稿 ===")
+    _log_ops_incidents_banner("publish")
     results = {"zenn": [], "note": []}
 
     approved = sheets.get_approved_articles()
