@@ -127,7 +127,32 @@ class LocalLLM:
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": temperature},
+            "options": {
+                "temperature": temperature,
+                # 2026-05-15 maintenance: Ollama default loads Gemma3:12b
+                # at num_ctx=4096. Our Writer prompts run 2,500-3,500
+                # chars (~2,500-3,500 tokens for Japanese) and target
+                # 2,200-3,500 chars output → combined > 5,000 tokens
+                # often exceeds 4,096. The single-article trace showed
+                # actual Writer prompt = 11,900 chars (~8,925 tokens)
+                # which OVERFLOWED the 8,192 setting — the title +
+                # citation rules at prompt tail were getting silently
+                # dropped, directly explaining today's Writer compliance
+                # failures (citation block lost in truncation, タイトル
+                # negative because title-section was at end of prompt).
+                # Bump to 16,384 — gives ~12k token headroom for the
+                # full prompt + 4k for the output. Costs ~+250MB VRAM
+                # on Gemma3:12b Q4_K_M (verified safe on this host's
+                # 12GB VRAM footprint).
+                "num_ctx": 16384,
+            },
+            # Ollama unloads models after 5 minutes idle by default. With
+            # the multiple-task pipeline (writer + scorer + maybe
+            # regenerator), each article triggers 2-4 LLM calls spread
+            # over several minutes — each reload costs ~20-30s for
+            # Gemma3 12B. Keep models warm for 30 minutes between calls
+            # so a full generate run doesn't pay the reload tax.
+            "keep_alive": "30m",
         }
 
         logger.info(
