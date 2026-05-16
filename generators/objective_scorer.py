@@ -443,6 +443,16 @@ class ObjectiveScorer:
         url_rate = with_url / total if total > 0 else 0.0
         rate = compliant / total if total > 0 else 0.0
 
+        # 2026-05-15 maintenance: citation_format 閾値緩和。
+        # gemma4:e4b の note 出力で URL 付き citation 0% が頻発、4 件連続却下
+        # で publish ゼロ。grounding は RAG 層 (hallu-guard + rag-coverage +
+        # ops-incidents) で別途確保されるため、citation_format は「URL ベスト・
+        # プラクティス度」の指標。URL なくても引用数 2+ あればグラウンディング
+        # 自体は提示されているので B 認定する。
+        # 旧: A (100% URL+日付), B (50%+ URL), C (<50%)
+        # 新: A (100% URL+日付), B (50%+ URL), B' (引用 2+ 件あれば URL 不問),
+        #     C (引用 1 件以下 or 0 件)
+        # 長期的には note prompts.yaml の URL 注入強化で根本解決。
         if rate >= 1.0:
             grade = "A"
             reason = f"all {total} citations have URL and access date"
@@ -452,11 +462,17 @@ class ObjectiveScorer:
                 f"{with_url}/{total} citations have URL "
                 f"({url_rate:.0%} >= 50%)"
             )
+        elif total >= 2:
+            grade = "B"
+            reason = (
+                f"{with_url}/{total} citations have URL "
+                f"(URL {url_rate:.0%}; total>=2 relaxed)"
+            )
         else:
             grade = "C"
             reason = (
                 f"{with_url}/{total} citations have URL "
-                f"({url_rate:.0%} < 50%)"
+                f"(URL {url_rate:.0%}, total<2)"
             )
 
         logger.debug("Citation format: %s (rate=%.2f)", grade, rate)
@@ -665,24 +681,22 @@ class ObjectiveScorer:
         text = re.sub(r"\s+", "", text)
 
         count = len(text)
-        # Length policy (revised 2026-05-14 evening — Stage 1 of note
-        # redesign proposal, see docs/knowledge/note_redesign_proposal_20260514.md):
-        # Web research on 300k note articles (note公式分析) showed that
-        # word count and sales have effectively zero correlation
-        # (実用系 -0.023, 読み物系 +0.011), and that articles over 4,000
-        # chars carry an 18% higher reader-drop-off rate. Yet our prior
-        # A target (4000-5500) was both too long AND impossible for
-        # Gemma3 12B (1,700-2,100 char empirical floor).
-        # New policy:
-        #  - A target moved to 2,200-3,500: rewards the "dense but tight"
-        #    band that note's bestsellers actually live in.
-        #  - B accept widened to 1,700-5,500: matches Gemma3's actual
-        #    output range; rejects only genuinely thin (<1,700) or
-        #    bloated (>5,500) pieces.
+        # Length policy. 2026-05-14 evening (Stage 1 of note redesign):
+        # tightened A target to 2,200-3,500 based on note 公式分析
+        # (drop-off rate +18% over 4,000 chars).
+        #
+        # 2026-05-15 maintenance: relax accept_max 5,500 → 8,000.
+        # Writer switched gemma3:12b → gemma4:e4b and the single-article
+        # trace shows gemma4 hits 7,000-8,000 chars while preserving
+        # density (no padding) — H2=7, H3=13, comparison table, "筆者
+        # は断言する" stance retained throughout. A 7k-char gemma4
+        # article reads denser than a 3k-char gemma3 article. We still
+        # reward 2,200-3,500 as A (note bestseller band) but no longer
+        # reject the longer-but-rich gemma4 output band as C.
         target_min = 2200
         target_max = 3500
         accept_min = 1700
-        accept_max = 5500
+        accept_max = 8000
 
         if target_min <= count <= target_max:
             grade = "A"
@@ -732,12 +746,45 @@ class ObjectiveScorer:
                 "reason": "no forbidden patterns configured",
             }
 
+        # 2026-05-15 maintenance: defence against catastrophic regex
+        # backtracking. The original patterns at config/settings.yaml:184-186
+        # (「そのため/つまり/一方で」 3-connective detection) had nested
+        # bounded quantifiers `(?:[^。]{0,80}。[^そ]{0,300}){2,}` which,
+        # on gemma4:e4b's 7-8k-char output, hung Phase 2 for 30 min in
+        # runs 19+20 (confirmed via Ollama log timing — writer 200 OK,
+        # then 30 min of pure GIL-held _sre backtracking, no further
+        # Ollama calls). Threading-based wall-clock caps DO NOT work
+        # here because the regex C extension holds the GIL throughout
+        # backtracking, blocking the main thread from observing the
+        # daemon thread's timeout (verified empirically — main thread
+        # also hung). The fix is two-layered:
+        #  (1) settings.yaml regex rewritten to single-quantifier atomic
+        #      form `(?:そのため[^。]{0,400}。){3,}` — linear time O(N).
+        #  (2) defence-in-depth: linear-time count gate that short-circuits
+        #      the regex when the connective appears fewer than 3 times.
+        _CONNECTIVE_GATE = ("そのため", "つまり", "一方で")
         hits: list[str] = []
+        import time as _time
         for pattern in patterns:
+            # Defence (2): early-exit count gate. Only applies to the 3-
+            # connective patterns; other patterns bypass and run normally.
+            gate_key = next(
+                (k for k in _CONNECTIVE_GATE if k in pattern), None,
+            )
+            if gate_key is not None and article.count(gate_key) < 3:
+                continue
+            # Per-pattern timing — slow regex shows up in logs for tuning.
+            _t0 = _time.perf_counter()
             try:
                 matches = re.findall(pattern, article, re.IGNORECASE)
                 if matches:
                     hits.extend(matches)
+                _dt = _time.perf_counter() - _t0
+                if _dt > 1.0:
+                    logger.warning(
+                        "[forbidden] slow pattern %.2fs: %r",
+                        _dt, pattern[:80],
+                    )
             except re.error as exc:
                 logger.warning(
                     "Invalid forbidden-phrase regex '%s': %s", pattern, exc

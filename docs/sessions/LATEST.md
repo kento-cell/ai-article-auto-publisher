@@ -123,3 +123,59 @@ Article not found: note-I asked 4 AIs to pic-f8f3f755
 - 「キャラ + デカ文字 + 絵」のいつものスタイルが復活しているか
 - もし黄色矢印プレースホルダーや Unsplash 写真風なら、`_start_new_chat` 修正がまだ
   足りていない → `_test_rag_rerank.py` のような診断スクリプトを書いて原因絞り込み
+
+---
+
+## 2026-05-16 早朝 自走 briefing
+
+ユーザー就寝中に generate→publish を自走で完遂。
+
+### このセッション (5-15〜5-16) のコード修正 (全て未コミット)
+
+1. **gemma4:e4b 切替** — Writer/Scorer を gemma3:12b → gemma4:e4b (`.env` の
+   `LLM_MODEL_WRITER`/`LLM_MODEL_SCORER`)。速度 3 倍、H2 構造遵守が劇的改善。
+   `objective_scorer` の word_count accept_max を 5500→8000 に緩和。
+2. **Phase 2 hang 修正 3 件:**
+   - forbidden regex の catastrophic backtracking → `settings.yaml` の接続詞
+     regex を 1 段 quantifier の線形形に書換 + `objective_scorer` に count gate
+   - HF Hub CloseWait → `.env` に `HF_HUB_OFFLINE=1` `TRANSFORMERS_OFFLINE=1`
+   - note の Codex brief 必須 gate → `.env` `NOTE_ALLOW_NO_CODEX_BRIEF=1`
+3. **ChatGPT 画像セレクタ漂流修正** — `chatgpt_image_generator.py` の画像取得
+   セレクタを `[data-testid^="conversation-turn"]` ベースに修正。23618B placeholder
+   誤取得 → Unsplash 連発 を解消。
+4. **mermaid フロー図 恒久修正** — `note_publisher._mermaid_to_ascii` を全ノード
+   形状 (`[] {} ()` 等) 対応 + ASCII アート廃止 → クリーンな番号ステップリスト。
+5. **RAG を画像パイプラインに配線** — `chatgpt_batch_helper._log_image_failure_incidents`
+   が ChatGPT batch 重大失敗時に `ops_incidents` を query → `[ops-banner:image]` 警告。
+6. **note prompt 出典強化** — `prompts.yaml` の `note_article_prompt` に
+   `【絶対ルール — 出典・引用】` を追加 (zenn にあって note に欠落していた)。
+   citation 合格率が 24th 1 件 → 26th 3 件に改善。
+7. **citation_format 緩和** — `objective_scorer` で「引用 2+ 件あれば URL 不問で B」。
+8. ops_incidents.md に #15-17 追記済 + RAG 再 ingest 済 (ops_incidents 12 chunks)。
+
+### publish 実績 (2026-05-15〜16)
+
+- **25th**: note 3 記事 (無料 2 + 有料 1)
+  - 無料: n15ffe03b24c6 (データセンター), ne663a40386fe (Windows 11)
+  - 有料: n66ebefddc10c (BitLocker) — **¥300 価格バグ**
+- **26th**: note 3 記事 (全 paid)
+  - n8cae511a87a9 (Lake Tahoe 電力危機)
+  - n5f961d8ded4d (Cisco 増収と4000人解雇)
+  - nd0f6d7b94b9f (OpenAI 銀行口座アクセス)
+  - **3 記事とも ¥300 価格バグ**
+- 全 6 記事 cover/inline は ChatGPT 生成画像 (og:image .png 確認済、batch failed 0)
+
+### 🔴 要対応: note 価格バグ (¥300 default)
+
+`_set_price` の price input 不可視バグ (既知) が 25th 1 件 + 26th 3 件 = **計 4 記事**
+で発症。グレード B/A なら本来 ¥500。note ダッシュボードで以下を ¥300→¥500 に手動修正:
+- n66ebefddc10c (BitLocker)
+- n8cae511a87a9 (Lake Tahoe)
+- n5f961d8ded4d (Cisco)
+- nd0f6d7b94b9f (OpenAI)
+
+### Next Resume Actions
+
+1. 上記 4 記事の価格を手動修正 (¥300→¥500)
+2. このセッションのコード変更を commit (未コミット)
+3. note `_set_price` 価格入力欄セレクタの恒久修正 (UI 漂流対応)

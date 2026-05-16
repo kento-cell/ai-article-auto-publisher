@@ -1438,31 +1438,83 @@ class ChatGPTImageGenerator:
         # than %-formatting it into the JS source — that avoids JS
         # injection / quote-escape bugs when ChatGPT image URLs contain
         # exotic characters.
+        # 2026-05-15 fix #2 — overcorrection regression. The first
+        # 2026-05-15 patch scoped the search to
+        # `[data-message-author-role="assistant"]` and excluded any URL
+        # carrying a `gizmo_id` query param. Live CDP DOM inspection
+        # (scripts/_diag_chatgpt_live_dom.py) proved BOTH wrong against
+        # the current ChatGPT UI:
+        #   * `[data-message-author-role="assistant"]` matches **0**
+        #     elements on the live page — ChatGPT now wraps turns in
+        #     `[data-testid^="conversation-turn"]` instead. So the
+        #     selector returned null and timed out even though the real
+        #     image was on screen.
+        #   * The real generated image URL is
+        #     `/backend-api/estuary/content?id=file_...&p=fs&...` — it
+        #     has `p=fs` (full-size) and **no** `gizmo_id`. The custom-GPT
+        #     *sidebar avatars* (incl. the 512×512 note logo) are the
+        #     ones carrying `gizmo_id` + `p=gpp`, and they all live
+        #     inside `<nav>`.
+        #   * Generated `<img>` elements report `naturalWidth/Height` of
+        #     0 for the first few seconds after they appear (alt is
+        #     `画像が生成されました`); they only settle to e.g. 1672×941
+        #     later. A point-in-time `w>=200` check rejected them.
+        # Corrected strategy — distinguish real image from placeholder
+        # WITHOUT a gizmo_id rule and WITHOUT a naturalWidth gate:
+        #   1. Scope to the LAST conversation turn via
+        #      `[data-testid^="conversation-turn"]` (with the legacy
+        #      assistant-role selector kept as a fallback). No turn =>
+        #      return null, never fall back to `document`.
+        #   2. Exclude anything inside `<nav>` — that is exactly where
+        #      the sidebar custom-GPT avatars / note-logo placeholder
+        #      live, so this single check kills the placeholder class.
+        #   3. Require the estuary URL to NOT be a `p=gpp` GPT-icon
+        #      variant (real generations are `p=fs`); avatar/icon token
+        #      blocklist retained as defence-in-depth.
+        #   4. Size check uses width||naturalWidth and a low floor only
+        #      to skip the 48×48 inline spinner thumbnails — the real
+        #      image's *attribute* width is already 480+ at t=0.
         select_js = """(skipArr) => {
             const skip = new Set(skipArr || []);
-            const turns = document.querySelectorAll(
-                '[data-message-author-role="assistant"]'
+            let turns = document.querySelectorAll(
+                '[data-testid^="conversation-turn"]'
             );
-            const root = turns.length
-                ? turns[turns.length - 1]
-                : document;
+            if (!turns.length) {
+                // Legacy UI fallback.
+                turns = document.querySelectorAll(
+                    '[data-message-author-role="assistant"]'
+                );
+            }
+            if (!turns.length) return null;  // no turn => no image yet
+            const root = turns[turns.length - 1];
             const imgs = Array.from(root.querySelectorAll('img'));
             const candidates = imgs
+                .filter(img => !img.closest('nav'))
                 .map(img => ({
                     src: img.src,
-                    w: img.naturalWidth || img.width || 0,
-                    h: img.naturalHeight || img.height || 0,
+                    // naturalWidth is 0 for several seconds after a
+                    // generated image first renders; fall back to the
+                    // layout width so a fresh image is not discarded.
+                    w: img.width || img.naturalWidth || 0,
+                    h: img.height || img.naturalHeight || 0,
+                    nw: img.naturalWidth || 0,
                     alt: img.alt,
                 }))
                 .filter(o =>
                     o.src
                     && (o.src.startsWith('https://') || o.src.startsWith('blob:'))
                     && o.w >= 200
-                    && o.h >= 200
                     && !/avatar|sprite|emoji|icon/.test(o.src)
+                    // `p=gpp` marks a custom-GPT app icon, never a
+                    // generated image (those are `p=fs`).
+                    && !/[?&]p=gpp(&|$)/.test(o.src)
                     && !skip.has(o.src)
                 )
-                .sort((a, b) => (b.w * b.h) - (a.w * a.h));
+                // Prefer the image whose pixels have actually loaded
+                // (naturalWidth settled), then the largest one.
+                .sort((a, b) =>
+                    (b.nw > 0) - (a.nw > 0) || (b.w * b.h) - (a.w * a.h)
+                );
             return candidates.length ? candidates[0].src : null;
         }"""
         while time.time() < deadline:

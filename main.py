@@ -26,6 +26,13 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
+# 2026-05-15 maintenance: HF Hub CloseWait hang (19th run, 17 min stall in Phase 2)
+# is addressed primarily via .env HF_HUB_OFFLINE=1 + TRANSFORMERS_OFFLINE=1 +
+# HF_HUB_DOWNLOAD_TIMEOUT=30. Process-wide socket.setdefaulttimeout() was
+# considered as defence-in-depth but rejected: it would cap Ollama generate
+# calls (4-5 min for gemma4:e4b) at 30s socket-read level, breaking the
+# pipeline. HF Hub's own HF_HUB_DOWNLOAD_TIMEOUT env handles that path.
+
 import yaml
 from dotenv import load_dotenv
 
@@ -306,7 +313,17 @@ def _codex_research_brief(article: dict) -> str:
     is empty so generation proceeds with the unchanged LLM-only path.
     The brief is injected at the end of the article prompt so Gemma3
     sees it as authoritative ground truth.
+
+    2026-05-15: User-controllable kill-switch. Codex CLI calls hit the
+    OpenAI subscription (GPT-5.4), which counts as "API usage" — set
+    ``CODEX_RESEARCH_ENABLED=false`` to bypass entirely. Default ON to
+    preserve existing flows, but trace runs that found 30+ min per
+    article were largely Codex-call wait time.
     """
+    if os.environ.get("CODEX_RESEARCH_ENABLED", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return ""
     try:
         from utils.codex_researcher import CodexResearcher
         researcher = CodexResearcher()
