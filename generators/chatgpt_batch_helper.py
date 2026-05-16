@@ -318,6 +318,78 @@ def _build_per_section_inline_prompts(
     return prompts
 
 
+def _log_image_failure_incidents(
+    cover_ok: bool,
+    inline_got: int,
+    inline_want: int,
+    had_dup_md5: bool,
+) -> None:
+    """Surface ops_incidents relevant to a ChatGPT image-gen failure.
+
+    2026-05-15: until now the RAG ``ops_incidents`` collection was only
+    queried by the text-generation pipeline (`_log_ops_incidents_banner`
+    in main.py) and the publish-time banner. The image pipeline never
+    read it — so when ChatGPT image gen broke (selector drift → 23,618-
+    byte note-logo placeholder → Unsplash fallback) the operator got no
+    hint that this was a *known* incident already recorded in the
+    registry. The user explicitly flagged this gap ("埋め込んでるのに
+    読まれないの?").
+
+    This wires the image pipeline into RAG: on a serious ChatGPT batch
+    failure we query ``ops_incidents`` and emit a ``[ops-banner:image]``
+    warning naming the most-similar past incidents, so a human (or
+    future-Claude) reading the log immediately sees "this is the known
+    selector-drift bug, the fix was X" instead of re-diagnosing.
+
+    Not a full auto-recovery — image-gen fixes need code changes — but
+    it makes the registry's knowledge actually reachable from here.
+    Suppressed by ``RAG_OPS_BANNER=false`` (same switch as the text
+    banner). Best-effort: silent on import / index failure.
+    """
+    if os.environ.get("RAG_OPS_BANNER", "true").lower() in (
+        "false", "0", "no", "off",
+    ):
+        return
+    symptom = (
+        "MD5 identical placeholder image duplicated across batch"
+        if had_dup_md5
+        else "no image element found / size-guard rejected small placeholder"
+    )
+    logger.warning(
+        "[ops-banner:image] ChatGPT image gen failed badly "
+        "(cover=%s inline=%d/%d, symptom: %s)",
+        cover_ok, inline_got, inline_want, symptom,
+    )
+    try:
+        from generators.rag_retriever import RagRetriever
+        retriever = RagRetriever()
+        hits = retriever.retrieve(
+            query=(
+                f"passage: ChatGPT image generation failure {symptom} "
+                "Brave Playwright selector placeholder Unsplash fallback"
+            ),
+            collection="ops_incidents",
+            top_k=3,
+            score_threshold=0.5,
+        )
+    except Exception as exc:  # noqa: BLE001 — never block image gen on RAG
+        logger.debug("[ops-banner:image] retrieval failed: %s", exc)
+        return
+    if not hits:
+        logger.warning(
+            "  no matching ops_incident — if this is a NEW failure mode, "
+            "add it to docs/knowledge/ops_incidents.md and re-ingest"
+        )
+        return
+    logger.warning(
+        "  %d known incident(s) — check the recorded fix before re-diagnosing:",
+        len(hits),
+    )
+    for h in hits:
+        title = h.metadata.get("section_title", "") if h.metadata else ""
+        logger.warning("  - (sim %.2f) %s", h.score, title[:90])
+
+
 def chatgpt_image_batch(
     title: str,
     content: str,
@@ -579,6 +651,18 @@ def chatgpt_image_batch(
     # matches what the article actually says.
     needs_cover_retry = cover is None
     needs_inline_retry = len(inlines) < inline_count
+    # 2026-05-15: wire the image pipeline into RAG. When ChatGPT failed
+    # badly (no cover, or more than half the inline slots empty) query
+    # ops_incidents so the log names any known incident behind it. Only
+    # fires when ChatGPT was actually attempted — a disabled-ChatGPT run
+    # falling straight to Pollinations is expected, not an incident.
+    if chatgpt_usable and (cover is None or len(inlines) * 2 < inline_count):
+        _log_image_failure_incidents(
+            cover_ok=cover is not None,
+            inline_got=len(inlines),
+            inline_want=inline_count,
+            had_dup_md5=bool(_dup_md5s),
+        )
     if (needs_cover_retry or needs_inline_retry) and is_pollinations_fallback_enabled():
         logger.warning(
             "ChatGPT batch incomplete (cover=%s, inline=%d/%d) "

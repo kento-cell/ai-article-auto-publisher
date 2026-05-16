@@ -455,51 +455,161 @@ class NotePublisher:
         page.wait_for_timeout(1000)
         logger.info("Body input via HTML clipboard paste")
 
+    # --- mermaid → clean step list ----------------------------------
+    #
+    # Node-label extraction. Mermaid wraps a node ID in a shape
+    # bracket whose label we want: ``A[label]`` ``A(label)``
+    # ``A{label}`` ``A([label])`` ``A[[label]]`` ``A((label))``.
+    # Each pattern is a *single, linear* match (no nested {0,N}
+    # quantifiers) to stay clear of catastrophic backtracking — the
+    # repo hit a 30-minute hang once from a nested-quantifier regex,
+    # so this is deliberate.
+    _MERMAID_NODE_SHAPES: tuple[tuple[str, str], ...] = (
+        (r"\(\[", r"\]\)"),   # A([rounded])
+        (r"\[\[", r"\]\]"),   # A[[subroutine]]
+        (r"\(\(", r"\)\)"),   # A((circle))
+        (r"\{\{", r"\}\}"),   # A{{hexagon}}
+        (r"\[", r"\]"),       # A[square]
+        (r"\(", r"\)"),       # A(rounded)
+        (r"\{", r"\}"),       # A{decision}
+        (r">", r"\]"),        # A>flag]  (asymmetric)
+    )
+
     @staticmethod
     def _mermaid_to_ascii(content: str) -> str:
-        """Convert mermaid code blocks to plain-text arrow flow diagrams.
+        """Convert mermaid code blocks into clean numbered step lists.
 
-        note.com doesn't render mermaid, and inline images are unreliable.
-        Convert to simple `A → B → C` arrow notation inside code blocks
-        (which note renders as monospace, preserving alignment).
+        note.com doesn't render mermaid, and the previous arrow-chain
+        renderer only understood ``A[label]`` nodes — ``{decision}``
+        and ``(rounded)`` shapes lost their label, leaving bare ID
+        characters (``B`` ``D`` ``G``) in the body. This rewrite:
+
+        * extracts labels from every common node shape,
+        * parses ``A --> B`` / ``A -- text --> B`` / ``A -->|text| B``
+          edges (edge text becomes a branch annotation),
+        * emits a ``**▼ フロー**`` heading followed by a numbered list,
+          with decision branches noted inline as ``(分岐: …)``.
+
+        All regexes are linear (no nested quantifiers) by design.
         """
-        mermaid_re = re.compile(r"```mermaid\s*\n(.*?)```", re.DOTALL)
+        mermaid_re = re.compile(r"```mermaid[^\n]*\n(.*?)```", re.DOTALL)
 
-        def replace(match):
-            mermaid_src = match.group(1).strip()
-            lines = []
-            # Extract simple node names from common mermaid patterns
-            # Matches: A[Label] --> B[Label]  or  A --> B
-            edge_re = re.compile(
-                r"(\w+)(?:\[([^\]]+)\])?\s*-->\s*(\w+)(?:\[([^\]]+)\])?"
+        # Build one alternation that captures (id, label) for any shape,
+        # plus a final bare-id alternative. Linear — each branch is a
+        # simple ``[^closing]*`` body, never nested.
+        shape_alts = []
+        for open_b, close_b in NotePublisher._MERMAID_NODE_SHAPES:
+            # The label body excludes the closing delimiter's first
+            # char to keep the match linear and greedy-safe.
+            inner = close_b[-1] if not close_b.startswith("\\") else close_b[1]
+            shape_alts.append(
+                rf"([A-Za-z0-9_]+){open_b}([^{re.escape(inner)}]*){close_b}"
             )
-            edges = edge_re.findall(mermaid_src)
-            if not edges:
+        # Bare node id (no shape) — lowest priority alternative.
+        shape_alts.append(r"([A-Za-z0-9_]+)")
+        node_token_re = re.compile("|".join(f"(?:{a})" for a in shape_alts))
+
+        def _node_label(token: str, labels: dict[str, str]) -> tuple[str, str]:
+            """Return (node_id, display_label) for one node token."""
+            token = token.strip().rstrip(";").strip()
+            m = node_token_re.match(token)
+            if not m:
+                return token, labels.get(token, token)
+            groups = [g for g in m.groups() if g is not None]
+            if not groups:
+                return token, labels.get(token, token)
+            node_id = groups[0]
+            label = groups[1].strip() if len(groups) > 1 else ""
+            if label:
+                labels[node_id] = label
+            return node_id, label or labels.get(node_id, node_id)
+
+        # Edge: <left> <arrow-with-optional-label> <right>
+        # Arrow forms handled:
+        #   -->            plain
+        #   -- text -->    label between dashes
+        #   -->|text|      label in pipes
+        # The label-capturing groups are simple ``[^|>]*`` bodies.
+        edge_re = re.compile(
+            r"(.+?)\s*"
+            r"(?:--\s*([^>|]*?)\s*-->|-->\s*\|([^|]*)\||-->|---)"
+            r"\s*(.+)"
+        )
+
+        # Mermaid diagram types that are NOT node/edge flowcharts —
+        # for these the step-list rendering is meaningless, so keep
+        # the source verbatim inside a plain code block.
+        _non_flowchart = (
+            "pie", "sequencediagram", "classdiagram", "statediagram",
+            "erdiagram", "gantt", "journey", "gitgraph", "mindmap",
+            "timeline", "quadrantchart", "xychart",
+        )
+
+        def replace(match: "re.Match[str]") -> str:
+            mermaid_src = match.group(1).strip()
+            first_line = mermaid_src.splitlines()[0].strip().lower() if mermaid_src else ""
+            if any(first_line.startswith(t) for t in _non_flowchart):
+                return "```\n" + mermaid_src + "\n```"
+            labels: dict[str, str] = {}
+            # Sequence of (node_id, label) in first-seen order.
+            order: list[str] = []
+            seen: set[str] = set()
+            # node_id -> list of branch annotations leading out of it.
+            branches: dict[str, list[tuple[str, str]]] = {}
+
+            def _register(node_id: str, label: str) -> None:
+                if label:
+                    labels[node_id] = label
+                if node_id not in seen:
+                    seen.add(node_id)
+                    order.append(node_id)
+
+            had_edge = False
+            for raw_line in mermaid_src.splitlines():
+                line = raw_line.strip().rstrip(";").strip()
+                if not line or line.lower().startswith(
+                    ("graph ", "flowchart ", "subgraph", "%%")
+                ):
+                    continue
+                em = edge_re.match(line)
+                if not em:
+                    # Standalone node declaration (e.g. ``A[label]``).
+                    nid, lbl = _node_label(line, labels)
+                    if nid:
+                        _register(nid, lbl)
+                    continue
+                had_edge = True
+                left, lbl_dash, lbl_pipe, right = em.groups()
+                src_id, src_lbl = _node_label(left, labels)
+                dst_id, dst_lbl = _node_label(right, labels)
+                _register(src_id, src_lbl)
+                _register(dst_id, dst_lbl)
+                edge_label = (lbl_dash or lbl_pipe or "").strip()
+                if edge_label:
+                    branches.setdefault(src_id, []).append(
+                        (edge_label, dst_id)
+                    )
+
+            if not had_edge and not order:
+                # Not a graph we understand — keep as plain code block.
                 return "```\n" + mermaid_src + "\n```"
 
-            # Build a sequence: node → node → node
-            seen_nodes = []
-            for src, src_label, dst, dst_label in edges:
-                src_name = src_label or src
-                dst_name = dst_label or dst
-                if not seen_nodes:
-                    seen_nodes.append(src_name)
-                seen_nodes.append(dst_name)
+            # Render: numbered step list in reading order. Decision
+            # nodes with >1 outgoing labelled edge get a branch note.
+            steps: list[str] = []
+            for idx, node_id in enumerate(order, start=1):
+                label = labels.get(node_id, node_id)
+                line = f"{idx}. {label}"
+                node_branches = branches.get(node_id, [])
+                if len(node_branches) >= 2:
+                    parts = [
+                        f"{txt}なら「{labels.get(dst, dst)}」"
+                        for txt, dst in node_branches
+                    ]
+                    line += "（分岐: " + " / ".join(parts) + "）"
+                steps.append(line)
 
-            # Format as a clean monospace arrow chain
-            # Wrap long chains: max 40 chars per line
-            chain = " → ".join(seen_nodes)
-            if len(chain) <= 60:
-                return "```\n" + chain + "\n```"
-
-            # Multi-line vertical flow
-            lines = []
-            for i, node in enumerate(seen_nodes):
-                lines.append(f"  [{node}]")
-                if i < len(seen_nodes) - 1:
-                    lines.append("    │")
-                    lines.append("    ▼")
-            return "```\n" + "\n".join(lines) + "\n```"
+            return "**▼ フロー**\n\n" + "\n".join(steps)
 
         return mermaid_re.sub(replace, content)
 

@@ -1,6 +1,6 @@
 # 運用インシデント・レジストリ
 
-_最終更新: 2026-05-14_
+_最終更新: 2026-05-15_
 
 ハルシネーション(`hallucination_registry.md`)とは別に、**運用上の手戻り**を
 1事案 1 H2 セクションで集約する。retry / re-publish / orphan / UI セレクタ
@@ -32,6 +32,9 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 12 | sanitizer `_EMPTY_BULLET_SINGLE_RE` 誤爆 (`- メリット:` 削除) | 2026-05-14 夜 | URL/reference label (公式/サイト/ニュース/URL/出典 等) 限定に変更 (Codex Medium) | ✅ 修正済 |
 | 13 | borderline-B regen feedback が旧 4000-5500 target で「具体例厚く」と促す → 偽引用増殖 | 2026-05-14 夜 | new 2200-3500 target + 「元ソース外の固有名詞は追加禁止」明記 (Codex Critical #2) | ✅ 修正済 |
 | 14 | Writer prompt の「△△の専門家は〜と指摘」型が架空引用誘発 | 2026-05-14 夜 | prompts.yaml で 「肩書きベース引用は元ソース URL 裏取り必須」明示 (Codex High #5) | ✅ 修正済 |
+| 15 | ChatGPT 画像セレクタ漂流 → 23618B placeholder → Unsplash 連発 | 2026-05-15 | chatgpt_image_generator.py セレクタを `[data-testid^=conversation-turn]` に修正 + 画像パイプラインを RAG `ops_incidents` に配線 | ✅ 修正済 |
+| 16 | Phase 2 で forbidden regex の catastrophic backtracking → 30分ハング | 2026-05-15 | settings.yaml の接続詞 regex を 1段 quantifier の線形形に書換 + objective_scorer に接続詞 count gate | ✅ 修正済 |
+| 17 | RAG retriever が記事ごとに SentenceTransformer 再生成 → HF Hub HEAD で CloseWait ハング疑い | 2026-05-15 | `.env` に `HF_HUB_OFFLINE=1` `TRANSFORMERS_OFFLINE=1` (cache 前提、外部通信ゼロ) | ✅ 緩和済 |
 
 ---
 
@@ -199,6 +202,84 @@ post-processor で deterministic に変換する。同パターン (markdown 構
 (Gemma3 で実証済) は **rescue/expand 時に検証済ファクトを inline で再注入** する
 セカンドパスが効果的。`scripts/_rewrite_paid_articles.py` の WASP_FACTS/CISCO_FACTS
 パターン参照。
+
+---
+
+## 15. ChatGPT 画像セレクタ漂流 → placeholder → Unsplash 連発
+
+**事象:** 2026-05-15 note 3 記事 publish 時、ChatGPT 画像生成が cover + inline
+を全部 23,618 byte の同一 placeholder (note カスタム GPT アプリのアイコン) で
+返し、size guard が弾いて全画像が Unsplash 写真 fallback になった。ユーザーの
+「文字入りインフォグラフィック画像」要望と乖離。
+
+**原因:** `chatgpt_image_generator.py` の生成画像取得セレクタが
+`[data-message-author-role="assistant"]` を使用していたが、ChatGPT が UI を
+変更し現行 DOM は `[data-testid^="conversation-turn"]`。旧セレクタは 0 ヒット
+→ assistant turn が見つからず `document` 全体に fallback → サイドバーの
+カスタム GPT「note」アプリのアイコン (512×512、生成画像と同じ
+`backend-api/estuary/content` host で配信、`avatar|icon` トークン無し) を
+誤取得。さらに `naturalWidth=0` の生成直後画像をサイズフィルタで弾いていた。
+
+**対策 (実装済み):**
+- ターン特定を `[data-testid^="conversation-turn"]` に変更 (旧 role セレクタは legacy fallback に降格)
+- placeholder 排除を `!closest('nav')` に一本化 (カスタム GPT アイコンは全て nav 配下)
+- `naturalWidth=0` の若い画像を捨てず、レイアウト幅優先 + ロード済み優先ソート
+- 単体テスト `scripts/_test_chatgpt_image_fix.py` で実画像 2.2MB download を確認
+- **画像パイプラインを RAG に配線**: `chatgpt_batch_helper._log_image_failure_incidents`
+  が ChatGPT batch 重大失敗 (cover 無し / inline 過半数失敗) 時に `ops_incidents` を
+  query して `[ops-banner:image]` 警告を出す。従来 RAG は本文生成と publish バナーに
+  しか配線されておらず、画像失敗知識が活きていなかった
+
+**How to apply:** ChatGPT 画像が placeholder / 小サイズばかりになったら、まず
+ChatGPT の UI 変更を疑う。DOM セレクタ (`conversation-turn` 等) が現行と一致
+するか `scripts/_diag_chatgpt_cdp.py` で確認。ChatGPT は UI を予告なく変える
+ので、セレクタは陳腐化する前提で扱う。
+
+---
+
+## 16. Phase 2 で forbidden regex の catastrophic backtracking → 30分ハング
+
+**事象:** 2026-05-15 generate の Phase 2 で、ある記事のスコアリング中に
+プロセスが 30分以上 CPU 100% で沈黙。Ollama も idle、ログも進まない。
+runs 19・20 で再現。
+
+**原因:** `config/settings.yaml` の AI 接続詞検出 regex
+`そのため(?:[^。]{0,80}。[^そ]{0,300}){2,}そのため` が nested bounded
+quantifier を持ち、gemma4:e4b の 7-8k 字出力 (接続詞多用) に対し
+catastrophic backtracking を起こした。`objective_scorer._score_forbidden_phrases`
+の `re.findall` が C 拡張内で GIL を握ったまま指数時間。
+
+**対策 (実装済み):**
+- `settings.yaml` / `.example` の 3 regex を 1段 quantifier の線形形
+  `(?:そのため[^。]{0,400}。\s*){3,}` に書換 (意図「3連発検出」は不変)
+- `objective_scorer._score_forbidden_phrases` に接続詞 count gate
+  (`article.count(接続詞) < 3` なら regex skip) + per-pattern timing log
+
+**How to apply:** forbidden_phrases / sanitizer の regex に
+`(?:...{0,N}...{0,M}){2,}` 形の nested quantifier を絶対に書かない。
+線形マッチで表現する。新規 regex は長文 (8k字) でタイミング検証する。
+
+---
+
+## 17. RAG retriever が記事ごとに SentenceTransformer 再生成 → HF Hub ハング疑い
+
+**事象:** 2026-05-15 generate の Phase 2 で沈黙ハング。kill 時に AWS / Google
+向け TCP が CloseWait 状態で残存。
+
+**原因 (疑い):** `rag_retriever.py` が記事処理ごとに `SentenceTransformer` を
+fresh インスタンス化し、その都度 HF Hub に ETag / HEAD チェックを発行。
+HF Hub の CDN への接続が CloseWait のまま read を待つ疑い。なお真因は
+incident 16 (regex backtracking) の方だったが、HF Hub への不要な通信は
+独立した問題として残る。
+
+**対策 (実装済み):**
+- `.env` に `HF_HUB_OFFLINE=1` `TRANSFORMERS_OFFLINE=1` `HF_HUB_DOWNLOAD_TIMEOUT=30`
+  を設定。embedding / reranker モデルは既にローカル cache 済なので、HF Hub への
+  round-trip を完全に止める。「外部 API 利用ゼロ」要件とも一致
+
+**How to apply:** RAG / embedding モデルは初回 `build_rag_index.py` 実行時のみ
+online 取得。以降は `HF_HUB_OFFLINE=1` で cache 専用。SentenceTransformer の
+module-level キャッシュ化 (記事ごとの再生成をやめる) は恒久対策として未実施。
 
 ---
 
