@@ -323,6 +323,17 @@ Xbox rebrand / History of IDEs / Motorola Razr Fold) を内容濃度評価した
 LLM に渡る経路を作らない。publish 済み 25th–27th 記事は事後修正不能、
 grounding 修正後に再 generate した記事で置き換える方針。
 
+**検証 (2026-05-17):** 同じ 4 トピックを `scripts/_regen_28th_test.py` で
+backfill 修正ありで再生成。全 4 記事で本文中の引用・固有名詞・数値が
+ソースに実在することを確認 (Bill: Protect Our Games Act / Monitz Katzner /
+60日通知 / The Crew、Xbox: Asha Sharma の X 投票、IDEs: Jeff Dean 帰属 +
+2011/2013/2020/2021 + Cider/VSCode、Razr: 10.1mm/IP49/6,200nit/pOLED —
+すべて一次ソースに FOUND)。**学び: gemma4:e4b はソース本文さえあれば逐語
+引用しスコープも守る。捏造は「モデル能力」ではなく「入力欠落」が原因
+だった** — prompt/model をいじる前に入力 grounding を疑うこと。
+副次効果: `subj_evaluator` の `research_brief` (main.py: `article["content"]`)
+にも実ソースが渡り、accuracy 検証が機能するようになった。
+
 ---
 
 ## 運用ルール

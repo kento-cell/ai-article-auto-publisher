@@ -250,13 +250,28 @@ Article not found: note-I asked 4 AIs to pic-f8f3f755
   取得成功 (arstechnica 3.7k字, theverge 1.5k字, blog 6k字, arstechnica 6k字)。
 - `docs/knowledge/ops_incidents.md` に事象 #18 追記。
 
-### Next Resume Actions
+### 再生成・検証の結果 (2026-05-17 午後)
 
-1. **28th の 4 記事は publish 禁止** (捏造のため)。grounding 修正後に
-   再 generate した記事で置き換える。
-2. RAG 再 ingest: `py scripts/build_rag_index.py` (ops_incidents #18 反映)。
-3. 未コミット変更を commit (28th 修正 + 価格修正 + prompt 強化 + 診断 script)。
-4. 再 generate → 内容濃度を再評価 (今度は本文 grounding ありで)。
-5. `.env` の `NOTE_ALLOW_NO_CODEX_BRIEF=1` は backfill 導入後は不要。
-   外しても grounding ありの記事は通る (本文取得失敗時のみ reject される)。
-6. 25th–27th publish 済み 8 本 (捏造) の扱いをユーザー判断 — 削除 / 編集 / 放置。
+- **28th 4 記事を `scripts/_regen_28th_test.py` で再生成** — backfill 修正あり。
+  全 4 記事 grade B (score 91.7–93.8)。`data/articles/` の旧 garbage を上書き。
+- **引用忠実性を一次ソースと機械照合 → 全 4 記事クリア。** 引用・固有名詞・
+  数値がすべてソースに実在 (Protect Our Games Act / Monitz Katzner / 60日通知 /
+  Jeff Dean 帰属 / 2011-2021 各年 / Razr 10.1mm/IP49/6,200nit 等)。捏造ゼロ。
+- **学び:** gemma4:e4b はソース本文さえあれば逐語引用しスコープも守る。
+  捏造は入力欠落が原因でモデル能力の問題ではなかった。
+- **追加修正 (commit `acaef71`):** `_fix_markdown_structure` に restarted
+  numbered heading 降格を追加。Writer が `## 1.`-`## 5.` の途中でサブ節を
+  `## 1.` `## 2.` と再開し outline を壊す問題。Bill/Xbox の各 3 見出しを
+  H2→H3 に降格 (4 記事へ適用済)。
+- commit: `85a4ed3` (価格+prompt) / `8f463d8` (grounding) / `acaef71` (heading)。
+
+### 残課題
+
+1. **画像クエリの誤爆** — 4 記事とも Unsplash 画像がトピック不一致
+   (Bill=書籍, IDEs=瞑想ポーズ, Razr=映画クルー)。`_extract_image_query` /
+   `_IMAGE_MOOD_RULES` のmood修飾子が誤発火。未着手 (別サブシステム)。
+2. **28th 4 記事の publish** — 内容は検証済みで publish 可。ユーザー指示で
+   全 note ¥0 (`_publish_free_first.py --free-first 99`)。Sheets 承認が必要。
+3. **25th–27th publish 済み 8 本 + それ以前の英語 Reddit 記事 20本超** —
+   全て同じ捏造経路。削除 or 再生成+edit_article 差し替えをユーザー判断。
+4. `.env` の `NOTE_ALLOW_NO_CODEX_BRIEF=1` は backfill 導入後は実質不要。
