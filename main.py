@@ -1493,33 +1493,44 @@ def _extract_area_hint(article: dict) -> str:
     return m.group(1) if m else ""
 
 
+_NUMBERED_HEADING_RE = re.compile(r"^(#{2,3})\s+(\d+)\.\s")
+
+
 def _fix_markdown_structure(content: str) -> str:
     """Fix common Markdown structure issues from LLM output.
 
-    - Convert lone H1 in body to H2
-    - If fewer than 2 H2 headings, split long paragraphs with H2 headings
-    - Ensure no H1 in body (only title)
+    - Convert lone H1 in body to H2 (H1 is reserved for the article title).
+    - Demote a *restarted* run of numbered H2 headings to H3. The Writer
+      often emits sub-section bullets as ``## 1.`` / ``## 2.`` even though
+      a ``## 1.``–``## 5.`` top-level sequence is already running, which
+      breaks the article outline. A numbered ``## N.`` whose N is not
+      greater than the highest top-level number already seen is treated
+      as a restarted sub-section and demoted.
     """
     lines = content.split("\n")
     result = []
-    h2_count = 0
+    top_max = 0
 
     for line in lines:
-        # Convert ALL H1 in body to H2 (H1 is reserved for article title only)
+        # Convert ALL H1 in body to H2 (H1 is reserved for article title).
         stripped = line.lstrip()
         if stripped.startswith("# ") and not stripped.startswith("## "):
-            result.append(line.replace("# ", "## ", 1))
-            h2_count += 1
-        elif line.startswith("## "):
-            h2_count += 1
-            result.append(line)
-        else:
-            result.append(line)
+            line = line.replace("# ", "## ", 1)
+
+        match = _NUMBERED_HEADING_RE.match(line.lstrip())
+        if match and match.group(1) == "##":
+            number = int(match.group(2))
+            if number > top_max:
+                top_max = number          # next top-level section
+            else:
+                # Numbering restarted → sub-section emitted as H2. Demote.
+                line = line.replace("## ", "### ", 1)
+
+        result.append(line)
 
     # NOTE: Do NOT auto-inject H2 headings.
-    # Gemma3 sometimes generates H3 headings with numbers (### 1. XXX).
+    # Gemma sometimes generates H3 headings with numbers (### 1. XXX).
     # Injecting "## 概要" etc at arbitrary positions breaks the flow.
-    # Better to rely on prompt enforcement + H1→H2 conversion only.
 
     return "\n".join(result)
 
