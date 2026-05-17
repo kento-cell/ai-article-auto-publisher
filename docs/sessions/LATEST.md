@@ -179,3 +179,84 @@ Article not found: note-I asked 4 AIs to pic-f8f3f755
 1. 上記 4 記事の価格を手動修正 (¥300→¥500)
 2. このセッションのコード変更を commit (未コミット)
 3. note `_set_price` 価格入力欄セレクタの恒久修正 (UI 漂流対応)
+
+---
+
+## 2026-05-16 14:50 セッション中断ポイント (ユーザー指示で中断)
+
+**走行中プロセス: なし** (28th generate は 14:41 完走済)。常駐の `bot/slack_bot.py` ×2 のみ残置。
+
+### このセッション後半 (午前〜午後) の追加成果
+
+- **価格バグ恒久修正完了** — `_set_price` の価格入力欄セレクタ漂流を修正
+  (`input#price` 等を追加)。27th publish で **¥500 正価格での投稿を実証**。
+  → コミット `d7f9204` 以降の `note_publisher.py` 変更は**未コミット**。
+- **note prompt 二段強化** (`config/prompts.yaml`、未コミット):
+  1. `【絶対ルール — 出典・引用】` 追加 — citation 合格率 1→3 件に改善
+  2. `【内容の濃さ】` 追加 (2026-05-16) — 一般論での字数稼ぎ禁止、元ソースの
+     固有名詞/数値/5W1H の展開強制、mermaid 1 個まで、字数より密度
+- **publish 実績**: 25th note 3 / 26th note 3 / 27th note 2 = 計 8 記事
+  (27th の 2 記事は ¥500 正価格 ✓)
+
+### 🔻 中断時点の未完了タスク (再開時はここから)
+
+1. **28th generate の note 4 記事を評価** — 内容濃度 prompt 強化後の初記事。
+   ⏳承認待ちで Sheets 登録済:
+   - Bill to block publishers from... / Xbox is rebranding to XBOX /
+     A History of IDEs at Google / Motorola Razr Fold review
+   - data/articles の該当 json content を Claude が読み、前回読んだ 3 記事
+     (The Feed Is Fake / Power Prices / OpenAI) と比べて「濃くなったか」判定。
+     一般論で薄まっていないか、元ソースの具体が展開されているか。
+   - 改善不十分なら prompt をさらに試行錯誤 (deep_dive outline 調整 / word_count target 引き下げ)。
+2. 濃さ OK なら publish: `py scripts/_bulk_approve_note_only.py` →
+   `py scripts/_publish_free_first.py --free-first 0` (全 paid)。
+   - ⚠️ ChatGPT 画像レート制限注意 — 27th で `no image found` 多発。
+     今日大量に画像生成したため日次上限の疑い。時間を置けば回復見込み。
+3. **未コミット変更を commit**: `note_publisher.py` (価格修正) +
+   `config/prompts.yaml` (prompt 二段強化) + 診断スクリプト
+   (`scripts/_diag_note_price_cdp.py` 等)。
+4. ¥300 で投稿済みの 4 記事 (n66ebefddc10c / n8cae511a87a9 / n5f961d8ded4d /
+   nd0f6d7b94b9f) の価格を note ダッシュボードで ¥500 に手動修正。
+
+---
+
+## 2026-05-17 セッション — note 記事「全引用捏造」のルートコーズ修正
+
+再開タスク #1 (28th 4 記事の濃度評価) を実施したところ、濃度以前の**重大な
+構造欠陥**が判明。
+
+### 判明したこと
+
+- 28th の note 4 記事 (Bill / Xbox / IDEs / Razr Fold) は全 grade B・approve
+  だが、本文の `> "..."` 引用ブロックが**全部捏造**。元ソースに無い英文を
+  でっち上げていた。記事も抽象的処世訓ばかりで「タイトル負け」状態。
+- **ルートコーズ:** note のネタ元 Reddit リンク投稿は `selftext` が空 →
+  `reddit_collector` が `content=""` で渡す。grounding 担当の
+  `_codex_research_brief` は `.env` の `CODEX_RESEARCH_ENABLED=false` +
+  `NOTE_ALLOW_NO_CODEX_BRIEF=1` で完全無効。結果 Writer は
+  `note_article_prompt` の `【本文抜粋】{content}` が空のまま、タイトルと
+  URL だけで 5000 字超を創作していた。
+- 25th–27th の publish 済み note 8 本も同じ経路。**事後修正は不能**。
+
+### 実施した修正 (main.py, 未コミット)
+
+- `_fetch_article_text(url)` 追加 — requests + BeautifulSoup でリンク先記事の
+  本文 `<p>` を抽出 (重複段落除去, 6000字 cap)。
+- `_backfill_source_content(article)` 追加 — `content` が 400字未満かつ
+  非 reddit の http URL があればリンク先本文を取得して埋める。
+- `_generate_single_article` の grounding gate を「Codex brief **または**
+  source body」で判定するよう変更。両方欠落時のみ fail-closed。
+- 検証済: import OK / `test_hallucination_deny.py` PASS / 4 URL 全てで本文
+  取得成功 (arstechnica 3.7k字, theverge 1.5k字, blog 6k字, arstechnica 6k字)。
+- `docs/knowledge/ops_incidents.md` に事象 #18 追記。
+
+### Next Resume Actions
+
+1. **28th の 4 記事は publish 禁止** (捏造のため)。grounding 修正後に
+   再 generate した記事で置き換える。
+2. RAG 再 ingest: `py scripts/build_rag_index.py` (ops_incidents #18 反映)。
+3. 未コミット変更を commit (28th 修正 + 価格修正 + prompt 強化 + 診断 script)。
+4. 再 generate → 内容濃度を再評価 (今度は本文 grounding ありで)。
+5. `.env` の `NOTE_ALLOW_NO_CODEX_BRIEF=1` は backfill 導入後は不要。
+   外しても grounding ありの記事は通る (本文取得失敗時のみ reject される)。
+6. 25th–27th publish 済み 8 本 (捏造) の扱いをユーザー判断 — 削除 / 編集 / 放置。

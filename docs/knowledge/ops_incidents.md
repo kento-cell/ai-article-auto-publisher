@@ -1,6 +1,6 @@
 # 運用インシデント・レジストリ
 
-_最終更新: 2026-05-15_
+_最終更新: 2026-05-17_
 
 ハルシネーション(`hallucination_registry.md`)とは別に、**運用上の手戻り**を
 1事案 1 H2 セクションで集約する。retry / re-publish / orphan / UI セレクタ
@@ -35,6 +35,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 15 | ChatGPT 画像セレクタ漂流 → 23618B placeholder → Unsplash 連発 | 2026-05-15 | chatgpt_image_generator.py セレクタを `[data-testid^=conversation-turn]` に修正 + 画像パイプラインを RAG `ops_incidents` に配線 | ✅ 修正済 |
 | 16 | Phase 2 で forbidden regex の catastrophic backtracking → 30分ハング | 2026-05-15 | settings.yaml の接続詞 regex を 1段 quantifier の線形形に書換 + objective_scorer に接続詞 count gate | ✅ 修正済 |
 | 17 | RAG retriever が記事ごとに SentenceTransformer 再生成 → HF Hub HEAD で CloseWait ハング疑い | 2026-05-15 | `.env` に `HF_HUB_OFFLINE=1` `TRANSFORMERS_OFFLINE=1` (cache 前提、外部通信ゼロ) | ✅ 緩和済 |
+| 18 | note 記事が見出しだけから生成され全引用が捏造 (Reddit リンク投稿は `selftext` 空 + Codex grounding 無効) | 2026-05-17 | main.py `_fetch_article_text` / `_backfill_source_content` でリンク先本文を取得 → grounding gate に `has_source_content` 追加 | ✅ 修正済 |
 
 ---
 
@@ -280,6 +281,47 @@ incident 16 (regex backtracking) の方だったが、HF Hub への不要な通�
 **How to apply:** RAG / embedding モデルは初回 `build_rag_index.py` 実行時のみ
 online 取得。以降は `HF_HUB_OFFLINE=1` で cache 専用。SentenceTransformer の
 module-level キャッシュ化 (記事ごとの再生成をやめる) は恒久対策として未実施。
+
+---
+
+## 18. note 記事が見出しだけから生成され、全引用が捏造される
+
+**事象:** 2026-05-17、28th generate の note 4 記事 (Bill to block publishers /
+Xbox rebrand / History of IDEs / Motorola Razr Fold) を内容濃度評価したところ、
+本文中の `> "..."` 引用ブロックが**すべて捏造**。元ソースに存在しない英語の
+文をでっち上げて媒体名を付与していた。記事自体も元ソースの固有名詞・数値・
+5W1H をほぼ含まず、抽象的な処世訓で字数を埋めた「タイトル負け」状態。
+25th–27th の publish 済み note 記事 (計 8 本) も同じ経路で生成されている。
+
+**原因:**
+- note 記事のネタ元は Reddit (`r/technology` / `r/programming`)。これらは
+  **リンク投稿**で `reddit_collector.py` は `post_data["selftext"]` (= 空文字列)
+  を `content` に入れる。リンク先記事の本文は一切取得していなかった。
+- 本来 note の grounding は `_codex_research_brief` (Codex CLI web 検索) が担う
+  設計だが、`.env` で `CODEX_RESEARCH_ENABLED=false` (API 課金回避) + 
+  `NOTE_ALLOW_NO_CODEX_BRIEF=1` (fail-closed gate バイパス) になっており、
+  grounding が完全に無効。
+- 結果、Writer (gemma4:e4b) は `note_article_prompt` の `【本文抜粋】{content}`
+  が空のまま、**タイトル ({title}) と URL だけ**を見て 5000 字超を生成 →
+  引用も事実も全部 LLM の創作。objective_scorer は元ソースのドメイン
+  (arstechnica/theverge) が Tier1 なので evidence_level=A を付け、citation_format
+  緩和ルール (URL 不問で 2+ 引用なら B) が捏造引用を素通しさせていた。
+
+**対策 (実装済み, 2026-05-17):**
+- `main.py` に `_fetch_article_text(url)` を追加 — requests + BeautifulSoup で
+  リンク先記事の `<article>`/`<main>` 内 `<p>` を抽出 (重複段落除去, 6000字 cap)。
+- `main.py` に `_backfill_source_content(article)` を追加 — `content` が
+  `_MIN_SOURCE_CONTENT_CHARS` (400) 未満かつ非 reddit の http URL があれば
+  リンク先本文を取得して `article["content"]` を埋める。
+- `_generate_single_article` の grounding gate を「Codex brief **または**
+  source body のどちらか」で grounded 判定するよう変更。両方欠落時のみ
+  fail-closed (従来は Codex brief 単独で判定)。
+
+**How to apply:** 新しい収集ソースを足すときは `content` が実体を持つか必ず
+確認する。リンク集約系 (Reddit / HN / はてブ) は投稿本文が空になりがちで、
+本文取得 backfill を通さないと Writer が全捏造する。`{content}` が空のまま
+LLM に渡る経路を作らない。publish 済み 25th–27th 記事は事後修正不能、
+grounding 修正後に再 generate した記事で置き換える方針。
 
 ---
 

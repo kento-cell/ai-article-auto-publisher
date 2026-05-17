@@ -351,6 +351,91 @@ def _codex_research_brief(article: dict) -> str:
         return ""
 
 
+# Minimum usable source-body length. Below this the {content} block is
+# effectively empty and the Writer fabricates quotes from the headline.
+_MIN_SOURCE_CONTENT_CHARS = 400
+
+
+def _fetch_article_text(url: str, timeout: int = 15) -> str:
+    """Fetch a URL and extract the main article body text.
+
+    Reddit link posts only carry a headline, so the linked article is
+    the real source material. Generic ``<p>``-within-``<article>``
+    extraction covers the news sites this pipeline sees (Ars Technica,
+    The Verge, Gizmodo, dev blogs). Returns ``""`` on any failure — the
+    caller decides whether the missing grounding is fatal.
+    """
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return ""
+    try:
+        resp = requests.get(
+            url,
+            timeout=timeout,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0 Safari/537.36"
+                ),
+            },
+        )
+        resp.raise_for_status()
+    except Exception as exc:
+        logger.warning("[grounding] fetch failed for %s: %s", url, exc)
+        return ""
+
+    try:
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(
+            ["script", "style", "nav", "header", "footer",
+             "aside", "form", "noscript"]
+        ):
+            tag.decompose()
+        root = soup.find("article") or soup.find("main") or soup.body or soup
+        seen: set[str] = set()
+        kept: list[str] = []
+        for para in root.find_all("p"):
+            text_p = para.get_text(" ", strip=True)
+            if len(text_p) < 40 or text_p in seen:
+                continue
+            seen.add(text_p)
+            kept.append(text_p)
+        return "\n".join(kept)[:6000].strip()
+    except Exception as exc:
+        logger.warning("[grounding] parse failed for %s: %s", url, exc)
+        return ""
+
+
+def _backfill_source_content(article: dict) -> None:
+    """Populate ``article['content']`` from the linked article when empty.
+
+    Reddit link posts arrive with an empty ``selftext``, so the Writer
+    sees a blank 【本文抜粋】 and fabricates quotes from the headline.
+    Mutates *article* in place; no-op when content is already present
+    or no fetchable external URL exists.
+    """
+    if len((article.get("content") or "").strip()) >= _MIN_SOURCE_CONTENT_CHARS:
+        return
+    url = (article.get("url") or "").strip()
+    if not url.startswith("http") or "reddit.com" in url:
+        return
+    fetched = _fetch_article_text(url)
+    if len(fetched) >= _MIN_SOURCE_CONTENT_CHARS:
+        article["content"] = fetched
+        logger.info(
+            "[grounding] backfilled %d chars of source content from %s",
+            len(fetched), url,
+        )
+    else:
+        logger.warning(
+            "[grounding] could not backfill source content from %s "
+            "(article will rely on other grounding or be rejected)", url,
+        )
+
+
 _LEARNED_BLOCK_CACHE: dict[str, str] = {}
 
 # Parallel cache holding the *structured* learn stats so
@@ -2965,34 +3050,50 @@ def _generate_single_article(
     # run (``_regen_feedback`` non-empty) is exempt because by then
     # Codex already failed once and retrying in-band would just burn
     # budget — the caller will re-score and decide.
+    # Backfill empty source content before the grounding gate. Reddit
+    # link posts carry only a headline; without the linked article's
+    # text the Writer fabricates quotes. Note-only — Zenn's RSS/arXiv
+    # sources already ship body text.
+    if platform == "note":
+        _backfill_source_content(article)
+    has_source_content = (
+        len((article.get("content") or "").strip()) >= _MIN_SOURCE_CONTENT_CHARS
+    )
+
     research_block = ""
     if platform == "note":
         research_block = _codex_research_brief(article)
-        if not research_block and not _regen_feedback:
-            # Fail-closed when Codex grounding is unavailable: original
-            # purpose was to keep gourmet/spot articles from naming
-            # made-up stores. But Codex is currently unreliable on this
-            # box (Windows sandbox CreateProcessAsUserW errors), and
-            # AI/tech note articles don't need store verification at
-            # all. Allow opt-out via env var so the user can ship
-            # AI notes during Codex outages.
+        # A note article is grounded if it has EITHER a Codex web brief
+        # OR real source body text. With both missing the Writer sees
+        # only a headline and fabricates quotes — fail-closed.
+        if (
+            not research_block
+            and not has_source_content
+            and not _regen_feedback
+        ):
+            # Allow opt-out via env var so the user can ship AI notes
+            # during Codex outages — but with source-content backfill
+            # in place this branch should now rarely fire (only when
+            # the linked article itself could not be fetched).
             allow_no_brief = os.environ.get(
                 "NOTE_ALLOW_NO_CODEX_BRIEF", ""
             ).strip().lower() in {"1", "true", "yes", "on"}
             if allow_no_brief:
                 logger.warning(
-                    "[note] Codex brief empty — proceeding anyway "
+                    "[note] no grounding (Codex brief + source body "
+                    "both empty) — proceeding anyway "
                     "(NOTE_ALLOW_NO_CODEX_BRIEF=1)"
                 )
             else:
                 logger.warning(
-                    "[note] Codex research brief is empty — rejecting "
-                    "article rather than generating ungrounded content. "
-                    "Set NOTE_ALLOW_NO_CODEX_BRIEF=1 to bypass."
+                    "[note] no grounding (Codex brief empty AND source "
+                    "body could not be fetched) — rejecting rather than "
+                    "generating fabricated content. Set "
+                    "NOTE_ALLOW_NO_CODEX_BRIEF=1 to bypass."
                 )
                 return {
                     "rejected": True,
-                    "reason": "research brief empty (fail-closed)",
+                    "reason": "ungrounded (no brief, no source body)",
                     "title": article.get("title", ""),
                     "platform": platform,
                     "source": article.get("source", ""),
