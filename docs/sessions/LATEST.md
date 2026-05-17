@@ -304,4 +304,41 @@ Article not found: note-I asked 4 AIs to pic-f8f3f755
 
 `85a4ed3` 価格+prompt / `8f463d8` grounding / `acaef71` heading /
 `ba1dc4b` citation_format 緩和 / `b0ceb1d` garbage 監査・再生成 script /
-+ docs commit 2件。
+`b1215f4` overnight orchestrator / `1827fb6` content-only finisher /
++ docs commit 数件。
+
+---
+
+## 2026-05-18 早朝 — 22記事ライブ差し替え 完了
+
+ユーザー就寝中に「最後まで」自走。
+
+### 結果サマリ
+
+**全 26 記事（28th 4 + 有料22）で捏造コンテンツを撲滅、grounding 済み本文が live。**
+
+- **28th 4記事** — grounded 本文 + ChatGPT 画像。完了・検証済。
+- **有料22記事のライブ差し替え:**
+  - **16記事 = grounded 本文 + ChatGPT cover+inline 画像** — バッチ1(5) +
+    バッチ2(5) + バッチ3一部(Meta/Wasp) + 28th 4。og:image を ChatGPT PNG
+    (アップロードID 277018983〜277032270) で検証済。
+  - **10記事 = grounded 本文のみ差し替え (画像は既存のまま)** — ChatGPT 画像
+    日次上限が 04:00 頃 (約60枚生成後) に枯渇しスキップ。`_finish_garbage_swap.py`
+    で本文だけ edit_article (10/10 OK, 偽FAIL なし)。Cloudflare で
+    ライブ body = 再生成本文を照合確認。
+
+### 🔻 残タスク (次セッション)
+
+1. **10記事の ChatGPT 画像差し替え** — 上限リセット後に実行。対象 slug:
+   Cisco_s_stock_pops / Louis_Rossmann_taunt / Microsoft_s_Edge_Cop /
+   PCOS / Louis_Rossmann_tells / Reddit_Starts_Blocki / _Cannot_be_explained /
+   Judge_rules_DOGE / Cloudflare / GameStop。
+   実行: `py scripts/_regen_today_note_with_chatgpt.py <slug...>` (Brave 停止後)。
+   ※ ChatGPT 画像は約60枚/日が上限の模様 — 1日 ~12記事までが安全圏。
+2. CDN キャッシュ反映後、10記事の og:image / inline を最終目視確認。
+3. `_finish_garbage_swap.py` の inline 画像が body に入ったか要確認
+   (note API body で 277xxx 画像 ID が 0 だった — 本文は確実に差し替え済)。
+
+### overnight commit
+
+`b1215f4` orchestrator / `1827fb6` finisher。
