@@ -42,10 +42,10 @@ logger = logging.getLogger("regen_today_note")
 
 
 TARGETS = [
-    "note-Louis_Rossmann_tells-d59475f2",
-    "note-_Cannot_be_explained-5f05d53b",
-    "note-Suno___Udio_で生成した_BG-e8d8db64",
-    "note-Reddit_Starts_Blocki-9e0633a0",
+    "note-Bill_to_block_publis-96763b3f",
+    "note-Xbox_is_rebranding_t-cc3512f2",
+    "note-A_History_of_IDEs_at-70de8f73",
+    "note-Motorola_Razr_Fold_r-dfa4bb53",
 ]
 
 
