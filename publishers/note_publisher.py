@@ -870,20 +870,37 @@ class NotePublisher:
 
         The publish-settings page shows a 記事タイプ section with 無料 /
         有料 radio buttons. Selecting 有料 reveals a 価格 input plus a
-        「有料エリア設定」 step. The price input is a plain text field
-        with `inputmode="numeric"` rather than `type="number"` — the
-        previous selector missed it and the price stayed at the 300-yen
-        placeholder. Multiple selector fallbacks cover note UI revisions.
+        「有料エリア設定」 step.
+
+        Current DOM (verified via CDP 2026-05-16, BitLocker article):
+          * 有料 radio = ``<input type="radio" id="paid" name="is_paid"
+            value="paid">`` — but it is a styled-components *hidden*
+            radio (visible=false); the clickable target is the wrapping
+            ``<label>有料</label>``, so the label selector must come
+            first or every visibility-gated attempt fails.
+          * 価格 input = ``<input type="text" id="price"
+            placeholder="300">`` — NO ``inputmode``, NO ``type=number``,
+            NO ``data-testid``, NOT wrapped in a <label>, and the
+            placeholder is ``300`` (not ``100``). That is why all five
+            of the previous selectors missed and the price silently
+            stayed at the ¥300 placeholder (4 articles shipped
+            underpriced on 2026-05-15). ``#price`` / ``input[id*='price']``
+            match it and accept ``fill()`` correctly.
         """
         assert self._page is not None
         page = self._page
 
         # Step 1: switch from 無料 to 有料 (radio button)
+        # The real <input type=radio> is visually hidden by
+        # styled-components; the <label> is the only clickable target,
+        # so it must lead the list.
         try:
             paid_radio_selectors = [
-                "label:has-text('有料') input[type='radio']",
-                "input[type='radio'][value='paid']",
                 "label:has-text('有料')",
+                "label[for='paid']",
+                "input[type='radio'][value='paid']",
+                "input#paid",
+                "label:has-text('有料') input[type='radio']",
                 "text=有料",
             ]
             switched = False
@@ -906,9 +923,17 @@ class NotePublisher:
             logger.warning("有料切替に失敗: %s", exc)
             return
 
-        # Step 2: fill the price input — note uses a text input with
-        # numeric inputmode, so type=number selectors miss it.
+        # Step 2: fill the price input.
+        # CDP-verified current DOM: <input type="text" id="price"
+        # placeholder="300">. It carries no inputmode / data-testid and
+        # is not label-wrapped, so the id-based selectors must lead;
+        # the remaining entries are kept only as fallbacks for future
+        # note UI revisions.
         price_input_selectors = [
+            "input#price",
+            "input[id*='price']",
+            "input[placeholder='300']",
+            "input[name*='price']",
             "input[inputmode='numeric']",
             "input[type='number']",
             "[data-testid='price-input']",
