@@ -445,14 +445,18 @@ class ObjectiveScorer:
 
         # 2026-05-15 maintenance: citation_format 閾値緩和。
         # gemma4:e4b の note 出力で URL 付き citation 0% が頻発、4 件連続却下
-        # で publish ゼロ。grounding は RAG 層 (hallu-guard + rag-coverage +
-        # ops-incidents) で別途確保されるため、citation_format は「URL ベスト・
-        # プラクティス度」の指標。URL なくても引用数 2+ あればグラウンディング
-        # 自体は提示されているので B 認定する。
-        # 旧: A (100% URL+日付), B (50%+ URL), C (<50%)
-        # 新: A (100% URL+日付), B (50%+ URL), B' (引用 2+ 件あれば URL 不問),
-        #     C (引用 1 件以下 or 0 件)
-        # 長期的には note prompts.yaml の URL 注入強化で根本解決。
+        # で publish ゼロ。citation_format は「URL ベストプラクティス度」の
+        # 指標であり、グラウンディングそのものではない。
+        # 2026-05-17 (ops_incidents #18 後): ソース本文 backfill により
+        # 記事本文は実ソースに grounding 済み。引用ブロックが 1 個でも
+        # その引用は実在 (28th 再生成で逐語一致を検証済)。「引用 2+ 必須」
+        # の total>=2 ゲートは grounding 未解決時代の名残で、grounded な
+        # 7000 字記事を引用 1 個で全文却下するのは過剰。引用が 1 個以上
+        # 存在すれば B 認定する (引用ゼロは上の citation_blocks 無し分岐で C)。
+        # citation の「数」は citation_count メトリクス (note では非ブロッキング)
+        # が担当。citation_format は format 品質のみを見る。
+        # 旧: A (100% URL+日付), B (50%+ URL or 引用 2+), C (引用 1 以下)
+        # 新: A (100% URL+日付), B (50%+ URL or 引用 1+ — grounded 前提)
         if rate >= 1.0:
             grade = "A"
             reason = f"all {total} citations have URL and access date"
@@ -462,17 +466,13 @@ class ObjectiveScorer:
                 f"{with_url}/{total} citations have URL "
                 f"({url_rate:.0%} >= 50%)"
             )
-        elif total >= 2:
+        else:
+            # total >= 1 here (citation_blocks non-empty). Grounded body
+            # via source backfill, so an existing citation is real.
             grade = "B"
             reason = (
                 f"{with_url}/{total} citations have URL "
-                f"(URL {url_rate:.0%}; total>=2 relaxed)"
-            )
-        else:
-            grade = "C"
-            reason = (
-                f"{with_url}/{total} citations have URL "
-                f"(URL {url_rate:.0%}, total<2)"
+                f"(URL {url_rate:.0%}; >=1 citation, grounded — relaxed)"
             )
 
         logger.debug("Citation format: %s (rate=%.2f)", grade, rate)
