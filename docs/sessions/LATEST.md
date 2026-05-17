@@ -265,13 +265,43 @@ Article not found: note-I asked 4 AIs to pic-f8f3f755
   H2→H3 に降格 (4 記事へ適用済)。
 - commit: `85a4ed3` (価格+prompt) / `8f463d8` (grounding) / `acaef71` (heading)。
 
+### 28th 4記事 — 完了
+
+- 全無料で publish 済み (Bill/Xbox/IDEs/Razr)。grounding 済み本文・ChatGPT
+  画像 (cover+inline) でライブ確認済。URL:
+  - Bill n8cd20088336c / Xbox n455b618feb21 / IDEs n1175423f593a / Razr n1cd0cc80f2d3
+- `_regen_today_note_with_chatgpt.py` で ChatGPT 画像差し替え。Bill の
+  edit_article は「更新ボタン」FAIL ログを出したが既知の偽FAIL — og:image +
+  本文ともライブ反映を確認済。
+
+### 有料22記事 (公開済み捏造記事) — 本文再生成 完了
+
+- `_audit_published_garbage.py` で公開 note 64本中 **22本が捏造** (Reddit
+  リンク投稿・本文空) と特定。`_regen_published_garbage.py` で全22本を
+  grounding 修正ありで再生成 → `data/articles/` を上書き (published_url 保持)。
+- 22/22 SAVED (全 grade B)。引用忠実性スポット確認: The Feed Is Fake の
+  Andrew Spelman / "Everything on the internet is fake" / Andrew Tate /
+  40M再生 すべて vulture.com ソースに実在。
+- 追加修正 (commit `ba1dc4b`): `objective_scorer` の citation_format を緩和。
+  grounded 本文なら引用ブロック1個でも B (旧: total<2 で C 全文却下)。
+  Feed Is Fake / Cisco / PCOS の reject を解消。
+
 ### 残課題
 
-1. **画像クエリの誤爆** — 4 記事とも Unsplash 画像がトピック不一致
-   (Bill=書籍, IDEs=瞑想ポーズ, Razr=映画クルー)。`_extract_image_query` /
-   `_IMAGE_MOOD_RULES` のmood修飾子が誤発火。未着手 (別サブシステム)。
-2. **28th 4 記事の publish** — 内容は検証済みで publish 可。ユーザー指示で
-   全 note ¥0 (`_publish_free_first.py --free-first 99`)。Sheets 承認が必要。
-3. **25th–27th publish 済み 8 本 + それ以前の英語 Reddit 記事 20本超** —
-   全て同じ捏造経路。削除 or 再生成+edit_article 差し替えをユーザー判断。
-4. `.env` の `NOTE_ALLOW_NO_CODEX_BRIEF=1` は backfill 導入後は実質不要。
+1. **有料22記事のライブ差し替え (未実施)** — `data/articles/` は再生成済みだが
+   note のライブ記事はまだ捏造本文のまま。edit_article で 22本に新本文 +
+   ChatGPT 画像を反映する必要あり。ChatGPT 画像生成が ~25分/記事 = 22本で
+   ~9時間 + 日次上限。**バッチ分割が必要 — ユーザーとペース相談中。**
+   22 slug は `scripts/_regen_published_garbage.py` の SLUGS 参照。
+2. **画像クエリの誤爆** — `_extract_image_query` / `_IMAGE_MOOD_RULES` の
+   mood 修飾子が誤発火 (IDE記事に瞑想写真等)。ChatGPT 画像差し替えで実害は
+   消えるが、生成時の Unsplash プレースホルダは依然ミスマッチ。未着手。
+3. `.env` の `NOTE_ALLOW_NO_CODEX_BRIEF=1` は backfill 導入後は実質不要。
+4. `_fetch_article_text` の 6000字 cap — 長尺ソース (vulture 30k, Razr 13k)
+   は途中まで。記事は faithful だが cap 引き上げ余地あり。
+
+### このセッションの commit
+
+`85a4ed3` 価格+prompt / `8f463d8` grounding / `acaef71` heading /
+`ba1dc4b` citation_format 緩和 / `b0ceb1d` garbage 監査・再生成 script /
++ docs commit 2件。
