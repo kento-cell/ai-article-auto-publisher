@@ -87,9 +87,12 @@ def main() -> int:
         )
         return 1
 
+    # Slugs may be passed as CLI args (batch mode); else use TARGETS.
+    targets = [a for a in sys.argv[1:] if not a.startswith("-")] or TARGETS
+
     articles_dir = _REPO / "data" / "articles"
     jobs: list[dict] = []
-    for aid in TARGETS:
+    for aid in targets:
         path = articles_dir / f"{aid}.json"
         if not path.exists():
             logger.warning("missing store entry: %s", aid)
