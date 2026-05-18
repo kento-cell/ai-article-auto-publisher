@@ -920,7 +920,12 @@ class ChatGPTImageGenerator:
         """
         cdp_port = os.environ.get("CHATGPT_CDP_PORT")
         if cdp_port:
-            cdp_url = f"http://localhost:{cdp_port}"
+            # Use 127.0.0.1, NOT localhost: on Windows "localhost"
+            # resolves to ::1 (IPv6) first, but Brave's
+            # --remote-debugging-port binds to 127.0.0.1 (IPv4) only,
+            # so connect_over_cdp("http://localhost:...") fails with
+            # ECONNREFUSED ::1:<port> even when the debug Brave is up.
+            cdp_url = f"http://127.0.0.1:{cdp_port}"
             try:
                 self._playwright = sync_playwright().start()
                 self._cdp_browser = (
