@@ -2,14 +2,28 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — 2026-05-18 セッション。手書きプレミアム技術書
-「月100万円のRAGエンジニア」を有料note(¥1,980)へ投稿。パイプライン自動生成
-ではなく Opus 直筆 + 実データ引用 + 本リポジトリの実RAG実装解説。
+ai-article-auto-publisher — 2026-05-19 セッション。generate→承認→publish の
+フルサイクルを完遂。今回生成6件のうち5件publish (zenn 1 + note 4)、
+Schmidt重複1件は却下。過去セッションの未publish zenn 10件はユーザー判断で
+pending維持。
 
 ## Current Status
 
-- **Phase**: 量産運用期 (継続)。今日は通常パイプラインに加え、単発の
-  プレミアム技術書を手書き → 有料 publish。
+- **Phase**: 量産運用期 (継続)。
+- **2026-05-19 generate→publish サイクル**:
+  - generate: 合格6 / 不合格1。承認待ちは別途 過去zenn 10件 (pending据置)
+  - publish 5件:
+    - zenn `NestJS/ZeltJS` → cap で scrap fallback:
+      https://zenn.dev/zenn-user/scraps/0dd44013678232
+    - note 4本 (全て ChatGPT インフォグラフィックカバー、目視+API検証済):
+      - 無料 アリゾナ大Schmidtブーイング: https://note.com/note-user/n/nae4db3806e2e
+      - 無料 電力網崩壊/データセンター電気代: https://note.com/note-user/n/n81df9da04dfd
+      - ¥500 AIデータセンター水中化: https://note.com/note-user/n/ncb5855591926
+      - ¥500 AI連鎖崩壊150億円損失(Pizza Hut): https://note.com/note-user/n/nfc30c379b870
+  - note 価格 API検証: ¥0/¥0/¥500/¥500 — `_set_price` の¥300漂流なし
+  - Schiff記事の ChatGPT inline batch 4/5 が composer timeout で部分失敗
+    (cover は成功)。cosmetic なので未対応
+  - メンバーシップ追加は全件 UI 漂流で失敗 → 有料2本はダッシュボード手動追加が必要
 - **2026-05-18 技術書 publish**:
   - URL: https://note.com/note-user/n/n971b89578b9b (¥1,980)
   - 3部構成 約10,000字: 第1部=フリーランスRAG/LLM単価の実データ(出典付き)、
