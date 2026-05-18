@@ -2,21 +2,25 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — 2026-05-14 セッション。Writer 構造的不具合
-集中対応 + ハルシネーション 4 事案 (16-19) 追記 + cross-session-portable
-な 知識トピック exclude 機構を追加。
+ai-article-auto-publisher — 2026-05-18 セッション。手書きプレミアム技術書
+「月100万円のRAGエンジニア」を有料note(¥1,980)へ投稿。パイプライン自動生成
+ではなく Opus 直筆 + 実データ引用 + 本リポジトリの実RAG実装解説。
 
 ## Current Status
 
-- **Phase**: 量産運用期 (継続)。今日は generate 4 回回しても note は
-  Writer 構造コンプライアンス問題で 0 件合格 → zenn 3 本 publish (cap で
-  scrap fallback)。
-- **Pipeline 健全性**: note は Writer の H2 不足 / visual 不足 / word_count
-  不足が頻発。zenn は ~25% 通過 (各 run 1/2-3 件)。
-- **Recent commits** (today, push 待ち):
-  - feat(quality): Writer prompt 構造強化 + hallu 16-19 + cooldown +
-    knowledge_topic excludes (cross-session portable)
-  - その他 1-2 件は今日中に最終 commit
+- **Phase**: 量産運用期 (継続)。今日は通常パイプラインに加え、単発の
+  プレミアム技術書を手書き → 有料 publish。
+- **2026-05-18 技術書 publish**:
+  - URL: https://note.com/note-user/n/n971b89578b9b (¥1,980)
+  - 3部構成 約10,000字: 第1部=フリーランスRAG/LLM単価の実データ(出典付き)、
+    第2部=本番RAGパイプライン全公開(chromadb/e5-base/BGE re-ranker/multi-query/
+    ハルシ多層ゲート/A/B計測)、第3部=案件の取り方
+  - ChatGPT画像 cover+inline 4/4、ChatGPTセッション5件 soft-delete 済
+  - source: `scripts/_rag_freelance_book.md`、publish script:
+    `scripts/_publish_rag_freelance_book.py`
+  - メンバーシップ追加は UI 漂流で失敗 → ダッシュボードから手動追加が必要
+- **Recent commits** (push 待ち):
+  - feat(content): RAG freelance 技術書 + publish script
 
 ## 今日 (2026-05-14) の成果
 
