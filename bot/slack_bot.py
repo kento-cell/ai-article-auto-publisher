@@ -236,7 +236,10 @@ def _run_pipeline_sync(say, mode: str, label: str):
                     say(f"  → {msg}")
                 elif "Phase 2" in line or ("生成" in line and "スコア" in line):
                     if last_phase != "generate":
-                        say("✍️ *記事生成中*... (Gemma3)")
+                        say(
+                            "✍️ *記事生成中*... "
+                            f"({os.environ.get('LLM_MODEL_WRITER', 'local LLM')})"
+                        )
                         last_phase = "generate"
                 elif "Phase 3" in line or ("投稿" in line and "Phase" in line):
                     if last_phase != "publish":
