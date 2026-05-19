@@ -29,10 +29,29 @@ import re
 import subprocess
 import sys
 
-# Fix Windows cp932 encoding for Unicode output
+# Fix Windows cp932 encoding for Unicode output.
 if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    if sys.stdout is not None and hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace")
+        sys.stderr = io.TextIOWrapper(
+            sys.stderr.buffer, encoding="utf-8", errors="replace")
+    else:
+        # pythonw.exe (no console): sys.stdout/stderr are None, so every
+        # print() in the bot would crash. The startup .bat launches via
+        # pythonw, so redirect both streams to a log file — this keeps a
+        # startup/operation trace AND keeps print() safe. Previously the
+        # pythonw startup instance silently died on the line above and
+        # only manually-launched python.exe instances ever ran.
+        _bot_log = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "data", "slack_bot.log",
+        )
+        os.makedirs(os.path.dirname(_bot_log), exist_ok=True)
+        _bot_logf = open(
+            _bot_log, "a", encoding="utf-8", errors="replace", buffering=1)
+        sys.stdout = _bot_logf
+        sys.stderr = _bot_logf
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -700,8 +719,43 @@ def _cmd_sheets(say):
 # Entry point
 # ==================================================================
 
+# Single-instance guard: bind a fixed localhost port as a lock. A
+# second slack_bot process — from the startup .bat, a nohup launch, a
+# manual run, or Windows app-restore all firing — fails the bind and
+# exits, so the Slack workspace never has two bots racing for the same
+# command. The OS frees the port when the holder dies, so a crashed
+# bot leaves no stale lock (unlike a lockfile).
+_SINGLE_INSTANCE_PORT = 49222
+_single_instance_socket = None
+
+
+def _acquire_single_instance_lock() -> bool:
+    """Return True iff this is the only running slack_bot instance."""
+    global _single_instance_socket
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", _SINGLE_INSTANCE_PORT))
+    except OSError:
+        sock.close()
+        return False
+    sock.listen(1)
+    _single_instance_socket = sock  # held for the process lifetime
+    return True
+
+
 def main():
     """Start the Slack bot."""
+    if not _acquire_single_instance_lock():
+        print(
+            "slack_bot は既に起動済みです "
+            f"(127.0.0.1:{_SINGLE_INSTANCE_PORT} が使用中)。"
+            "この二重起動インスタンスは終了します。",
+            flush=True,
+        )
+        sys.exit(0)
+
     if not BOT_TOKEN or not APP_TOKEN:
         print(
             "❌ Slack トークンが未設定です。\n\n"

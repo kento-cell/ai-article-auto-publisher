@@ -421,14 +421,25 @@ class SheetsManager:
             # Keep the tail (newest). Sheet is append-only so highest row = newest.
             posted_positions.sort()  # ascending row numbers
             to_delete = posted_positions[:-keep_last_n]
-            # Delete from bottom up so indices stay valid.
-            for row in sorted(to_delete, reverse=True):
+            # Group into contiguous ranges and delete each range in ONE
+            # API call. Deleting row-by-row blows the Sheets per-minute
+            # write-request quota (429) as soon as there are more than
+            # ~60 stale rows to purge.
+            ranges: list[list[int]] = []
+            for row in to_delete:  # ascending
+                if ranges and row == ranges[-1][1] + 1:
+                    ranges[-1][1] = row
+                else:
+                    ranges.append([row, row])
+            # Delete bottom-up so lower (earlier) ranges keep valid indices.
+            for start, end in sorted(ranges, reverse=True):
                 try:
-                    self._sheet.delete_rows(row)
-                    deleted["main_deleted"] += 1
+                    self._sheet.delete_rows(start, end)
+                    deleted["main_deleted"] += end - start + 1
                 except Exception as e:
                     self._logger.warning(
-                        "cleanup: delete_rows(%d) failed: %s", row, e,
+                        "cleanup: delete_rows(%d, %d) failed: %s",
+                        start, end, e,
                     )
 
         # --- Rejected sheet: trim to last keep_last_n ---
@@ -440,10 +451,11 @@ class SheetsManager:
                 data_rows = len(all_values) - 1  # exclude header
                 excess = data_rows - keep_last_n
                 if excess > 0:
-                    # Delete rows 2..2+excess (oldest first after header)
-                    for _ in range(excess):
-                        rej_ws.delete_rows(2)
-                        deleted["rejected_deleted"] += 1
+                    # Delete rows 2..(1+excess) — the oldest data rows
+                    # after the header — in ONE call (row-by-row blows
+                    # the per-minute write quota).
+                    rej_ws.delete_rows(2, 1 + excess)
+                    deleted["rejected_deleted"] += excess
             except Exception as e:
                 self._logger.warning("cleanup: rejected sheet trim failed: %s", e)
 
