@@ -47,7 +47,7 @@ import os
 _BRAVE_USER_DATA: Final[Path] = Path(
     os.environ.get(
         "BRAVE_USER_DATA",
-        r"C:\Users\user\AppData\Local\BraveSoftware\Brave-Browser\User Data",
+        os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data"),
     )
 )
 _BRAVE_PATH: Final[str] = (

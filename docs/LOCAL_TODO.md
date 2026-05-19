@@ -111,15 +111,6 @@ for genre, info in inj._config['genres'].items():
 - やること: GCP コンソールで Gmail API の OAuth スコープ再認可
 - 優先度低: ユーザーは Slack 通知で代用可能と判断済み
 
-### 5. A8.net パスワード管理
-- 現状: ID `***REMOVED***` のみ判明、パスワードは画像でマスク
-- やること:
-  - [ ] https://www.a8.net/login.html → 「パスワードを忘れた方はこちら」
-  - [ ] ID + 登録メール (`***REMOVED***`) で再設定
-  - [ ] 新パスワードはパスワードマネージャ (Bitwarden / 1Password / Edge内蔵) に保存
-  - [ ] 振込先銀行口座 (***REMOVED*** 普通***REMOVED***) は登録済 ✅
-  - [ ] デスクトップの `A8アカウント.png` を `C:\Users\user\Documents\Private\` に移動
-
 ### 6. note ジャンル戦略の決定
 - 現状: 雑記化（AI論文/グルメ/コーヒー/韓国/マネタイズが混在）
 - リサーチ結果（`docs/knowledge/affiliate_strategies/2026-04-13_research.md`）から、

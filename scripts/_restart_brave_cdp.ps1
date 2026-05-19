@@ -15,7 +15,7 @@
 $ErrorActionPreference = "Stop"
 
 $BravePath = "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-$UserDataDir = "C:\Users\user\AppData\Local\BraveSoftware\Brave-Browser\User Data"
+$UserDataDir = "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data"
 
 if (-not (Test-Path $BravePath)) {
     Write-Host "ERROR: brave.exe not found at $BravePath"
