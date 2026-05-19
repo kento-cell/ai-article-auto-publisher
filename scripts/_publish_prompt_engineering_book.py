@@ -49,7 +49,7 @@ logger = logging.getLogger("publish_prompt_eng_book")
 
 TITLE = (
     "プロンプトエンジニアリング実務本 2026 ― "
-    "Claude 4.7 / GPT-5.4 / Gemini 2.5 のクセを全部書いた、"
+    "Claude 4.7 / GPT-5.4 / Gemini 3 / o4-pro のクセを全部書いた、"
     "案件で使う型と月コスト70%削った技術"
 )
 PRICE = 1980
