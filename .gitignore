@@ -56,3 +56,7 @@ Thumbs.db
 # 一時ワークスペース
 tmp_img/
 run_generate.sh
+
+# Owner-specific PII patterns used by scripts/_pii_scan_diff.py
+# (the scanner itself is public; the patterns are not)
+config/pii_scan_extra.json
