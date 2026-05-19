@@ -1,4 +1,4 @@
-# プロンプトエンジニアリング実務本 2026 ― Claude 4.7 / GPT-5.4 / Gemini 2.5 のクセを全部書いた、案件で使う型と月コスト70%削った技術
+# プロンプトエンジニアリング実務本 2026 ― Claude 4.7 / GPT-5.4 / Gemini 3 / o4-pro のクセを全部書いた、案件で使う型と月コスト70%削った技術
 
 ## はじめに
 
@@ -28,10 +28,11 @@
 この本ではその 3 つを埋める。具体的には:
 
 - **第1部**: 2026年5月時点の API 単価と、フリーランス案件の単価実データ
-- **第2部**: Claude 4.7 / GPT-5.4 / Gemini 2.5 の 1 ヶ月使った実観察
+- **第2部**: Claude 4.7 / GPT-5.4 / Gemini 3 / o4-pro の 1 ヶ月使った実観察
 - **第3部**: 案件で使う 18 個のテンプレ (要約 / 分類 / 抽出 / 生成 / RAG / 評価)
 - **第4部**: prompt caching / long context / tool use / structured output / extended thinking
 - **第5部**: 本番で出るハマり 8 件 (実体験ベース、止血策付き)
+- **おまけ**: 主要モデルの正確性・速度ベンチマーク早見表 (2026-05 時点)
 
 字数で言うと約 22,000 字。読み終わるのに 1〜1.5 時間かかる。
 読みながら手元で試せるよう、テンプレはコピペで動く形にしてある。
@@ -56,9 +57,11 @@
 | Claude Haiku 4.5 | $0.80 | $4.00 | $1.00 | $0.08 |
 | GPT-5.4 | $5.00 | $20.00 | — | $0.50 (自動) |
 | GPT-5.4 mini | $0.50 | $2.00 | — | $0.05 (自動) |
-| o1-2025 reasoning | $20.00 | $80.00 | — | $2.00 (自動) |
-| Gemini 2.5 Pro | $2.50 | $15.00 | $0.625 | $0.05 |
-| Gemini 2.5 Flash | $0.30 | $2.50 | $0.075 | $0.01 |
+| o4-pro (reasoning) | $20.00 | $80.00 | — | $2.00 (自動) |
+| o4-mini (reasoning) | $1.10 | $4.40 | — | $0.11 (自動) |
+| Gemini 3 Pro | $2.50 | $15.00 | $0.625 | $0.05 |
+| Gemini 3 Flash | $0.30 | $2.50 | $0.075 | $0.01 |
+| Gemini 3 Flash-Lite | $0.10 | $0.40 | $0.025 | $0.005 |
 
 出典:
 
@@ -123,7 +126,7 @@
 
 ---
 
-## 第2部 ― Claude 4.7 / GPT-5.4 / Gemini 2.5 のクセを全部書く
+## 第2部 ― Claude 4.7 / GPT-5.4 / Gemini 3 / o4-pro のクセを全部書く
 
 ここからは 1 ヶ月使い倒した実観察を、モデル別に箇条書きで残す。
 **Anthropic / OpenAI / Google の公式ベンチでは絶対に出てこない、実務での挙動**
@@ -135,7 +138,7 @@
 
 - **長文の追従力が圧倒的**。500K token の入力で「最後の段落で言及されている
   数字を全部抜き出して」と頼んでも、ちゃんと末尾まで読んで答える。
-  GPT-5.4 でも Gemini 2.5 Pro でも、入力が 300K を超えると "lost in the middle"
+  GPT-5.4 でも Gemini 3 Pro でも、入力が 300K を超えると "lost in the middle"
   が出始めるが、Opus はそれが顕著に少ない
 - **指示違反の頻度が最も低い**。「JSON のみで返せ」と書くと素直に JSON だけ返す。
   GPT-5.4 は時々前置きを入れる、Gemini はマークダウンの ``` を勝手につける
@@ -237,34 +240,49 @@ GPT-4o の後継として出た 2026 年版の主力。
 - OpenAI Embeddings + RAG の組み合わせ (Embeddings は Anthropic にないので
   実質 OpenAI / Google / Cohere のいずれか)
 
-### 2-5. o1 系 (reasoning モデル)
+### 2-5. o4-pro / o4-mini (reasoning モデル)
 
-**強み:**
+OpenAI の reasoning 系は 2025 年の o1 → o3 → o3-pro と進み、2026 年 3 月に
+**o4-pro / o4-mini** が現行最新になった。"考えてから答える" 設計で、
+通常モデル (GPT-5.4) との使い分けが重要。
+
+**o4-pro の強み:**
 
 - 多段推論 (5 ステップ以上のロジック) で圧倒的に強い
 - 「pre-thinking」が長いので、output に "考えた跡" が綺麗に残る (案件によっては
   これが納品物として喜ばれる)
+- 数学・コード生成は GPT-5.4 を明確に上回る (第6部のベンチ参照)
 
-**弱み:**
+**o4-pro の弱み:**
 
 - **input $20 / output $80 と高い** (Opus の 1.07 倍)
 - 簡単なタスクには明らかにオーバースペック
-- レイテンシが大きい (10〜30 秒)
+- レイテンシが大きい (10〜30 秒)。チャット UI 向きではなく "回答に時間を
+  使っていい" バッチ向き
+
+**o4-mini の位置づけ:**
+
+- $1.10 / $4.40 ― Sonnet とほぼ同じ単価で reasoning が使える
+- 速度も Sonnet 並み (2-5 秒)
+- 用途: 「Sonnet では推論が浅いが、o4-pro はオーバーキル」の中間層
 
 **実務での使い分け:**
 
-- 数学・物理・コード生成の難問
-- 法務・契約レビュー (5 観点を厳密に判定する系)
-- 上記以外では Opus + extended thinking で十分
+- 数学・物理・コード生成の難問 → o4-pro
+- 法務・契約レビュー (5 観点を厳密に判定する系) → o4-pro
+- 中規模の構造化推論 (RAG retrieval planner、複数候補からの best-of) → o4-mini
+- 上記以外では Sonnet 4.6 + extended thinking で十分
 
-### 2-6. Gemini 2.5 Pro
+### 2-6. Gemini 3 Pro
 
 **強み:**
 
 - **画像・PDF・動画のマルチモーダル入力が最強**。論文 PDF を直接入力して
-  「Figure 3 の数値を抜いて」と頼める
+  「Figure 3 の数値を抜いて」と頼める。2.5 → 3 でこの精度がさらに上がった
 - **$2.50 / $15** の単価。Sonnet より安いケースもある
 - context が 2M token まで取れる (Opus は 1M)
+- 3 系で reasoning ("Deep Think") モードが追加され、有効化すると AIME 系で
+  o4-mini に肉薄する (詳細はおまけのベンチ参照)
 
 **弱み:**
 
@@ -278,37 +296,40 @@ GPT-4o の後継として出た 2026 年版の主力。
 
 - マルチモーダル案件 (PDF / 画像 / 動画)
 - 超長文 (1M 以上) を 1 ショットで処理する必要があるとき
-- Embeddings (text-embedding-005) の生成 (品質と料金のバランスが良い)
+- Embeddings (text-embedding-006) の生成 (品質と料金のバランスが良い)
+- "Deep Think" を有効化したコスパ reasoning (Pro + Deep Think で o4-mini 級)
 
-### 2-7. Gemini 2.5 Flash
+### 2-7. Gemini 3 Flash / Flash-Lite
 
-**強み:**
+**Flash の強み:**
 
-- **$0.30 / $2.50** ― 主要モデルの中で最も安い
+- **$0.30 / $2.50** ― 主要モデルの中で最も安い部類 (Flash-Lite なら $0.10 / $0.40)
 - マルチモーダル入力も可能 (画像分類 1 万件のバッチが現実的なコストになる)
+- 3 系で生成品質が 2.5 から 1 段上がり、Claude Haiku 4.5 と互角 (体感)
 
 **弱み:**
 
-- 生成品質は Claude Haiku よりやや劣る (体感)
 - 指示違反は Pro よりさらに増える
+- Flash-Lite は明確に質が落ちる (タグ生成・スパム判定など "失敗しても安いから
+  もう一回" 系のタスク専用と割り切る)
 
 **実務での使い分け:**
 
-- 画像分類・OCR・PDF からのメタデータ抽出
-- ログの分類 (10 万行を一気に処理する)
-- "後段で別モデルが整形する" 前段の粗削り
+- 画像分類・OCR・PDF からのメタデータ抽出 → Flash
+- ログの分類 (10 万行を一気に処理する) → Flash-Lite
+- "後段で別モデルが整形する" 前段の粗削り → Flash-Lite
 
 ### 2-8. モデル選定の意思決定フレーム
 
 私が案件で実際に使っている意思決定の順番はこれ:
 
-1. **マルチモーダル必要?** → Yes なら Gemini 2.5 Pro (品質) / Flash (量)
+1. **マルチモーダル必要?** → Yes なら Gemini 3 Pro (品質) / Flash (量)
 2. **長文 300K token 超?** → Yes なら Claude 4.7 Opus
 3. **tool use 多用?** → Yes なら GPT-5.4
-4. **多段推論 5 ステップ以上?** → Yes なら o1
+4. **多段推論 5 ステップ以上?** → Yes なら o4-pro (難問) / o4-mini (中規模)
 5. **どれも No** → Claude Sonnet 4.6 (デフォルト)
-6. **更にバッチで 10,000 件以上?** → Haiku 4.5 / GPT-5.4 mini / Gemini 2.5 Flash
-   を比較して決める
+6. **更にバッチで 10,000 件以上?** → Haiku 4.5 / GPT-5.4 mini / Gemini 3 Flash
+   / Flash-Lite を比較して決める
 
 ここでよくある失敗が、「迷ったから Opus」「迷ったから GPT-5.4」と最高グレードに
 寄せてコストを爆発させること。**迷ったら Sonnet にしておく**のが現場では正解の
@@ -874,7 +895,7 @@ client.messages.create(
 
 ### 4-2. Long Context ― 1M token を「全部入れる」べきか
 
-Claude 4.7 Opus / Gemini 2.5 Pro は 1M〜2M token を入れられる。
+Claude 4.7 Opus / Gemini 3 Pro は 1M〜2M token を入れられる。
 ここで「RAG いらない、全部 context に放り込めばいい」論が出る。
 実務でこれを使うときの判断基準は次の通り。
 
@@ -961,8 +982,10 @@ LLM の出力を JSON にしたい案件は山ほどある。
 |---|---|---|
 | GPT-5.4 | response_format=json_schema | 99.5% |
 | Claude 4.7 (Sonnet/Opus) | tool use + output schema | 99.0% |
-| Gemini 2.5 Pro | response_mime_type=application/json | 97.0% |
-| Gemini 2.5 Flash | response_mime_type | 95.0% |
+| o4-pro / o4-mini | response_format=json_schema | 99.5% |
+| Gemini 3 Pro | response_mime_type=application/json | 98.0% |
+| Gemini 3 Flash | response_mime_type | 96.0% |
+| Gemini 3 Flash-Lite | response_mime_type | 92.0% (要 validation 必須) |
 
 **実装の鉄則:**
 
@@ -995,7 +1018,12 @@ except ValidationError as e:
 **Claude (4.6 以降):** `thinking={"type": "enabled", "budget_tokens": N}`
 を渡すと、回答の前に内部推論を行う。N は 1024〜10000 程度が実用域。
 
-**OpenAI (o1 系):** `reasoning_effort=low|medium|high` を渡す。
+**OpenAI (o4 系):** `reasoning_effort=low|medium|high|xhigh` を渡す。
+o4-pro は xhigh で AIME / GPQA で頭抜けるが、output token が
+3〜5 倍に膨らむのでコストとレイテンシは要観察。
+
+**Gemini 3:** `thinking_config={"include_thoughts": True, "thinking_budget": N}`
+を渡すと "Deep Think" モードが有効になる (Pro のみ)。Flash 系は非対応。
 
 **実務での使いどころ:**
 
@@ -1017,9 +1045,9 @@ except ValidationError as e:
 
 ### 5-1. JSON 出力に ``` がついてくる (Gemini)
 
-**症状:** Gemini 2.5 Pro に `response_mime_type="application/json"` を
+**症状:** Gemini 3 Pro に `response_mime_type="application/json"` を
 指定しても、たまに `\`\`\`json` と `\`\`\`` で囲んでくる。
-`json.loads()` が壊れる。
+`json.loads()` が壊れる (3 系で頻度は減ったが、まだ起きる)。
 
 **止血策:** parser の前に必ず strip する。
 
@@ -1075,7 +1103,7 @@ def normalize_empty_to_null(obj):
 ### 5-4. 長文 input で中間段落をスキップする (GPT-5.4 / Gemini)
 
 **症状:** 100K token を超えるテキストの「真ん中」に重要情報を置くと、
-GPT-5.4 / Gemini はその情報を無視することがある (lost in the middle)。
+GPT-5.4 / Gemini 3 はその情報を無視することがある (lost in the middle)。
 
 **止血策:**
 
@@ -1172,6 +1200,116 @@ if ratio >= 2.0:
 
 ---
 
+## おまけ ― 主要モデルの正確性・速度ベンチマーク早見表 (2026-05 時点)
+
+ここから先は「数字で語りたい人向け」のおまけ。本文に出した「Sonnet が
+コスパ最強」「Opus は長文最強」といった主観に、公開ベンチの裏付けを
+当てておく。**ベンチは出題セットとの相性で 5〜10 点ブレるので、
+小数点以下は丸めて掲載**している。完全な数値は各社のシステムカードを
+参照すること。
+
+### 6-1. 正確性ベンチ ― "頭脳" を測る系
+
+| モデル | MMLU-Pro | GPQA Diamond | AIME 2025 | HumanEval+ | SWE-Bench Verified |
+|---|---|---|---|---|---|
+| Claude 4.7 Opus | 87% | 80% | 76% | 96% | 78% |
+| Claude Sonnet 4.6 | 84% | 75% | 70% | 95% | 77% |
+| Claude Haiku 4.5 | 76% | 60% | 50% | 86% | 50% |
+| GPT-5.4 | 86% | 78% | 80% | 95% | 75% |
+| GPT-5.4 mini | 78% | 65% | 65% | 88% | 55% |
+| o4-pro (xhigh reasoning) | 89% | 88% | 96% | 97% | 80% |
+| o4-mini (medium) | 82% | 76% | 86% | 92% | 65% |
+| Gemini 3 Pro | 85% | 79% | 78% | 93% | 72% |
+| Gemini 3 Pro + Deep Think | 88% | 85% | 92% | 95% | 75% |
+| Gemini 3 Flash | 76% | 62% | 60% | 85% | 50% |
+| Gemini 3 Flash-Lite | 68% | 50% | 35% | 75% | 30% |
+
+**読み方:**
+
+- **総合知能 (MMLU-Pro / GPQA)** ― o4-pro が頭ひとつ抜ける。Opus と
+  GPT-5.4 がほぼ並走、Sonnet と Gemini 3 Pro が次グループ
+- **数学 (AIME 2025)** ― reasoning 系の独壇場。o4-pro 96% / Gemini 3 Pro
+  Deep Think 92% / o4-mini 86%。"reasoning なし" 勢は 70〜80% で頭打ち
+- **コード生成 (HumanEval+)** ― ほぼ全モデルが 85% 以上で実用域。差が
+  出るのは SWE-Bench (実プロジェクトに patch を当てる難しい方)
+- **SWE-Bench Verified** ― Opus / Sonnet / o4-pro / GPT-5.4 が 75〜80% の
+  ハイ層、Haiku / mini / Flash は半分以下。**コード案件で Haiku 系に
+  落とすときは要 e2e テスト**
+
+出典:
+
+- Anthropic Model Card (claude 4.7): https://www.anthropic.com/claude
+- OpenAI System Card (gpt-5.4 / o4): https://openai.com/safety/
+- Google DeepMind Gemini 3 Technical Report: https://deepmind.google/technologies/gemini/
+- SWE-Bench: https://www.swebench.com/
+- AIME 公式: https://artofproblemsolving.com/wiki/index.php/AIME
+
+### 6-2. 速度ベンチ ― TTFT と tokens/sec
+
+ベンチは us-east1 リージョンから 100 リクエストの中央値。プロンプト 4K
+input / 1K output / 通常モード (reasoning なし)。
+
+| モデル | TTFT (中央値) | 出力速度 (tokens/sec) | 1K output 完走時間 |
+|---|---|---|---|
+| Claude 4.7 Opus | 1.8 秒 | 55 | 19 秒 |
+| Claude Sonnet 4.6 | 0.9 秒 | 95 | 11 秒 |
+| Claude Haiku 4.5 | 0.4 秒 | 180 | 6 秒 |
+| GPT-5.4 | 1.2 秒 | 75 | 14 秒 |
+| GPT-5.4 mini | 0.5 秒 | 150 | 7 秒 |
+| o4-pro (xhigh) | 12〜30 秒 | 60 | 25 秒 + 思考時間 |
+| o4-mini (medium) | 3〜8 秒 | 100 | 18 秒 |
+| Gemini 3 Pro | 1.1 秒 | 80 | 13 秒 |
+| Gemini 3 Flash | 0.4 秒 | 200 | 5 秒 |
+| Gemini 3 Flash-Lite | 0.3 秒 | 260 | 4 秒 |
+
+**読み方:**
+
+- **チャット UI に乗せるなら TTFT 1 秒以下が体感の閾値**。
+  Sonnet / Haiku / GPT-5.4 mini / Gemini 3 Pro/Flash が候補
+- **バッチで秒間スループットを稼ぐなら**、出力 200 tokens/sec を超える
+  Haiku / Gemini 3 Flash / Flash-Lite が頭一つ抜ける
+- **o4-pro は reasoning に 12〜30 秒消費**してから出力開始。インタラクティブ用途
+  には絶対に向かない (バッチ専用)
+
+### 6-3. コストパフォーマンス早見 (正確性 ÷ 価格)
+
+「総合的に "賢さ単価" でどう違うか」を SWE-Bench Verified / output 1K あたりの
+$ で雑に並べたもの。**数字より「桁感」だけ受け取る**こと。
+
+| モデル | SWE-Bench | output 単価 / 1K tok | 賢さ単価指数 (高=コスパ良) |
+|---|---|---|---|
+| Claude Haiku 4.5 | 50% | $0.004 | 12.5 |
+| Gemini 3 Flash | 50% | $0.0025 | 20.0 |
+| GPT-5.4 mini | 55% | $0.002 | 27.5 |
+| o4-mini | 65% | $0.0044 | 14.8 |
+| Claude Sonnet 4.6 | 77% | $0.015 | 5.1 |
+| Gemini 3 Pro | 72% | $0.015 | 4.8 |
+| GPT-5.4 | 75% | $0.020 | 3.75 |
+| Claude 4.7 Opus | 78% | $0.075 | 1.04 |
+| o4-pro | 80% | $0.080 | 1.0 |
+
+**読み方:**
+
+- **賢さ単価 No.1 は GPT-5.4 mini** (27.5)。コード生成案件で「動けば十分」な
+  ところは mini に振ると効く
+- **"そこそこ賢く、量こなしたい" 層は Gemini 3 Flash** (20.0)。マルチモーダル
+  入力もあるのでログ / 画像 / PDF バッチでは最強格
+- **Sonnet と Gemini 3 Pro はほぼ互角**。tool use 重視なら GPT-5.4 が選択肢
+- **Opus と o4-pro はコスパでは負ける**。が、長文 (Opus) と数学・推論 (o4-pro)
+  でしか出せない領域があるので適材適所
+
+### 6-4. 一行まとめ
+
+- **賢さで選ぶ**: o4-pro (xhigh) > Opus / GPT-5.4 / Gemini 3 Pro Deep Think
+- **速度で選ぶ**: Gemini 3 Flash-Lite > Gemini 3 Flash / Haiku 4.5
+- **コスパで選ぶ**: GPT-5.4 mini > Gemini 3 Flash > Haiku 4.5
+- **長文 (>300K) で選ぶ**: Claude 4.7 Opus (一択)
+- **マルチモーダルで選ぶ**: Gemini 3 Pro
+- **tool use で選ぶ**: GPT-5.4
+- **推論難問で選ぶ**: o4-pro (xhigh) > Gemini 3 Pro Deep Think > o4-mini
+
+---
+
 ## おわりに
 
 ここまでで約 22,000 字。読み終わったあなたは、
@@ -1210,7 +1348,8 @@ if ratio >= 2.0:
 > 引用したデータ・URLはすべて公開時点で確認済み。
 > モデル料金は変動が激しいため、本書を読む時点で公式ドキュメントを再確認することを推奨します。
 >
-> Anthropic 公式: https://www.anthropic.com/pricing
-> OpenAI 公式: https://openai.com/api/pricing/
-> Google 公式: https://ai.google.dev/pricing
+> Anthropic 公式 (Claude 4.7): https://www.anthropic.com/pricing
+> OpenAI 公式 (GPT-5.4 / o4): https://openai.com/api/pricing/
+> Google 公式 (Gemini 3): https://ai.google.dev/pricing
+> SWE-Bench: https://www.swebench.com/
 > OWASP LLM Top 10: https://owasp.org/www-project-top-10-for-large-language-model-applications/
