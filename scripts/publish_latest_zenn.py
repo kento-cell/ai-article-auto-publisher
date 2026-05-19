@@ -53,7 +53,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("publish_latest_zenn")
 
-_MMDC = r"C:\Users\user\AppData\Roaming\npm\mmdc.cmd"
+_MMDC = os.path.expandvars(r"%APPDATA%\npm\mmdc.cmd")
 
 TARGETS: list[str] = [
     "data/articles/zenn-Claude_Mythosはパンドラの箱.json",
