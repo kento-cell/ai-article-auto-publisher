@@ -2,28 +2,36 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — 2026-05-19 セッション。generate→承認→publish の
-フルサイクルを完遂。今回生成6件のうち5件publish (zenn 1 + note 4)、
-Schmidt重複1件は却下。過去セッションの未publish zenn 10件はユーザー判断で
-pending維持。
+ai-article-auto-publisher — 2026-05-19〜20 セッション。大学生向け居酒屋&カフェ
+note 記事 4 本 (¥100 paid) を publish 完了。+ 5-19 早朝の generate サイクル
+(zenn 1 scrap + note 4) と 2026-05-19 auto-learn レポート、+ 5-18 RAG 技術書
+(¥1,980) の publish が live。
 
 ## Current Status
 
 - **Phase**: 量産運用期 (継続)。
-- **2026-05-19 generate→publish サイクル**:
-  - generate: 合格6 / 不合格1。承認待ちは別途 過去zenn 10件 (pending据置)
-  - publish 5件:
-    - zenn `NestJS/ZeltJS` → cap で scrap fallback:
-      https://zenn.dev/zenn-user/scraps/0dd44013678232
-    - note 4本 (全て ChatGPT インフォグラフィックカバー、目視+API検証済):
-      - 無料 アリゾナ大Schmidtブーイング: https://note.com/note-user/n/nae4db3806e2e
-      - 無料 電力網崩壊/データセンター電気代: https://note.com/note-user/n/n81df9da04dfd
-      - ¥500 AIデータセンター水中化: https://note.com/note-user/n/ncb5855591926
-      - ¥500 AI連鎖崩壊150億円損失(Pizza Hut): https://note.com/note-user/n/nfc30c379b870
+- **2026-05-19/20 大学生グルメ note 4 本 publish (各 ¥100)**:
+  - 成蹊大 / 吉祥寺: https://note.com/note-user/n/n9ff97c34d61e
+  - 武蔵大 / 江古田: https://note.com/note-user/n/n510f4d4fc756
+  - 東京女子大 / 西荻窪: https://note.com/note-user/n/n267f51f18fa2
+  - 東京農大 / 経堂: https://note.com/note-user/n/n91a93500ad99
+  - source: `scripts/_univ_*.md` (大学最寄り駅周辺、個人店のみ。チェーン除外)
+  - publish script: `scripts/_publish_univ_articles.py` (CDP attached Brave、
+    ChatGPT cover+inline 画像生成、4本全件 publish 成功)
+  - 注意: seikei の JSON 内 published_url は `/notes/.../landing` で記録されていた
+    → canonical `/note-user/n/n9ff97c34d61e` に正規化済 (2026-05-20)
+- **2026-05-19 朝 generate→publish サイクル** (commit 8544e0c に記録済):
+  - publish 5件: zenn `NestJS/ZeltJS` scrap fallback + note 4本 (Schmidt無料 /
+    電力網無料 / データセンター水中化¥500 / AI連鎖崩壊150億¥500)
   - note 価格 API検証: ¥0/¥0/¥500/¥500 — `_set_price` の¥300漂流なし
-  - Schiff記事の ChatGPT inline batch 4/5 が composer timeout で部分失敗
-    (cover は成功)。cosmetic なので未対応
   - メンバーシップ追加は全件 UI 漂流で失敗 → 有料2本はダッシュボード手動追加が必要
+- **2026-05-19 auto-learn snapshot**:
+  - `docs/knowledge/quality_insights_2026-05-19.md` — 91件性能データ
+    (engagement = likes + 0.5×comments + 0.1×anon)
+  - `docs/knowledge/note-trends/2026-05-19_auto_learning.md` — 上位タイトル
+    パターン + タグ分布 TOP20
+  - `quality_anti_patterns.md` / `quality_successes.md` / `prompt_suggestions.md`
+    更新 (analyze_performance.py が自動再生成)
 - **2026-05-18 技術書 publish**:
   - URL: https://note.com/note-user/n/n971b89578b9b (¥1,980)
   - 3部構成 約10,000字: 第1部=フリーランスRAG/LLM単価の実データ(出典付き)、
@@ -34,7 +42,34 @@ pending維持。
     `scripts/_publish_rag_freelance_book.py`
   - メンバーシップ追加は UI 漂流で失敗 → ダッシュボードから手動追加が必要
 - **Recent commits** (push 待ち):
-  - feat(content): RAG freelance 技術書 + publish script
+  - chore(security): remove hardcoded user paths and private TODO section (6662e1b)
+  - content: draft 4 university-student izakaya&cafe note articles (cc59919)
+  - content: publish script for the free Shinjuku izakaya article (ec30da0)
+  - content: draft free note article — Shinjuku hidden-gem izakaya (495eedf)
+
+## Next Resume Actions
+
+### 1. デグレチェック
+```bash
+py -c "import main"
+py scripts/test_hallucination_deny.py
+```
+
+### 2. メンバーシップ手動追加 (2026-05-19 publish 分)
+- AIデータセンター水中化 (ncb5855591926)
+- AI連鎖崩壊150億 (nfc30c379b870)
+- RAG技術書 (n971b89578b9b) — 5-18 分
+- 大学生 4 本 (¥100 paid なのでメンバーシップ追加が必要なら手動)
+
+### 3. 大学生グルメシリーズの初動エンゲージメント観察
+週末 (5-23/24) 経過後に `py main.py --learn` でスコア計測。
+4本横並びで「大学生 + 個人店 + 駅単位」フォーマットがバズるか判定。
+バズれば横展開: 一橋大/国立、明大/お茶/水道橋、立教/池袋、etc.
+
+### 4. (deferred) 残作業
+- 5-18 オーバーナイトの 10 記事 ChatGPT 画像差し替え →
+  `feedback_no_exhaustive_cleanup` により retroactive cosmetic 差し替えは pursue しない
+- AI 開示 footer 26 件の修復 — 同上理由で deferred
 
 ## 今日 (2026-05-14) の成果
 
@@ -103,7 +138,7 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-14 10:15 JST
+2026-05-20 07:55 JST
 
 
 ---
