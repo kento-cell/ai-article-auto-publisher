@@ -2,14 +2,39 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — 2026-05-19〜20 セッション。大学生向け居酒屋&カフェ
-note 記事 4 本 (¥100 paid) を publish 完了。+ 5-19 早朝の generate サイクル
-(zenn 1 scrap + note 4) と 2026-05-19 auto-learn レポート、+ 5-18 RAG 技術書
-(¥1,980) の publish が live。
+ai-article-auto-publisher — 2026-05-20 セッション。generate→publish フル
+サイクル (note 5 + zenn 11 scrap = 16 件) を完遂、+ プロンプトエンジニアリング
+技術書 (¥1,980) を新規 publish。 大学生グルメ 4 本 + 既存 RAG 技術書 + 5-19 朝の
+サイクル分も live のまま継続中。
 
 ## Current Status
 
 - **Phase**: 量産運用期 (継続)。
+- **2026-05-20 朝 generate→publish サイクル**:
+  - generate: 合格 6 / 不合格 1 (citation 0 で zenn 1 件却下)
+  - publish 16 件 (bulk_approve で過去 zenn pending 10 件と新規 6 件をまとめて承認):
+    - **note 5 件** (全 paid):
+      - Tesla 排水 / $10億サプライチェーン: https://note.com/note-user/n/n91eb4533b989
+      - U.S. CISA GitHub leak: https://note.com/note-user/n/n7282def181c8
+      - Gen Z's AI backlash: https://note.com/note-user/n/n4cc8158795f7
+      - Congress EV $130 税: https://note.com/note-user/n/n26f91f66ebb1
+      - X 無料アカ制限: https://note.com/note-user/n/nb4cedb06ff27
+    - **zenn 11 件** (cap 検出 → 全 scrap fallback):
+      - IPA PSIRT / ATLAS / RefDecoder / VGGT / Spherical Flow / Karpathy LLM Wiki /
+        熟達と設計原則 / Copilot app / OpenWrt / Elasticsearch アイヌ / Irodori-TTS
+  - メンバーシップ追加は全件 UI 漂流で失敗 (note 5 件分は手動追加が必要)
+  - ChatGPT 画像枠消費 ~25 枚 (note 5 × cover+inline)
+- **2026-05-20 プロンプトエンジニアリング技術書 publish (¥1,980)**:
+  - タイトル: "プロンプトエンジニアリング実務本 2026 ― Claude 4.7 / GPT-5.5 /
+    Gemini 3 / o4-pro のクセを全部書いた、案件で使う型と月コスト70%削った技術"
+  - 30,720 字 / H2 × 8 / H3 × 34
+  - 5-18 RAG 技術書の同シリーズ第 2 弾。API 単価実データ、モデル別クセ、
+    18 個テンプレ、prompt caching / long context / tool use / structured output /
+    extended thinking、ハマり集 8 件、+ ベンチマーク早見表 (MMLU-Pro / GPQA /
+    AIME 2025 / HumanEval+ / SWE-Bench Verified / 速度 / コスパ)
+  - source: `scripts/_prompt_engineering_book.md`
+  - publish script: `scripts/_publish_prompt_engineering_book.py`
+  - メンバーシップ追加は UI 漂流で要手動
 - **2026-05-19/20 大学生グルメ note 4 本 publish (各 ¥100)**:
   - 成蹊大 / 吉祥寺: https://note.com/note-user/n/n9ff97c34d61e
   - 武蔵大 / 江古田: https://note.com/note-user/n/n510f4d4fc756
@@ -41,11 +66,12 @@ note 記事 4 本 (¥100 paid) を publish 完了。+ 5-19 早朝の generate �
   - source: `scripts/_rag_freelance_book.md`、publish script:
     `scripts/_publish_rag_freelance_book.py`
   - メンバーシップ追加は UI 漂流で失敗 → ダッシュボードから手動追加が必要
-- **Recent commits** (push 待ち):
-  - chore(security): remove hardcoded user paths and private TODO section (6662e1b)
-  - content: draft 4 university-student izakaya&cafe note articles (cc59919)
-  - content: publish script for the free Shinjuku izakaya article (ec30da0)
-  - content: draft free note article — Shinjuku hidden-gem izakaya (495eedf)
+- **Recent commits** (push 済):
+  - content(book): bump OpenAI flagship reference from GPT-5.4 to GPT-5.5 (a754370)
+  - content(book): refresh models to 2026-05 latest + add benchmark chapter (1d0252b)
+  - feat(content): prompt-engineering technical book ¥1,980 (b13f22c)
+  - docs: 2026-05-19 auto-learn snapshot + session log update (1ab0c87)
+  - chore(scripts): publish helper for 4 university-student note articles (5d3c3d8)
 
 ## Next Resume Actions
 
@@ -55,18 +81,25 @@ py -c "import main"
 py scripts/test_hallucination_deny.py
 ```
 
-### 2. メンバーシップ手動追加 (2026-05-19 publish 分)
-- AIデータセンター水中化 (ncb5855591926)
-- AI連鎖崩壊150億 (nfc30c379b870)
-- RAG技術書 (n971b89578b9b) — 5-18 分
-- 大学生 4 本 (¥100 paid なのでメンバーシップ追加が必要なら手動)
+### 2. メンバーシップ手動追加 (今日 publish 分)
+- 5-20 note 5 件 (Tesla / CISA / Gen Z / EV $130 / X)
+- 5-20 プロンプト技術書 (¥1,980)
+- 5-19/20 大学生 4 本 (¥100 paid)
+- 5-19 朝 note 4 件 (Schmidt / 電力網 / AIデータセンター水中化 / AI連鎖崩壊)
+- 5-18 RAG 技術書 (¥1,980)
 
-### 3. 大学生グルメシリーズの初動エンゲージメント観察
+### 3. 価格 ダブルチェック (¥300 漂流バグ既知)
+note ダッシュボードで 5-20 note 5 件 の価格を確認 (B + A → ¥500 想定)。
+¥300 で投稿されていたら手動修正。
+
+### 4. 大学生グルメシリーズ + プロンプト技術書 の初動エンゲージメント観察
 週末 (5-23/24) 経過後に `py main.py --learn` でスコア計測。
-4本横並びで「大学生 + 個人店 + 駅単位」フォーマットがバズるか判定。
-バズれば横展開: 一橋大/国立、明大/お茶/水道橋、立教/池袋、etc.
+- 大学生 4 本: バズれば横展開 (一橋大/国立、明大/お茶/水道橋、立教/池袋、etc.)
+  ※ user 指示で横展開は stay 中
+- 技術書 2 弾: RAG (5-18) vs プロンプト (5-20) で売れ行き比較。
+  3 弾目の方向決め (ベクトル検索 / マルチエージェント / Claude Code 運用 等)
 
-### 4. (deferred) 残作業
+### 5. (deferred) 残作業
 - 5-18 オーバーナイトの 10 記事 ChatGPT 画像差し替え →
   `feedback_no_exhaustive_cleanup` により retroactive cosmetic 差し替えは pursue しない
 - AI 開示 footer 26 件の修復 — 同上理由で deferred
@@ -138,7 +171,7 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-20 07:55 JST
+2026-05-20 10:00 JST
 
 
 ---
