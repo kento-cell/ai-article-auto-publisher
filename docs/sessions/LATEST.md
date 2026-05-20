@@ -25,6 +25,7 @@ ai-article-auto-publisher — 2026-05-20 セッション。generate→publish �
   - メンバーシップ追加は全件 UI 漂流で失敗 (note 5 件分は手動追加が必要)
   - ChatGPT 画像枠消費 ~25 枚 (note 5 × cover+inline)
 - **2026-05-20 プロンプトエンジニアリング技術書 publish (¥1,980)**:
+  - **URL: https://note.com/note-user/n/n987c19b3f539**
   - タイトル: "プロンプトエンジニアリング実務本 2026 ― Claude 4.7 / GPT-5.5 /
     Gemini 3 / o4-pro のクセを全部書いた、案件で使う型と月コスト70%削った技術"
   - 30,720 字 / H2 × 8 / H3 × 34
@@ -32,6 +33,8 @@ ai-article-auto-publisher — 2026-05-20 セッション。generate→publish �
     18 個テンプレ、prompt caching / long context / tool use / structured output /
     extended thinking、ハマり集 8 件、+ ベンチマーク早見表 (MMLU-Pro / GPQA /
     AIME 2025 / HumanEval+ / SWE-Bench Verified / 速度 / コスパ)
+  - ChatGPT 画像: cover + inline 4/4 全成功 (vision-eval pass)
+  - 価格: ¥1,980 ― note ダッシュボード API 検証で正価格確認済 (`Price set to 1980 yen via input#price`)
   - source: `scripts/_prompt_engineering_book.md`
   - publish script: `scripts/_publish_prompt_engineering_book.py`
   - メンバーシップ追加は UI 漂流で要手動
