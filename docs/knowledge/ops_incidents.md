@@ -1,6 +1,6 @@
 # 運用インシデント・レジストリ
 
-_最終更新: 2026-05-17_
+_最終更新: 2026-05-22_
 
 ハルシネーション(`hallucination_registry.md`)とは別に、**運用上の手戻り**を
 1事案 1 H2 セクションで集約する。retry / re-publish / orphan / UI セレクタ
@@ -37,6 +37,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 17 | RAG retriever が記事ごとに SentenceTransformer 再生成 → HF Hub HEAD で CloseWait ハング疑い | 2026-05-15 | `.env` に `HF_HUB_OFFLINE=1` `TRANSFORMERS_OFFLINE=1` (cache 前提、外部通信ゼロ) | ✅ 緩和済 |
 | 18 | note 記事が見出しだけから生成され全引用が捏造 (Reddit リンク投稿は `selftext` 空 + Codex grounding 無効) | 2026-05-17 | main.py `_fetch_article_text` / `_backfill_source_content` でリンク先本文を取得 → grounding gate に `has_source_content` 追加 | ✅ 修正済 |
 | 19 | #18 と同じ捏造が `NOTE_ALLOW_NO_CODEX_BRIEF=1` bypass 残置で再発 (Cybertruck Wade Mode 記事、source backfill 失敗→Writer 全創作) | 2026-05-21 | `.env` の bypass を `=0` に変更、両方欠落時 fail-closed 復活。bypass フラグは捏造の最後の入口になり得るので再導入しないこと | ✅ 修正済 |
+| 20 | SheetsManager.add_article が無条件 append → 同 article_id の重複行 → 二重投稿リスク (5-21 row 71 で実害手前) | 2026-05-21 | utils/sheets_manager.py の add_article を idempotent 化 (既存 article_id を find して既存行 番号を返し append しない、warn ログ出力) | ✅ 修正済 |
 
 ---
 
@@ -381,6 +382,32 @@ into the lake." はソースに存在せず、画像クエリは "glamour stage 
 publish 数を稼ぐより、reject 数を許容して捏造 0 を維持。本事故は
 gate を作っても override フラグを残置すると無効化される、という
 教訓を残した — 同じ bypass を再導入しないこと。
+
+---
+
+## 20. SheetsManager.add_article が無条件 append → 同 article_id の重複行 → 二重投稿リスク
+
+**事象 (2026-05-21 09:12-09:14):** 同一 generate ランの中で note 3 件
+(JSON は各 1 件のみ) が Sheets に row 65-67 と row 68-72 の 2 セットで
+登録された。`update_status` の 2026-04-23 修正 (`findall` で未投稿行優先)
+は機能していたが、 dup 数が多く新しい ✅承認 行が残るパスがあり、 row 71
+(Town 記事) が ✅承認 のまま残置。 次回 publish で二重投稿になる手前で
+手動 ✅投稿済み に変更して回避。
+
+**原因:** `utils/sheets_manager.py::add_article` が冒頭で既存 article_id を
+確認せず無条件 `append_row` していた。 register_for_approval が 2 回呼ばれた
+(bot 経由 / 再 generate / 内部経路不明) ケースで dup を防ぐ最後の砦が無かった。
+
+**対策 (2026-05-22):** `add_article` を idempotent 化。
+- 冒頭で `sheet.find(article_id, in_column=…)` 既存チェック
+- ヒットすれば warn ログ (`add_article skipped — article_id=… already at row N`)
+  を出して既存 row 番号を返し、 append しない
+- 既存無しは従来通り append
+
+**How to apply:** 二重 register の発火経路はまだ未特定 (bot か main 内
+再走か)。 idempotent 化で実害は止めたが、 warn ログが出始めたら呼び出し
+スタックを追って register_for_approval が 2 度走る経路を塞ぐ。 update_status
+側の `findall` 修正 (2026-04-23) と組み合わせて 2 重防御の状態にした。
 
 ---
 
