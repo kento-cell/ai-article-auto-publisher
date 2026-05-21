@@ -210,20 +210,37 @@ class SheetsManager:
     def add_article(self, data: dict[str, Any]) -> int | None:
         """Append a new article row and return its 1-based row number.
 
+        Idempotent on ``article_id``: if a row already exists with the
+        same ``article_id``, the append is skipped and the existing row
+        number is returned. This prevents the 2026-05-21 incident where
+        a re-entrant ``register_for_approval`` call duplicated 5 note
+        rows and left a stale ✅承認 dup that risked double-publish.
+
         Args:
             data: Dict whose keys match :data:`HEADER_ROW` names.
                 Extra keys are silently ignored; missing keys become
                 empty strings.
 
         Returns:
-            Row number of the newly appended row, or ``None`` if Sheets
-            is not configured.
+            Row number of the appended (or pre-existing) row, or
+            ``None`` if Sheets is not configured.
         """
         if self._sheet is None:
             self._logger.warning(
                 "Sheets not configured; skipping add_article",
             )
             return None
+        article_id = str(data.get("article_id", ""))
+        if article_id:
+            existing = self._sheet.find(
+                article_id, in_column=_COL_INDEX["article_id"],
+            )
+            if existing is not None:
+                self._logger.warning(
+                    "add_article skipped — article_id=%s already at row %d",
+                    article_id, existing.row,
+                )
+                return existing.row
         row = [str(data.get(col, "")) for col in HEADER_ROW]
         self._sheet.append_row(row, value_input_option="USER_ENTERED")
         row_num = len(self._sheet.get_all_values())
