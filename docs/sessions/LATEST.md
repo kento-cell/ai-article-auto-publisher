@@ -2,15 +2,45 @@
 
 ## Current Topic
 
-ai-article-auto-publisher — 2026-05-20 セッション。generate→publish フル
-サイクル (note 5 + zenn 11 scrap = 16 件) を完遂、+ プロンプトエンジニアリング
-技術書 (¥1,980) を新規 publish。 大学生グルメ 4 本 + 既存 RAG 技術書 + 5-19 朝の
-サイクル分も live のまま継続中。
+ai-article-auto-publisher — 2026-05-21 セッション。 generate→publish フル
+サイクルを完遂 (note 2 paid + zenn 4 scrap = 6 件)。 セッション中に #18
+パターンの再発 (Cybertruck 捏造記事) を発見、`NOTE_ALLOW_NO_CODEX_BRIEF=1`
+bypass を停止して fail-closed reject に戻す根本修正を実装。 重複登録 +
+update_status 重複行未対応 という Sheets 由来の整合性バグを発見 (未修正・
+別タスク化)。
 
 ## Current Status
 
 - **Phase**: 量産運用期 (継続)。
-- **2026-05-20 朝 generate→publish サイクル**:
+- **2026-05-21 早朝 generate→publish サイクル**:
+  - generate: 合格 5 / 不合格 2 (knowledge_topic 2 件却下)
+  - Cybertruck Wade Mode 記事 → grounding (ctvnews.ca backfill) 失敗
+    にも関わらず `NOTE_ALLOW_NO_CODEX_BRIEF=1` で進行し全引用捏造
+    (numeric 95.8 通過、 ops_incidents #19 として記録)。 Sheets で
+    ❌却下 + `.env` の bypass を `=0` に変更で根本修正。
+  - **publish 6 件 (全成功)**:
+    - **note 2 件 (paid ¥500)**:
+      - 81歳おばあちゃん Swatting: https://note.com/note-user/n/n819322babf29
+      - Bandera 監視カメラ拒否: https://note.com/note-user/n/na26d546082bf
+    - **zenn 4 件 (cap 検出 → 全 scrap)**:
+      - Local Coding Agent (5-20 残): https://zenn.dev/zenn-user/scraps/ccabf8de439f17
+      - Antigravity 2.0 (5-20 残): https://zenn.dev/zenn-user/scraps/7d8b26da75c650
+      - PiG-Avatar (Gaussian Avatar): https://zenn.dev/zenn-user/scraps/92604fc38670db
+      - MSAVBench (Multi-Shot Audio-Video): https://zenn.dev/zenn-user/scraps/7c2d7863479cf8
+  - 価格 API 検証: 2件とも ¥500 (`_set_price` 漂流バグ今回は出ず)
+  - メンバーシップ追加は全件 UI 漂流で失敗 → 手動追加が必要
+- **2026-05-21 セッション中に発見した未解決バグ** (別タスク化推奨):
+  1. **重複 Sheets 登録**: generate Phase 中、 09:12 に note 3 件 (row 65-67)
+     が先行 add され、 Phase 3 (09:14) で同じ記事が再度 row 68-72 として
+     add された。 ログ上の単発 `register_for_approval` 以外から
+     `add_article` が呼ばれている経路あり (常駐 bot か内部処理の重複)。
+     `JSON ファイルは各 1 件のみ`。 generate は 1 回しか走っていない。
+  2. **`update_status` 重複行未対応**: `dup_count=2` を報告するが、 first-match
+     行しか更新しない。 `project_sheets_duplicate_rows_bug` (2026-04-23 修正済)
+     が revert 状態。 実害: 今回 row 71 (Town 本物) が ✅承認 のまま残り、
+     次回 publish で二重投稿リスクあった → 手動 ✅投稿済み に修正で回避。
+  3. **メンバーシップ追加 UI 漂流**: 既知課題 (5-20 から継続)。
+- **2026-05-20 朝 generate→publish サイクル** (継続中、 commit 13701ae 済):
   - generate: 合格 6 / 不合格 1 (citation 0 で zenn 1 件却下)
   - publish 16 件 (bulk_approve で過去 zenn pending 10 件と新規 6 件をまとめて承認):
     - **note 5 件** (全 paid):
@@ -84,25 +114,35 @@ py -c "import main"
 py scripts/test_hallucination_deny.py
 ```
 
-### 2. メンバーシップ手動追加 (今日 publish 分)
+### 2. メンバーシップ手動追加 (累積 — ダッシュボードから手動)
+- **5-21 note 2 件** (おばあちゃん Swatting / Bandera 監視カメラ)
 - 5-20 note 5 件 (Tesla / CISA / Gen Z / EV $130 / X)
 - 5-20 プロンプト技術書 (¥1,980)
 - 5-19/20 大学生 4 本 (¥100 paid)
 - 5-19 朝 note 4 件 (Schmidt / 電力網 / AIデータセンター水中化 / AI連鎖崩壊)
 - 5-18 RAG 技術書 (¥1,980)
 
-### 3. 価格 ダブルチェック (¥300 漂流バグ既知)
-note ダッシュボードで 5-20 note 5 件 の価格を確認 (B + A → ¥500 想定)。
-¥300 で投稿されていたら手動修正。
+### 3. 価格修正 (公開価格 API で確認済の漂流)
+- **5-20 Tesla / CISA: 現在 ¥0** → ¥500 に手動修正必要
+  (`_publish_free_first.py --free-first 0` で起動したはずだが何故か無料化、
+  あるいは UI 漂流で価格設定欄が出ず ¥0 が default になった疑い)
+- 5-20 残り 3 件 (Gen Z / EV / X) と 5-21 2 件は ¥500 で正常
 
-### 4. 大学生グルメシリーズ + プロンプト技術書 の初動エンゲージメント観察
+### 4. 未解決バグの根本修正 (本セッションで noted、別タスク化)
+- 重複 Sheets 登録の経路特定 (常駐 bot か main.py 内の 2 重 register か)
+- `update_status` 重複行更新の復旧 (commit history で
+  `project_sheets_duplicate_rows_bug` の修正コミットを特定して再適用)
+- メンバーシップ追加の UI セレクタ更新
+
+### 5. 初動エンゲージメント観察 (週末経過後)
 週末 (5-23/24) 経過後に `py main.py --learn` でスコア計測。
 - 大学生 4 本: バズれば横展開 (一橋大/国立、明大/お茶/水道橋、立教/池袋、etc.)
   ※ user 指示で横展開は stay 中
 - 技術書 2 弾: RAG (5-18) vs プロンプト (5-20) で売れ行き比較。
   3 弾目の方向決め (ベクトル検索 / マルチエージェント / Claude Code 運用 等)
+- 5-21 note 2 件 (Swatting / 監視カメラ拒否) のエンゲージメント計測
 
-### 5. (deferred) 残作業
+### 6. (deferred) 残作業
 - 5-18 オーバーナイトの 10 記事 ChatGPT 画像差し替え →
   `feedback_no_exhaustive_cleanup` により retroactive cosmetic 差し替えは pursue しない
 - AI 開示 footer 26 件の修復 — 同上理由で deferred
@@ -174,7 +214,7 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-20 10:00 JST
+2026-05-21 10:05 JST
 
 
 ---

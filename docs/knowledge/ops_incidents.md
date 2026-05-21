@@ -36,6 +36,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 16 | Phase 2 で forbidden regex の catastrophic backtracking → 30分ハング | 2026-05-15 | settings.yaml の接続詞 regex を 1段 quantifier の線形形に書換 + objective_scorer に接続詞 count gate | ✅ 修正済 |
 | 17 | RAG retriever が記事ごとに SentenceTransformer 再生成 → HF Hub HEAD で CloseWait ハング疑い | 2026-05-15 | `.env` に `HF_HUB_OFFLINE=1` `TRANSFORMERS_OFFLINE=1` (cache 前提、外部通信ゼロ) | ✅ 緩和済 |
 | 18 | note 記事が見出しだけから生成され全引用が捏造 (Reddit リンク投稿は `selftext` 空 + Codex grounding 無効) | 2026-05-17 | main.py `_fetch_article_text` / `_backfill_source_content` でリンク先本文を取得 → grounding gate に `has_source_content` 追加 | ✅ 修正済 |
+| 19 | #18 と同じ捏造が `NOTE_ALLOW_NO_CODEX_BRIEF=1` bypass 残置で再発 (Cybertruck Wade Mode 記事、source backfill 失敗→Writer 全創作) | 2026-05-21 | `.env` の bypass を `=0` に変更、両方欠落時 fail-closed 復活。bypass フラグは捏造の最後の入口になり得るので再導入しないこと | ✅ 修正済 |
 
 ---
 
@@ -333,6 +334,53 @@ backfill 修正ありで再生成。全 4 記事で本文中の引用・固有�
 だった** — prompt/model をいじる前に入力 grounding を疑うこと。
 副次効果: `subj_evaluator` の `research_brief` (main.py: `article["content"]`)
 にも実ソースが渡り、accuracy 検証が機能するようになった。
+
+---
+
+## 19. `NOTE_ALLOW_NO_CODEX_BRIEF=1` バイパス起因の再発 — Cybertruck 記事
+
+**事象:** 2026-05-21、generate サイクル中の note 記事 "Driver intentionally
+drove Cybertruck into lake to use vehicle's 'Wade Mode,' police say"
+(Reddit/r/technology のリンク投稿、source = ctvnews.ca) で **#18 と同じ
+パターンの全引用捏造**が再発。`_fetch_article_text` で ctvnews.ca から
+backfill を試みたが失敗 (article body 取得不能、おそらく site が SPA か
+bot blocker)。それでも `.env` の `NOTE_ALLOW_NO_CODEX_BRIEF=1` により
+grounding gate を bypass、Writer が空の content からタイトルだけで本文と
+引用を全創作 (grade B / numeric 95.8 / evidence A 通過)。引用ブロック
+"The police were called to the scene after the driver drove the Cybertruck
+into the lake." はソースに存在せず、画像クエリは "glamour stage lights pastel"
+で生成され Cybertruck と無関係な inline 画像 ("Three women dancing",
+"car next to neon sign") が貼られていた。
+
+**原因:**
+- #18 修正で `_backfill_source_content` を追加し grounding gate を
+  「Codex brief **または** source body」で判定する設計にしたが、
+  最終バイパス `NOTE_ALLOW_NO_CODEX_BRIEF=1` が残置されていた
+  (.env 174 行)。
+- backfill が source 側都合 (404/SPA/bot block) で失敗するケースは
+  reliably 起きるが、bypass フラグが both empty 時の fail-closed
+  reject を無効化していた → 再発の必然的条件が成立。
+- objective_scorer は domain=Tier1 から evidence_level=A を付与。捏造
+  引用は形式上 URL+タイトルを伴うため citation_format も pass。
+  ハルシ defense は文章レベルでは検知できなかった (LLM が「自然な」
+  英文を作るため)。
+
+**対策 (実装済み, 2026-05-21):**
+- `.env`: `NOTE_ALLOW_NO_CODEX_BRIEF=1` → `=0`。bypass を停止し、
+  backfill 失敗時は fail-closed reject に戻す。Codex CLI 無効運用の
+  下では backfill が唯一の grounding で、それも失敗したら publish より
+  reject のほうが安全 (publish 数が減るのは許容)。
+- Cybertruck の Sheets row 67/72 を ❌却下、本記事を ops_incidents に
+  追加し RAG 再 ingest。次回 hallu-guard が同パターンを高い類似度で
+  flag する想定。
+
+**How to apply:** 今後 grounding 系の bypass フラグを追加するときは
+**条件付き bypass** にする (例: dev mode 限定 / source domain whitelist
+限定 / 自動 fallback ではなく明示再生成リクエストのみ)。Codex 系 gate
+を「全 note に強制」する設計は問題ない (#18 修正で確認済)。bypass で
+publish 数を稼ぐより、reject 数を許容して捏造 0 を維持。本事故は
+gate を作っても override フラグを残置すると無効化される、という
+教訓を残した — 同じ bypass を再導入しないこと。
 
 ---
 
