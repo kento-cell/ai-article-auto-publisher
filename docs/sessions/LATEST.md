@@ -214,12 +214,91 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-21 10:05 JST
+2026-05-22 08:25 JST
 
 
 ---
 
-## 2026-05-15 morning briefing (autonomous overnight run)
+## 2026-05-22 早朝 learn→generate→publish サイクル
+
+ユーザー指示「learn generate publish」を compound workflow で自走。
+未解決バグ #4-2 (LATEST.md の主張: update_status が revert) を最初に
+verify したところ、 update_status (sheets_manager.py:273-319) は 4 月
+の修正 `findall` ベース実装のまま残置していて誤診断と判明。 真の
+root cause は **`add_article` が無条件 `append_row`** していて同一
+article_id が再 register されたときに dup 行を防ぐ最後の砦が無かった
+こと → idempotent 化で根本対処。
+
+### このセッションのコード修正
+
+1. **`utils/sheets_manager.py::add_article` idempotent 化** —
+   冒頭で `sheet.find(article_id)` 既存チェック → ヒットすれば warn
+   ログ (`add_article skipped — article_id=… already at row N`) を
+   出して existing row 番号を返し、 `append_row` しない。 update_status
+   側 (`findall` で未投稿行優先、 2026-04-23 修正) と組み合わせて 2 重防御。
+2. **`docs/knowledge/ops_incidents.md` 事象 #20 追加** — Sheets 重複登録
+   経路の事象/原因/対策を記録。 カテゴリ別サマリ表にも 1 行追加、
+   `最終更新: 2026-05-22` 更新。
+3. **RAG 再 ingest** — `py scripts/build_rag_index.py` 実行。
+   ops_incidents は 14 → 15 chunks。 後続の publish で ops-banner が
+   sim 0.82 で #20 を pick up → RAG 配線が健全に動いていることを確認。
+4. **`memory/project_sheets_duplicate_rows_bug.md` 更新** — 2層あった
+   ことを明示。 update_status (4月修正済) と add_article (今回修正)。
+
+### learn 結果 (2026-05-22 07:36–07:45)
+
+- 280 サンプル収集 (14 カテゴリ × 20 件)
+- 性能 join: 137 rows × 168 article store → 109 joined (80%)
+- 新規 snapshot:
+  - `docs/knowledge/note-trends/2026-05-22_auto_learning.md`
+  - `docs/knowledge/quality_insights_2026-05-22.md`
+  - `docs/knowledge/quality_successes.md` / `quality_anti_patterns.md` 再生成
+- RAG auto-reindex: 475 chunks 全体 / ops_incidents 15 chunks
+
+### generate 結果 (2026-05-22 07:45–08:07)
+
+- 合格 3 件 (zenn 2 + note 1) / 不合格 4 件
+- 不合格の **3 件は grounding fail-closed reject** (axios/businessinsider/qz の
+  ソース fetch 403/失敗 → 「Codex brief 空 AND source body fetch 失敗」
+  で creator-side reject)。 #19 の bypass 撤去が効いていることを実証。
+- 残り 1 件は title_fulfillment 未達で総合 C 却下。
+- 合格内訳:
+  - row 78 zenn: SaaS で AI Agent Bedrock AgentCore マルチテナント (B/A)
+  - row 79 zenn: AIエージェント導入 6 施策 ガートナー (B/A)
+  - row 80 note: The Death of Entry-Level Jobs (CEO 43% junior 削減) (B/A)
+
+### publish 結果 (2026-05-22 08:08–08:23)
+
+- bulk_approve 3 行 → publish (`_publish_free_first.py --free-first 0`)
+- ops-banner で過去事象 3 件 pick up (#1 orphan / #2 paid-flow / **#20
+  add_article 重複** — sim 0.82 — 今回追加した #20 が早速 hit)
+- **zenn 2 件 (cap exhausted → 全 scrap)**:
+  - SaaS Bedrock: https://zenn.dev/zenn-user/scraps/eb24284ca585cf
+  - ガートナー 6 施策: https://zenn.dev/zenn-user/scraps/245dfef1cd525b
+- **note 1 件 (paid)**:
+  - Death of Entry-Level Jobs: https://note.com/note-user/n/n29d0a80811b4
+  - 価格は note 側ダッシュボードで要確認 (article store の `price` フィールドは None)
+- **メンバーシップ追加は UI 漂流で失敗** (既知)。
+- Slack file upload が rejected 4 件中 3 件で `invalid_arguments` エラー
+  (length が 1 以下と Slack が判断)。 Sheets / Gmail 通知は正常、 publish には
+  影響なし → 別タスク化。
+
+### Next Resume Actions
+
+1. **note メンバーシップ手動追加 (累積)**: 5-22 1 件 (Death of Entry-Level Jobs)
+   + 5-21 2 件 + 5-20 5 件 + 過去 (LATEST.md 上部の累積リスト参照)
+2. **5-22 note 1 件の価格確認**: note ダッシュボードで Death of Entry-Level Jobs
+   が ¥500 (B+A 想定) になっているか確認。 ¥300 漂流していたら修正。
+3. **重複 register 経路の特定**: warn ログ `add_article skipped — article_id=…
+   already at row N` が出始めたら呼び出しスタックを追って register_for_approval
+   の 2 度発火経路を塞ぐ (今回は warn は出ていない = 重複は発火していない)。
+4. **Slack file upload エラー修正** (`invalid_arguments — length must be greater
+   than 1`): `publishers/slack_notifier.py` で rejected 記事のコンテンツが空 or
+   1 文字以下のときに files.getUploadURLExternal が拒否される。 length=0 ケースを
+   ガードするか、 send_message に fallback。
+5. **5-22 generate で reject された 3 ソースの再取得検討**: axios / businessinsider /
+   qz は backfill 失敗で reject。 別 collector やキャッシュから再 grounding する
+   経路を考えるか、 永久 deny に追加してリトライしないかの方針決め。
 
 **ユーザーが寝ている間に走ったタスク** (`scripts/_overnight_orchestrator.py`):
 1. 13th generate (variant=v3_codex) の完了待機
