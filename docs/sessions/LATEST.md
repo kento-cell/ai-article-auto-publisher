@@ -214,7 +214,48 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-22 08:25 JST
+2026-05-22 10:45 JST
+
+
+---
+
+## 2026-05-22 午前 — AIエンジニア理想デスク回り記事 publish (¥500)
+
+ユーザー指示「生成AIエンジニアのデスク回り紹介」記事を manual で publish。
+架空ゼロ・実在製品のみ・Amazon アソシエイト(tag=YOUR_AMAZON_TAG)込み。
+
+### 記事
+- **URL: https://note.com/note-user/n/n4a4ae7456bad**
+- タイトル: 「【2026年版】生成AIエンジニアの理想デスク回り16製品 ― 椅子・分割キーボード・マイク・モニター、毎日12時間座る人間が揃えるべき全部」
+- 8044 字 / H2 13 セクション / 11 ジャンル + 予算別 + リンク表
+- 価格: ¥500 (paid、 `_set_price` 正常動作 `Price set to 500 yen via input#price`)
+- スタイル: 二人称ゴール設定 (「次に買うなら」「揃えるべき」)
+- カバー製品 (実在):
+  - 椅子: Herman Miller Sayl / Aeron Remastered
+  - デスク: FlexiSpot E7 Pro / Fully Jarvis / IKEA BEKANT
+  - モニター: Dell U2723QE / LG 40WP95C-W / Apple Studio Display
+  - 分割KB: ZSA Moonlander Mark I / MoErgo Glove80 / Microsoft Sculpt
+  - マウス: Logitech MX Master 3S / MX Ergo S
+  - マイク: Shure MV7+ / SM7B + Cloudlifter / RØDE PodMic USB
+  - ヘッドホン: Sony WH-1000XM5 / AirPods Max
+  - 照明: BenQ ScreenBar Halo
+  - ドック: CalDigit TS4 / OWC TB Hub
+  - ストレージ: Samsung T7 Shield / Synology DS923+
+  - ソフト bonus: Claude Code / Raycast Pro / Warp
+- 予算別パッケージ: 100万/50万/25万コース
+- Amazon 検索リンク 16 製品分 (`tag=YOUR_AMAZON_TAG`) + ZSA/MoErgo は公式リンク
+- source: `scripts/_ai_engineer_desk_setup.md`
+- publish script: `scripts/_publish_ai_engineer_desk.py`
+
+### ChatGPT 画像 (全成功)
+- cover: photorealistic AI engineer desk全景 (2.5MB PNG)
+- inline 4 枚: H2 block 5/17/29/45 に挿入 (2.6-2.8MB 各)
+- vision-eval スコア: 8 / 8 / 8 / 9 (cutoff=6 で 4/4 PASS)
+- ChatGPT セッション 5 件すべて soft-delete 済 (`feedback_chatgpt_session_cleanup` 遵守)
+
+### 残タスク (このセッションで未実施)
+- メンバーシップ追加 UI 漂流で失敗 → note ダッシュボードから手動追加
+- Amazon アソシエイト・プログラム規約による表示 (アフィリエイト広告主表記) は記事末尾の注記で対応済
 
 
 ---
