@@ -1,28 +1,29 @@
 # Quality Insights — 2026-05-22
 
-- 性能データ: 137件 / 紐付け成功: 109件 (28件unmatched)
+- 性能データ: 140件 / 紐付け成功: 112件 (28件unmatched)
 - ScoreCard: `engagement = likes + 0.5*comments + 0.1*anon`
 
 ## トップ記事 (エンゲージメント上位 20%)
 - score=5.0 (♥5 💬0) age=2.0d | 【AI ライティング副業の現状 (2026年5月)】
-- score=5.0 (♥5 💬0) age=1.9d | 【完全自動】巨大組織の致命的ミスから学ぶ！セキュリティの穴と個人が取るべき5つの鉄壁対策
+- score=5.0 (♥5 💬0) age=2.3d | 【完全自動】巨大組織の致命的ミスから学ぶ！セキュリティの穴と個人が取るべき5つの鉄壁対策
 - score=4.0 (♥4 💬0) age=9.8d | 実在するAI副業モデル5種(ライティング/動画制作/LP制作/個別コンサル/SaaS)の始め方と月収目安を提示
 - score=4.0 (♥4 💬0) age=1.9d | 【警告】DogeとChatGPTの助成金廃止：The Vergeの記事から読み解くAI開発の現状と未来
+- score=3.1 (♥3 💬0) age=3.2d | 新宿、チェーンしか思い浮かばない夜に。穴場居酒屋5軒
 - score=3.0 (♥3 💬0) age=10.0d | 【3分でわかる】オリエンタルランドの株価急騰の裏側：投資家の視点と今後の展望
 - score=3.0 (♥3 💬0) age=3.0d | Zapier / Make / n8n の違いを整理し、ノーコードで組める 5 つの業務自動化レシピを提示 (議事録要約
 - score=3.0 (♥3 💬0) age=9.8d | 日本の湿度・水質を踏まえ、10stepから実用的な5stepに絞ったルーティンを提案する
-- score=3.0 (♥3 💬0) age=3.0d | 【本音】アリゾナ大学のブーイングが示す「AIの真実」。エリック・シュミット氏が語りきれない未来の危険性
+- score=3.0 (♥3 💬0) age=3.4d | 【本音】アリゾナ大学のブーイングが示す「AIの真実」。エリック・シュミット氏が語りきれない未来の危険性
 - score=3.0 (♥3 💬0) age=3.5d | 【号外】Windows 11の性能低下は嘘だった？プロが教えるドライバダウングレードの真実と対処法
 - score=2.5 (♥2 💬1) age=4.1d | 【緊急】【永久保存版】オンラインゲームは「ライセンス」だった？ 2027年以降のゲーム消費ルールを徹底解説
+- score=2.1 (♥2 💬0) age=2.3d | プロンプトエンジニアリング実務本 2026 ― Claude 4.7 / GPT-5.5 / Gemini 3 / o4
+- score=2.1 (♥2 💬0) age=2.3d | 【保存版】Xの無料アカウント制限が示す「SNSの未来」3つの真実
+- score=2.1 (♥2 💬0) age=2.3d | 【警告】EVオーナーは知らない？年間130ドルの「見えない税金」があなたの車を襲う裏事情
+- score=2.1 (♥2 💬0) age=2.3d | 【殿堂入り記事・警告】「AIは便利」は嘘だった。Gen Zが示す、職場の「人間価値」再定義の衝撃
+- score=2.1 (♥2 💬0) age=3.1d | 東京農大生のための、経堂の居酒屋＆カフェ案内
+- score=2.1 (♥2 💬0) age=3.1d | 成蹊大生のための、吉祥寺の居酒屋＆カフェ案内
+- score=2.1 (♥2 💬0) age=3.2d | 【夜メモ】【警告・永久保存版】AIデータセンターの熱が都市を飲み込む。4度の気温上昇が示す「真の電力危機」
 - score=2.0 (♥2 💬0) age=3.0d | ChatGPT Projects / Claude Projects / Gemini Gems / Memory の違
 - score=2.0 (♥2 💬0) age=11.8d | 用途別 (SNS素材/ブログアイキャッチ/商用広告/BGM) に、費用対効果で最適な生成 AI ツールセットを提示
-- score=2.0 (♥2 💬0) age=3.1d | 【殿堂入り記事・警告】GameStopとeBayの奇妙な関係性：AI時代の小売とECの未来を読み解く
-- score=2.0 (♥2 💬0) age=3.2d | 【禁断】AIプロンプトエンジニアリング完全ガイド：Anthropic & OpenAI公式徹底解説と実務向けテンプレート
-- score=2.0 (♥2 💬0) age=4.2d | 【保存版・全店実在】東京1人飯カウンター9軒の本気セレクト|寿司・焼鳥・ラーメン、予約難度&価格帯まで全部書く
-- score=2.0 (♥2 💬0) age=2.0d | 【Perplexity / Felo / GenSpark を活用したリサーチ代行副業の始め方】
-- score=2.0 (♥2 💬0) age=4.8d | 【悲報】$1900の折りたたみスマホは失敗した？Razr Foldから読み解く、2026年ガジェットの「本音の課題」
-- score=2.0 (♥2 💬0) age=3.7d | 【決定版】AIが引き起こすレイオフの真実。CTOが背負う「二重の責任」と組織の生き残り方
-- score=2.0 (♥2 💬0) age=3.7d | 【穴場】「BitLockerは万能」は嘘だった。専門家が警鐘を鳴らす、個人データ保護の3つの盲点
 
 ## 下位記事 (下位 20%)
 - score=0.0 age=7.9d | 【そもそも解説】日本の警察はSNSをどう使っているか — 公式発信チャネル一覧と読み手の注意点
@@ -44,18 +45,19 @@
 - score=0.0 age=4.2d | 【入門】AIナレッジマネジメント：ChatGPT Projects、Claude Projects、Gemini Gem
 - score=0.0 age=4.2d | 【【家庭型ロボット戦争】1X Neo、Figure、Tesla Optimus徹底比較：2026年、あなたのリビングにロ
 - score=0.0 age=9.8d | 4 ツールを 7 軸 (精度/セキュリティ観点/CI統合/料金/誤検知率/日本語対応/プロジェクト規模) で比較し、チー
+- score=0.0 age=9.8d | NVIDIAのロボット版Android戦略を、ハード (Jetson Thor 800 TFLOPS) / シム (Co
 
 ## A/B フラグ × エンゲージメント
 | flag | on_mean | off_mean | delta | on/off n |
 |---|---|---|---|---|
-| learn.learned_block | 0.96 | 0.0 | +0.96 | 80/0 |
-| learn.failure_patterns | 0.96 | 0.0 | +0.96 | 80/0 |
-| learn.track_adoption | 0.96 | 0.0 | +0.96 | 80/0 |
-| hashtag.blend_learned | 0.96 | 0.0 | +0.96 | 80/0 |
-| regen.thin_content_retry | 0.96 | 0.0 | +0.96 | 80/0 |
-| regen.char_count_feedback | 0.96 | 0.0 | +0.96 | 80/0 |
-| image.body_fallback_query | 0.96 | 0.0 | +0.96 | 80/0 |
-| publish.zenn_scrap_only | 0.5 | 0.97 | -0.47 | 2/78 |
+| learn.learned_block | 0.99 | 0.0 | +0.99 | 84/0 |
+| learn.failure_patterns | 0.99 | 0.0 | +0.99 | 84/0 |
+| learn.track_adoption | 0.99 | 0.0 | +0.99 | 84/0 |
+| hashtag.blend_learned | 0.99 | 0.0 | +0.99 | 84/0 |
+| regen.thin_content_retry | 0.99 | 0.0 | +0.99 | 84/0 |
+| regen.char_count_feedback | 0.99 | 0.0 | +0.99 | 84/0 |
+| image.body_fallback_query | 0.99 | 0.0 | +0.99 | 84/0 |
+| publish.zenn_scrap_only | 0.5 | 1.0 | -0.5 | 2/82 |
 
 ## 未マッチ記事 (ArticleStoreに無い/古い)
 - age=6.9d ♥1 | 【完全ガイド】ChatGPT vs Claude 2026春、実務で使うならどちら？ — 料金・コーディング・長文・エー

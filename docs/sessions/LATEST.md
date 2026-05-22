@@ -214,7 +214,67 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-22 11:33 JST
+2026-05-22 18:00 JST
+
+
+---
+
+## 2026-05-22 夕方 — 2 度目の learn→generate→publish サイクル
+
+ユーザー指示「learn generate publish」を再度 compound workflow で実行。
+本日 **2 度目** の自動サイクル。 朝 (07:36-08:23) との比較データが取れた。
+
+### learn (16:50-16:54)
+- 280 samples (朝と同じ — 同日中の RSS/arXiv は変化少)
+- joined: **112/137** (80%) ← 朝 109/137 から +3 (朝 publish した記事の scrape 反映)
+- past_articles **358 chunks** (朝 353 から +5、 朝の publish 分が ingest)
+- RAG 総 **480 chunks**
+
+### generate (16:54-17:29)
+- 合格 **4 件** (zenn 2 + note 2) / 不合格 **3 件**
+- 朝 (合格 3) より +1 件 ← 良化
+- 不合格内訳:
+  - Claude Code 30日ロードマップ: 客観 fail (word 8578 / 8000 超 + 禁止フレーズ「誰でも稼げる」「**〇〇」見出し誤構文 5 件)
+  - Wozniak Apple AI: businessinsider grounding 失敗 → fail-closed (#19 効果継続)
+  - In desperate times: 禁止フレーズ「〇〇を学ぶ」と
+- 合格 4 件:
+  - row 81 zenn: Salesforce セキュリティ強化
+  - row 82 zenn: PDF圧縮 Ghostscript→Rust 自前実装
+  - row 83 note: RAG の作り方 10 パターン網羅
+  - row 84 note: Why new grads are booing commencement speakers
+- **idempotent 化テスト OK**: row 81-84 が 1 セット add のみ。 `dup_count=1` で全 status 更新成功。 朝追加した `add_article` idempotent 化が機能している実証
+
+### publish (17:30-18:00)
+- 全 4 件 publish 成功
+- **zenn 2 scrap fallback** (cap 25 日継続中):
+  - Salesforce: https://zenn.dev/zenn-user/scraps/70ff8f599fee26
+  - PDF圧縮: https://zenn.dev/zenn-user/scraps/fc76745aa6f64a
+- **note 2 paid**:
+  - RAG 10パターン: https://note.com/note-user/n/n2effbd1ddd76
+  - Why new grads (AI 不安): https://note.com/note-user/n/n442e1d90570a
+- ops-banner で過去事象 3 件 pick up (#1 orphan / #2 paid-flow / #20 add_article 重複) — **#20 が今日も sim 0.82 で hit (継続実証)**
+- メンバーシップ追加: 全件 UI 漂流で失敗 (手動追加必要)
+- Slack file upload 1 件 invalid_arguments エラー (Wozniak 記事の不合格通知)。 別タスク化済 (5-22 朝 Next Actions #4 参照)
+
+### 5-22 累計 publish (1 日 × 2 サイクル + 手書き 2 件)
+
+| 時間帯 | 種別 | 件数 |
+|---|---|---|
+| 朝 generate | zenn 2 scrap + note 1 paid | 3 |
+| 手書き ¥500 | note (デスク回り 16 製品) | 1 |
+| 手書き ¥0 | note (分割キーボード入門) | 1 |
+| 夕方 generate | zenn 2 scrap + note 2 paid | 4 |
+| **合計** | **note 5 paid + note 1 free + zenn 4 scrap** | **9 件** |
+
+### Next Resume Actions (累積)
+1. **note メンバーシップ手動追加 (5-22 累計 4 件分)**:
+   - Death of Entry-Level Jobs (n29d0a80811b4)
+   - AIエンジニアの理想デスク回り 16 製品 (n4a4ae7456bad)
+   - RAG 10 パターン (n2effbd1ddd76)
+   - Why new grads (n442e1d90570a)
+2. **note paid 価格確認**: 5-22 paid 4 件すべて ¥500 になっているか note ダッシュボードで確認 (`_set_price` 漂流の継続監視)
+3. **Slack file upload 修正**: `invalid_arguments — length must be greater than 1` の根本対処
+4. **5-23/24 経過後**: バズ計測 / RAG_ENABLED A/B 効果測定
 
 
 ---
