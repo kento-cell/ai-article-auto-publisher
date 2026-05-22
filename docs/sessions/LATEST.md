@@ -214,7 +214,48 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-22 10:45 JST
+2026-05-22 11:33 JST
+
+
+---
+
+## 2026-05-22 午前 (2) — 分割キーボード入門 無料記事 publish (teaser)
+
+¥500 デスク回り記事の集客導線として、 「分割キーボード入門」単独の
+無料記事を publish。 有料記事内では 1 セクションだった内容を **5186 字 /
+10 H2 / 7 製品** に拡張、 末尾に有料記事への CTA リンクを設置。
+
+### 記事
+- **URL: https://note.com/note-user/n/nad91dcc9dc5f**
+- タイトル: 「【先に手首を救え】分割キーボード入門 ― Moonlander / Glove80 / Kinesis、 AIエンジニアの最初の1台」 (60字)
+- **¥0 無料**
+- 二人称・付け足しトーン (有料記事と同じ語り口で「同じ著者の続編」感)
+- 7 製品実在 + Oryx/QMK/ZMK 配列カスタム 3 択
+  - 入門 ¥10k: Microsoft Sculpt Ergonomic / Logitech ERGO K860
+  - 中間 ¥35k: Keychron Q11 / Q14
+  - 本命 ¥65-85k: ZSA Moonlander Mark I / MoErgo Glove80 / Kinesis Advantage360 Pro
+- 「代わりに失うもの3つ」セクションで正直な caveat (持ち運び性 / 一時的 WPM 低下 / コミュニティ分断) → 信頼性ヘッジ
+- 末尾 CTA: 有料記事 `n4a4ae7456bad` への内部リンク + Amazon 検索リンク 4 製品分 (Sculpt/K860/Q11/Q14、 ZSA/MoErgo/Kinesis は公式直販)
+- source: `scripts/_split_keyboard_intro.md`
+- publish script: `scripts/_publish_split_keyboard_intro.py`
+
+### ChatGPT 画像 (全成功)
+- cover: photorealistic 分割キーボード setup
+- inline 4 枚: H2 block 4/12/24/35 に挿入
+- vision-eval スコア: 全 PASS (最終 2 枚は最高スコア 9)
+- ChatGPT セッション 5 件 soft-delete 済
+
+### 5-22 累計 publish (1日)
+- 自動 generate→publish: zenn 2 scrap + note 1 paid (Death of Entry-Level Jobs)
+- 手書き ¥500 paid: AI エンジニア理想デスク 16 製品 (`n4a4ae7456bad`)
+- 手書き ¥0 free: 分割キーボード入門 (`nad91dcc9dc5f`) ← 直前の有料記事 teaser
+
+合計 note 3 件 (paid 2 + free 1) + zenn scrap 2 件 = 5 件 publish。
+
+### Next Resume Actions (継続)
+1. note メンバーシップ手動追加 (5-22 paid 記事 2 件: Death of Entry-Level / デスク 16 製品)
+2. 分割キーボード無料記事のエンゲージメント観察 → 有料記事への流入率を測定
+3. 5-20 Tesla / CISA 価格 ¥0 → ¥500 手動修正
 
 
 ---
