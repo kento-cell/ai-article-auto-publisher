@@ -214,8 +214,86 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-22 18:00 JST
+2026-05-25 08:55 JST
 
+
+---
+
+## 2026-05-25 朝 — learn→generate→publish サイクル (3 publish)
+
+ユーザー指示「resume」 → autonomous mode で compound workflow 自走。
+前回 5-22 evening から 3 日経過、 Resume Action #4「5-23/24 経過後の
+learn 計測」が今日が実行タイミング。
+
+### learn (07:18–07:29)
+- 280 サンプル / joined **114/142 (80%)** ← 5-22 evening 112 から +2
+- past_articles **362 chunks** (5-22 evening 358 → +4)
+- RAG 総 **484 chunks**
+- 新スナップショット: `quality_insights_2026-05-25.md` / `note-trends/2026-05-25_auto_learning.md`
+
+### learn データ観察
+- **トップ**: AIライティング副業 (♥5, 2.0d) / 巨大組織セキュリティ (♥5, 4.9d) / 実在AI副業モデル (♥4)
+- **5-22 publish 計測** (3日経過):
+  - Death of Entry-Level Jobs (♥2, 3.0d) — 静か
+  - RAG 10 パターン (♥0 推定、 unmatched 候補)
+  - Why new grads (♥0 推定、 unmatched 候補)
+  - 分割キーボード入門 (♥0 推定、 free teaser 未効果検出)
+- **下位 score=0 多発**: 「そもそも解説」系 (Bluesky検証 / JICA等) / 「ロボット網羅比較」系
+- **A/B**: `learn.*` flag は n=0/88 (全 ON) で計測不能、 `zenn_scrap_only` も n=2 不足
+- プロンプト技術書 (♥2, 4.9d) と RAG 技術書は静か継続
+
+### generate (07:29–08:01)
+- 合格 **3 件 (全 note)** / 不合格 **4 件**
+- **合格**:
+  - row 85 note: Ordinary WiFi can now identify people (B/A)
+  - row 86 note: 99% of CEOs Expect AI-Driven Layoffs (B/A)
+  - row 87 note: Star Citizen Hits $1 Billion (B/A)
+- **不合格 4 件**:
+  - DevOps オブザーバビリティ (zenn, citation 0)
+  - Marp Markdown (zenn, citation 0)
+  - Claude Code 30日ロードマップ (note, word 8702 + 「誰でも簡単に稼げる」)
+  - Sundar Pichai (note, businessinsider grounding fail-closed — #19 ガード継続効果)
+- `[ops-banner:generate]` で #3 (MD5 同一画像) / #19 (Cybertruck bypass) / #1 (orphan) pick up
+- `[hallu-guard]` 全 note で 3 incident flag (rerank=0.86–0.87)
+- `[rag-coverage:note]` hallu=3 anti=2 success=3 ops=3 guides=3 (全 threshold pass)
+
+### publish (08:02–08:48)
+- bulk_approve 3 行 → `_publish_free_first.py --free-first 0` で全 paid
+- **zenn 0 件** (今回 zenn 合格なし、 cap 状態継続だが対象外で発火せず)
+- **note 3 件 (全 paid 想定)**:
+  - WiFi 身体識別: https://note.com/note-user/n/n8f8b4a2cda52
+  - AI レイオフ (CEO 99%): https://note.com/note-user/n/n53a78cf21191
+  - Star Citizen $10億: https://note.com/note-user/n/n496d99f82ad2
+- `[ops-banner:publish]` で #1/#2/**#20 (add_article 重複)** pick up — #20 が今日も sim 0.82 で hit (RAG 健全)
+- **update_status `dup_count=1`** — 5-22 朝の idempotent 化が今日も機能
+- **ChatGPT 画像生成**:
+  - WiFi: batch 3 で no image found → inline 1 枚のみ + Unsplash fallback
+  - AI レイオフ: batch 5 で no image found → inline 1 枚のみ
+  - Star Citizen: 4 batch 全成功 → cover + inline 4 枚
+  - CDP 未起動 → launch_persistent_context fallback (Brave 自動起動)
+- **メンバーシップ追加**: 全 3 件 UI 漂流で失敗 (既知、 手動追加必要)
+- **Slack file upload エラー**: Sundar Pichai rejected 通知で `invalid_arguments — must be greater than 1 [json-pointer:/length]` 再現 (既知バグ、 通知失敗のみ、 publish 影響なし)
+
+### 5-25 朝累計 publish
+note 3 件 paid 想定 / zenn 0 件 = **3 件 publish**
+
+### Next Resume Actions (累積)
+
+1. **note メンバーシップ手動追加 (5-25 累計 3 件)**:
+   - WiFi 身体識別 (n8f8b4a2cda52)
+   - AI レイオフ (n53a78cf21191)
+   - Star Citizen $10億 (n496d99f82ad2)
+   - + 5-22 evening 4 件 (Death of Entry-Level / デスク 16 製品 / RAG 10 / Why new grads)
+   - + 5-22 朝の累積分
+2. **5-25 note paid 価格確認**: note ダッシュボードで 3 件すべて ¥500 になっているか確認 (`_set_price` 漂流の継続監視)
+3. **5-22 evening 価格確認も継続** (Why new grads / RAG 10 / Death of Entry-Level)
+4. **Slack file upload バグ修正**:
+   `publishers/slack_notifier.py` の `length` 引数が 0/空で reject される。 length=0 ケースを
+   ガードするか、 send_message に fallback。 5-22 朝 / 夕 / 5-25 と 3 セッション連続で再現。
+5. **ChatGPT 画像生成 batch 失敗 2 件** (WiFi batch 3 / AI レイオフ batch 5):
+   タイムアウトで no image found → inline 画像が想定枚数未満。 retroactive 差し替えは
+   `feedback_no_exhaustive_cleanup` により pursue しない。
+6. **5-28 経過後**: 5-25 publish 3 件のエンゲージメント観察 + 5-22 evening 4 件の最終評価
 
 ---
 
