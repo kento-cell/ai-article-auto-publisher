@@ -419,6 +419,10 @@ def _backfill_source_content(article: dict) -> None:
     """
     if len((article.get("content") or "").strip()) >= _MIN_SOURCE_CONTENT_CHARS:
         return
+    # knowledge-topic:// URLs are synthetic identifiers, not fetchable
+    # http(s) endpoints — short-circuit to avoid noisy fetch errors.
+    if article.get("source") == "knowledge_topics":
+        return
     url = (article.get("url") or "").strip()
     if not url.startswith("http") or "reddit.com" in url:
         return
@@ -3070,6 +3074,16 @@ def _generate_single_article(
     has_source_content = (
         len((article.get("content") or "").strip()) >= _MIN_SOURCE_CONTENT_CHARS
     )
+    # Knowledge_topics ship a synthesized brief (persona+pain+promise+outline)
+    # in `content` — typically 300-400 chars, below the 400 threshold. The
+    # topic spec itself is the grounding: per-topic `evidence_required` and
+    # `prohibited_angles` are enforced by the Critic, and the LLM uses its
+    # training knowledge structured by the outline. The fail-closed gate
+    # below was added (2026-05-17) for Reddit link posts with empty selftext;
+    # knowledge_topics pre-date that gate and were never meant to be caught
+    # by it. Treat them as grounded.
+    if article.get("source") == "knowledge_topics":
+        has_source_content = True
 
     research_block = ""
     if platform == "note":
