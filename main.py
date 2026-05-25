@@ -3996,6 +3996,22 @@ def _post_rejected_to_slack(rejected: list[dict]) -> None:
             f"*理由*: {reasons}"
         )
 
+        # Slack files.getUploadURLExternal requires >=2 bytes; fall back to
+        # chat_postMessage when the rejected article body is empty or trivial.
+        if len(content.encode("utf-8")) < 2:
+            try:
+                client.chat_postMessage(channel=channel_id, text=comment)
+                logger.info(
+                    "Slack notified rejected article (empty body, no upload): %s",
+                    title[:40],
+                )
+                new_posted.append(title)
+            except Exception as e:
+                logger.error(
+                    "Slack chat_postMessage failed for '%s': %s", title[:30], e
+                )
+            continue
+
         try:
             client.files_upload_v2(
                 channel=channel_id,
@@ -4008,6 +4024,18 @@ def _post_rejected_to_slack(rejected: list[dict]) -> None:
             new_posted.append(title)
         except Exception as e:
             logger.error("Slack file upload failed for '%s': %s", title[:30], e)
+            try:
+                client.chat_postMessage(
+                    channel=channel_id,
+                    text=f"{comment}\n\n_(file upload failed: {e!s})_",
+                )
+                new_posted.append(title)
+            except Exception as e2:
+                logger.error(
+                    "Slack chat_postMessage fallback failed for '%s': %s",
+                    title[:30],
+                    e2,
+                )
 
     # Save posted titles
     if new_posted:
