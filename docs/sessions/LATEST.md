@@ -214,8 +214,117 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-25 08:55 JST
+2026-05-25 11:20 JST
 
+
+---
+
+## 2026-05-25 午前 (2) — knowledge_topics 拡張 + grounding fix + 拡張 publish (7)
+
+ユーザー指示「美容系/韓国系/丁寧な生活系 作ろうか」 → 自走で
+knowledge_topics seed 拡張 → generate (新カテゴリ scoped) → fail-closed
+発覚 → grounding gate 修正 → 再 generate → publish 7 件 (note 3 paid +
+zenn 4 scrap) で完遂。
+
+### 重大バグ発見 + 修正
+**全 6 件の美容/韓国 RSS が永久隔離中** (wwdjapan/precious/domani/
+mi_mollet/allkpop/wowkorea_beauty) で自動generate ではこれらジャンル
+記事が出ない。 RSS 死亡で「美容/韓国記事を learn top で見ない」のは
+当然だった。
+
+→ knowledge_topics seed を拡張する方針を選択:
+1. **k_beauty 拡張 3 件** (kb_004 PDRN/エクソソーム / kb_005 日本国内
+   購入経路 / kb_006 韓国コスメ肌トラブル対処)
+2. **新カテゴリ `k_culture` 3 件** (kc_001 韓国食トレンド / kc_002
+   韓国カフェ東京 / kc_003 K-POP 女性アイドル 4世代分析)
+3. **新カテゴリ `slow_living` 3 件** (sl_001 朝30分丁寧ルーティン /
+   sl_002 二十四節気 / sl_003 1週間モノ減らし)
+
+data/knowledge_topics.json は gitignored のため、 portable seed として
+**config/knowledge_topics_seed.yaml** 新設 + 復元スクリプト
+**scripts/_add_beauty_culture_slow_topics.py** 配置 (fresh clone でも
+復元可能)。 pillars に `k_culture` / `slow_living` 追加。
+
+### grounding gate fix (main.py)
+1 度目の generate (09:24-09:45) で 4 件 knowledge_topics 全部
+**fail-closed reject**:
+```
+[note] no grounding (Codex brief empty AND source body could not be fetched)
+```
+
+原因: 5-17 で追加した grounding gate は「Codex brief OR source body」
+を要求するが、 knowledge_topics は架空 URL (`knowledge-topic://kb_004`)
++ synth_content 300-400 chars (閾値 400 未満) で両方失敗。 元設計では
+topic spec 自体が grounding (per-topic `evidence_required` +
+`prohibited_angles` を Critic が enforce) のはずが、 5-17 修正の副作用
+で潰れていた。
+
+**修正** (commit `2640782`):
+- `main.py:_backfill_source_content`: `source == knowledge_topics` で
+  即 return (`knowledge-topic://` URL は fetch 不可)
+- `main.py` grounding gate: `source == knowledge_topics` で
+  `has_source_content = True` 扱い
+
+reject された 4 行 (rejected sheet row 42-45) は cooldown blocker に
+なるため、 `scripts/_delete_rejected_rows_42_45.py` で削除。
+
+### 再 generate (10:30) 結果
+- **合格 4 件**:
+  - row 91 zenn: Claudeに任せてしまおう (B/A) ← RSS
+  - row 92 zenn: Tokenisation Convex Relaxations (B/A) ← RSS arXiv
+  - **row 93 note: K-POP女性アイドル 4世代分析 (B/A) ← kc_003 新カテゴリ初通過!**
+  - row 94 note: Ansel Adams AI着色著作権 (B/A) ← RSS
+- **不合格 3 件 (knowledge_topics 由来、 別ゲート)**:
+  - kc_001 韓国食トレンド: forbidden_phrases 「〇〇風」
+  - kc_002 韓国カフェ: title_fulfillment (5-6軒提示できず)
+  - sl_002 二十四節気: forbidden_phrases 「〇〇を飾りましょう」
+
+つまり 9 knowledge_topics 中 1 件 (kc_003) で end-to-end pass を実証、
+残り 3 件は forbidden_phrases / title 構造の問題で別途修正余地あり。
+
+### publish 結果 (10:31-11:18、 bulk_approve 7 → publish 7)
+07:29 cycle の note 3 件 (row 85-87) は朝 1 度目 publish 済みなので
+今回は 88-94 (合計 7 件) を一括 publish:
+
+- **zenn 4 件 (全 scrap fallback、 cap 継続)**:
+  - NGINX poolslip: https://zenn.dev/zenn-user/scraps/187e76040fe7fc
+  - 函館パチンコ: https://zenn.dev/zenn-user/scraps/1f14229741f16f
+  - Claudeに任せる: https://zenn.dev/zenn-user/scraps/b3dfbb5ded4c8e
+  - Tokenisation: https://zenn.dev/zenn-user/scraps/21a319f641c5d1
+- **note 3 件 (全 paid)**:
+  - アラバマ Toyota: https://note.com/note-user/n/n2b3f09b926fe
+  - **K-POP 4世代 (kc_003): https://note.com/note-user/n/n024111feee84**
+  - Ansel Adams: https://note.com/note-user/n/n7ec9ada07cff
+
+メンバーシップ追加全件 UI 漂流で失敗 (既知)。 update_status dup_count=1
+で idempotent 健全継続。
+
+### 5-25 1 日累計 publish (10 件)
+- 朝 1 度目: note 3 paid (WiFi / CEO レイオフ / Star Citizen)
+- 朝 2 度目 (拡張): zenn 4 scrap + note 3 paid (アラバマ Toyota /
+  **K-POP 4世代** / Ansel Adams)
+- **note 6 paid + zenn 4 scrap = 10 件**
+
+### Next Resume Actions (累積)
+1. **note メンバーシップ手動追加 (5-25 累計 6 件)**:
+   - WiFi 身体識別 (n8f8b4a2cda52)
+   - CEO AI レイオフ (n53a78cf21191)
+   - Star Citizen $10億 (n496d99f82ad2)
+   - アラバマ Toyota (n2b3f09b926fe)
+   - **K-POP 4世代 (n024111feee84)** ← knowledge_topic 第1号
+   - Ansel Adams (n7ec9ada07cff)
+   - + 5-22 evening 4 件累積
+2. **5-25 note 価格確認 6 件分**: ¥500 になっているか note ダッシュボード
+3. **K-POP 記事 (kc_003) のエンゲージメント観察**: knowledge_topic 経路の
+   バズ効果検証。 効果あれば kc_001/kc_002/sl_001-sl_003 の forbidden_phrases
+   問題を解消して横展開
+4. **forbidden_phrases 問題 (knowledge_topics 3 件 reject)**:
+   - kc_001 「〇〇風」 / sl_002 「〇〇を飾りましょう」 等の表現が outline の
+     構造 (「食材1つ / しつらえ1つ / 香り1つ」) と相性悪い。 prompt 側で
+     例示を見直すか、 outline 表現を調整するかの選択
+5. **Slack file upload バグ修正** (3 セッション連続再現)
+6. **5-28 経過後**: 6 件 paid note のエンゲージメント比較 (RSS 経路 vs
+   knowledge_topic kc_003)
 
 ---
 
