@@ -214,8 +214,91 @@ post-processor で `**N\.` パターンを `## N.` に変換するだけでも H
 
 ## Updated At
 
-2026-05-25 11:20 JST
+2026-05-25 13:20 JST
 
+
+---
+
+## 2026-05-25 昼 — K-beauty free 記事 publish (¥0、 手書き)
+
+ユーザー指示「無料記事が欲しいかもな」 → 「韓国X美容がいいな」 で
+ピボット。 自動 generate で kb_004/kb_006 が forbidden_phrases で
+silent reject されたので、 5-22 split keyboard と同じ手書きパターンで
+**K-beauty 日本購入経路ガイド ¥0** を出した。
+
+### auto-generate 試行 (11:53-12:15、 拡張前ステップ)
+`KNOWLEDGE_TOPICS_CATEGORY=k_beauty KNOWLEDGE_TOPICS_MAX_RESULTS=2` で
+generate kick → kb_004 (PDRN/エクソソーム) と kb_006 (韓国コスメ肌
+トラブル) が両方 reject:
+- kb_004: 文字数 8194 chars (8000 超過 +196) + forbidden 「〇〇mg/100ml」
+- kb_006: forbidden 「〇〇由来」
+
+knowledge_topics の outline が「成分1 PDRN / 成分2 エクソソーム」のような
+構造を含むため、 LLM が「〇〇mg」「〇〇由来」のプレースホルダ表現を
+生成しがち (5-25 朝の kc_001/sl_002 forbidden 当たりと同じパターン)。
+forbidden_phrases そのものは正しい品質ゲート (測定単位を曖昧表現で
+書くと信頼性低下するため)。 解決は LLM プロンプトで実数値要求を強化
+するか、 手書きするかの2択。 今回は速度優先で手書き。
+
+`scripts/_inspect_rejected_kbeauty.py` で rejected sheet を読んで原因
+特定。
+
+### 手書き publish (12:50-13:19)
+- source: `scripts/_kbeauty_japan_purchase_guide.md` (5306 chars / 10 H2)
+- publish script: `scripts/_publish_kbeauty_japan_guide.py`
+- 構成:
+  1. はじめに (なぜ「どこで買うか」で迷うのか)
+  2. 経路1 OliveYoung 日本 (2024 上陸、 池袋・渋谷など)
+  3. 経路2 @cosme TOKYO / @cosme STORE
+  4. 経路3 新大久保ロードショップ (NATURE REPUBLIC / ETUDE 直営 +
+     並行輸入混在の正直な caveat)
+  5. 経路4 公式オンライン直送 (COSRX / Beauty of Joseon / Anua 公式)
+     + Qoo10 メガ割
+  6. 偽物を見分ける 5 つの観点 (QR / 印刷 / 香り / テクスチャ / 価格)
+  7. ブランド別「迷ったらここ」マップ
+  8. ステマ規制 (景表法 2023-10 改正) と PR 表記
+  9. 失うものも書いておく (送料 / 関税 / スピード)
+  10. まとめ (3秒判断ガイド) + 末尾 CTA
+- 末尾 CTA: K-POP 4世代 paid 記事 (n024111feee84) へクロスリンク +
+  PDRN/エクソソーム / トラブル対処 の paid 続編予告 → membership 誘導
+- ChatGPT 画像: **cover + inline 4/4 全成功** (vision-eval 8-9、 5-25
+  午後でも安定)
+- ChatGPT セッション 5 件 soft-delete 済 (`feedback_chatgpt_session_cleanup`)
+- **URL: https://note.com/note-user/n/n4e037aa7aeed**
+- 価格 ¥0 (free)
+- メンバーシップ追加は UI 漂流で失敗 (既知)
+
+### hallucination ガード
+実在ブランドのみ (COSRX / Beauty of Joseon / Anua / NATURE REPUBLIC /
+ETUDE)、 SKU/価格断定なし、 venue 推奨は公式サイト誘導で verifiability
+担保。 「店舗一覧と営業情報は公式サイトで確認すること」 と明示。
+
+### 5-25 1 日累計 publish (11 件)
+- 朝 1 度目 cycle: note 3 paid (WiFi / CEO レイオフ / Star Citizen)
+- 朝 2 度目 (拡張): zenn 4 scrap + note 3 paid (アラバマ Toyota /
+  K-POP 4世代 / Ansel Adams)
+- 昼 (手書き): **note 1 free (K-beauty 日本購入ガイド)**
+- 合計: **note 6 paid + note 1 free + zenn 4 scrap = 11 件**
+
+### Next Resume Actions (累積)
+1. **note メンバーシップ手動追加 (5-25 累計 7 件)**:
+   - WiFi 身体識別 (n8f8b4a2cda52)
+   - CEO AI レイオフ (n53a78cf21191)
+   - Star Citizen $10億 (n496d99f82ad2)
+   - アラバマ Toyota (n2b3f09b926fe)
+   - K-POP 4世代 (n024111feee84)
+   - Ansel Adams (n7ec9ada07cff)
+   - **K-beauty 購入ガイド (n4e037aa7aeed) ← free だがメンバー特典も
+     ダッシュボードから手動追加**
+2. **K-beauty free 記事のエンゲージメント観察**:
+   - 一般 PV / メンバー読了率 / CTA クリック率 (K-POP 4世代 paid への流入)
+   - 効果あれば paid 続編 (PDRN/エクソソーム or トラブル対処) の手書きを検討
+3. **forbidden_phrases 問題の根本対処** (kb_004/kb_006 + kc_001/sl_002 +
+   5-25 朝の 3 件):
+   - prompts.yaml に「測定単位は実数値で書く、 〇〇 や プレースホルダは禁止」
+     を明示するセクション追加 → knowledge_topics 由来の自動生成回復可能
+4. **K-POP 4世代 (kc_003) と K-beauty 購入ガイド の連動効果計測** (5-28 経過後)
+5. Slack file upload バグ修正 (3 セッション連続再現、 別タスク化)
 
 ---
 
