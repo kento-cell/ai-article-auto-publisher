@@ -1,0 +1,218 @@
+_readme: Portable seed for k_beauty / k_culture / slow_living knowledge_topics. Added
+  2026-05-25. data/knowledge_topics.json is gitignored — re-run scripts/_add_beauty_culture_slow_topics.py
+  after a fresh clone to restore these into the active pool.
+topics:
+- id: kb_004
+  category: k_beauty
+  persona: 20-30代女性、最新韓国スキンケア成分のトレンドを追いたい
+  intent: informational
+  pain: PDRN / エクソソーム / ポリヌクレオチドなど韓国発の話題成分が次々出てきて、どれが本物の科学根拠で、どれが煽りなのか見極められない
+  promise: 2026春時点で話題の K-beauty成分 3-4 種を、薬理学エビデンス・配合濃度・国内皮膚科の見解で整理し、買って良い製品とスキップして良い製品を提示
+  outline: 導入(成分ブームの周期性) / 成分1 PDRN / 成分2 エクソソーム / 成分3 セラミドNP+PDRN複合 / 成分4 ナイアシンアミド10%
+    / 成分の優先順位 / 国内で買える代表製品(各成分2品) / 皮膚科医が警告するNG使い方 / まとめ
+  evidence_required:
+  - PubMed論文URL (PDRN/エクソソーム関連)
+  - 公式ブランド成分表ページ
+  - '@cosme / 韓国OliveYoung公式レビュー'
+  - 国内皮膚科クリニックの公式コラム (湘南美容/品川美容外科等)
+  affiliate_family: k_beauty
+  rotation_weight: 1.2
+  cooldown_days: 30
+  prohibited_angles:
+  - 個人のBluesky/X投稿を根拠にしない
+  - 未承認医薬部外品を医薬品扱いしない
+  - シミが消える/シワが消えるの断定表現禁止
+  length_target:
+    min: 5500
+    max: 8000
+- id: kb_005
+  category: k_beauty
+  persona: 20-30代女性、韓国コスメを日本で安全に買いたい
+  intent: transactional
+  pain: OliveYoung日本上陸後も並行輸入と正規品の値段差・偽物リスクが分からない。新大久保ロードショップで買って良いか判断に困る
+  promise: 日本で韓国コスメを買える 4 経路 (OliveYoung実店舗 / @cosme TOKYO韓国コーナー / 新大久保ロードショップ / 公式オンライン)
+    を、価格差・偽物見分け方・送料・到着日数で比較し、ブランド別の最適購入経路を提示
+  outline: 導入(2026年の韓国コスメ流通) / 経路1 OliveYoung日本店舗 / 経路2 @cosme TOKYO・LUMINEなど / 経路3
+    新大久保ロードショップ(店名は実在のみ) / 経路4 公式オンライン直送 / 偽物見分け方5つ(QR/シリアル/箱の質/香り/価格) / ブランド別おすすめ経路マップ
+    / まとめ
+  evidence_required:
+  - OliveYoung Japan公式 (店舗一覧URL)
+  - '@cosme公式店舗情報'
+  - 公式ブランドサイト (Anua / Beauty of Joseon / COSRX / Laneige)
+  - 新大久保のロードショップ実在店舗の食べログ/Google Mapsピン
+  affiliate_family: k_beauty
+  rotation_weight: 1.2
+  cooldown_days: 45
+  prohibited_angles:
+  - 架空の店名/住所を作らない
+  - 閉店した店を現役として書かない
+  - 個人代行業者は推奨しない (PL責任の所在不明)
+  length_target:
+    min: 5500
+    max: 8000
+- id: kb_006
+  category: k_beauty
+  persona: 20-30代女性、韓国コスメで肌トラブルが起きて困っている
+  intent: informational
+  pain: 韓国コスメを使ったら赤み/かゆみ/吹き出物が出た。原因が成分か偽物か体質か分からない、皮膚科行くべきか自己対処すべきか判断できない
+  promise: 韓国コスメ起因の肌トラブル 5 パターン (接触皮膚炎/光毒性/酸不耐症/エクソソーム反応/偽物炎症) を症状別に切り分け、自己対処と受診目安を提示
+  outline: 導入(韓国コスメ国民生活センター苦情件数) / トラブル1 接触皮膚炎 / 2 光毒性 / 3 AHA/BHA不耐 / 4 エクソソーム炎症
+    / 5 偽物による化学熱傷 / 自己対処5step / 受診すべきサイン / 偽物見分け方(再掲) / まとめ
+  evidence_required:
+  - 国民生活センター発表データ
+  - 日本皮膚科学会の公式ガイドライン
+  - PubMed論文 (cosmetic dermatitis)
+  - PMDA医薬品医療機器情報
+  affiliate_family: k_beauty
+  rotation_weight: 1.0
+  cooldown_days: 60
+  prohibited_angles:
+  - 医療行為の自己診断を促さない
+  - 特定ブランドを偽物があると断定的に書かない (流通系の警告のみOK)
+  - 個人ブログ症例を根拠にしない
+  length_target:
+    min: 5500
+    max: 8000
+- id: kc_001
+  category: k_culture
+  persona: 20-30代女性、韓国カルチャー全般に興味があり食文化も知りたい
+  intent: informational
+  pain: 韓国フードがブームだがチーズダッカルビやチーズハットグなど一過性のものが多く、本場で今食べられている定番が分からない
+  promise: 2026春の韓国食トレンド 3-4 種 (テンジャン回帰 / クルバン / 韓国茶 / マンドゥ専門店) を、本場ソウルの店舗例と東京で再現可能な個人店リストで提示
+  outline: 導入(K-foodの周期性) / トレンド1 テンジャン回帰 / トレンド2 クルバン / トレンド3 韓国茶(ボリチャ/オクスス/ユジャ)
+    / トレンド4 マンドゥ専門店 / 東京で食べられる個人店(チェーン除外) / 自宅で作れる簡易レシピ / まとめ
+  evidence_required:
+  - 韓国本国メディア (Korean Herald / Naver Food)
+  - 東京の実在個人店 (食べログ/Google Mapsピン)
+  - 韓国農水産食品流通公社(aT)公式データ
+  affiliate_family: k_beauty
+  rotation_weight: 1.0
+  cooldown_days: 45
+  prohibited_angles:
+  - チェーン店(韓流ブームの大手居酒屋等)を紹介しない
+  - 架空の店名/住所を作らない
+  - 閉店した店を現役として書かない
+  - 歴史記述で政治的主張をしない
+  length_target:
+    min: 5500
+    max: 8000
+- id: kc_002
+  category: k_culture
+  persona: 20-30代女性、韓国カフェの世界観が好きで東京で再現したい
+  intent: transactional
+  pain: 韓国カフェ巡りに行きたいが、新大久保以外でどこにあるか分からない。チェーンのインスタ映え系では満足できない
+  promise: 東京で韓国カフェの世界観 (大理石/グレージュ/韓菓子/ハンドドリップ) を体験できる個人店 5-6 軒をエリア別に提示。新大久保以外を中心に。
+  outline: 導入(韓国カフェのデザイン文化) / エリア1 中目黒〜代官山 / 2 表参道〜原宿 / 3 三軒茶屋〜下北沢 / 4 蔵前〜浅草 / 5 高円寺〜阿佐ヶ谷
+    / 6 新大久保で本場系1店 / 注文Tipsとマナー / まとめ
+  evidence_required:
+  - 店舗公式Instagram/Webサイト
+  - Google Mapsピン
+  - 食べログ/Retty実在ページ
+  - 営業日確認 (休業情報)
+  affiliate_family: gourmet
+  rotation_weight: 1.1
+  cooldown_days: 60
+  prohibited_angles:
+  - チェーン店(スタバ/ドトール/サンマルク/タリーズ/カフェ・ベローチェ等)を紹介しない
+  - 架空の店名/住所を作らない
+  - 閉店した店を現役として書かない
+  - ホテルラウンジを個人カフェ扱いしない
+  length_target:
+    min: 5500
+    max: 8000
+- id: kc_003
+  category: k_culture
+  persona: 20-30代、K-POP女性アイドルが好きで楽曲の進化を体系的に追いたい
+  intent: informational
+  pain: BLACKPINK→NewJeans→ILLIT→IVE→aespaなど世代/事務所が違うアイドルの楽曲を、好みで聞き分けているが理論的な違いが分からない
+  promise: 2007〜2026のK-POP女性アイドル 4 世代を、楽曲構造 (BPM / コード進行 / ヴァース構成 / プロデューサー陣) で比較し、世代別の代表曲とリスナーの楽しみ方を提示
+  outline: 導入(K-POP世代区分の意味) / 1世代 Wonder Girls / KARA / Girls Generation / 2世代 2NE1
+    / SISTAR / 3世代 TWICE / BLACKPINK / Red Velvet / 4世代 aespa / NewJeans / IVE / ILLIT
+    / プロデューサー陣の系譜 / 世代別の聴き方ガイド / まとめ
+  evidence_required:
+  - 公式音楽配信プラットフォーム (Melon / Spotify / Apple Music)
+  - 公式事務所 (HYBE / SM / YG / JYP / Source Music) サイト
+  - Korean Music Awards公式
+  - credits記載のあるアルバム情報
+  affiliate_family: k_beauty
+  rotation_weight: 1.0
+  cooldown_days: 45
+  prohibited_angles:
+  - メンバー個人のプライベートを推測しない
+  - 活動休止/契約問題に断定的言及しない (公式発表のみ)
+  - 事務所間の優劣を断定しない
+  - アイドルの容姿を批評しない
+  length_target:
+    min: 5500
+    max: 8000
+- id: sl_001
+  category: slow_living
+  persona: 20-40代、丁寧な生活に憧れるが3日坊主、忙しい平日でも続く朝の30分が欲しい
+  intent: informational
+  pain: 松浦弥太郎/暮しの手帖系の理想は分かるが、平日朝に時間も気力もない。シンプル化と丁寧さの両立法が見えない
+  promise: 朝 30 分で完結する 丁寧な生活 ルーティン (掃除10分 / 茶10分 / 書く5分 / 食べる5分) を、行動科学・道具リスト・続けるコツとセットで提示
+  outline: 導入(丁寧な生活の3日坊主の正体) / 30分構成の全体像 / ブロック1 掃除10分(箒/雑巾) / ブロック2 茶10分(煎茶/紅茶/ハーブ)
+    / ブロック3 書く5分(手書きジャーナル) / ブロック4 食べる5分(土鍋ご飯/具1つ味噌汁) / 続けるための7日設計 / 失敗パターンと立て直し /
+    道具予算別(0円/3000円/1万円) / まとめ
+  evidence_required:
+  - 実在書籍引用 (松浦弥太郎の今日もていねいに等、ISBN付き)
+  - 行動科学の査読論文 (Fogg Behavior Model等)
+  - 実在道具メーカー (公長齋小菅 / 中川政七商店 / SOU・SOU等の公式)
+  affiliate_family: self_improvement
+  rotation_weight: 1.2
+  cooldown_days: 30
+  prohibited_angles:
+  - 本にこう書いてあるの架空引用禁止 (ISBN/出版社/章番号必須)
+  - 宗教/スピリチュアル断定表現禁止
+  - 高額商材の押し売り禁止
+  length_target:
+    min: 5500
+    max: 8000
+- id: sl_002
+  category: slow_living
+  persona: 20-40代、四季を感じる暮らしをしたいが、現代生活で何から始めるか分からない
+  intent: informational
+  pain: 暦の上の春夏秋冬は知っているが、自分の生活に季節感を入れる具体策が分からない。歳時記の本を買っても続かない
+  promise: 二十四節気をベースに、その時期にやる3つのこと (食材1つ / しつらえ1つ / 香り1つ) を提示。2026春 (立夏-小満-芒種) の実践例
+    + 通年で使えるフレームワーク
+  outline: '導入(二十四節気と現代生活の接点) / フレームワーク: 食材/しつらえ/香り の3要素 / 立夏(5月初旬) / 小満(5月下旬) / 芒種(6月初旬)
+    / 季節の道具リスト / 旬の食材カレンダー / 失敗パターン (やりすぎ/形骸化) / 通年で続ける7日リズム / まとめ'
+  evidence_required:
+  - 国立天文台暦要項 (二十四節気の公式日付)
+  - 実在書籍 (歳時記 / 民俗学関連、ISBN必須)
+  - 農林水産省の旬の食材データ
+  - 実在道具メーカー (中川政七商店 / かまわぬ等)
+  affiliate_family: self_improvement
+  rotation_weight: 1.1
+  cooldown_days: 30
+  prohibited_angles:
+  - 神事/宗教行事の断定的解釈を避ける (民俗学的記述に留める)
+  - 架空の言い伝えを作らない
+  - ISBN無き書籍引用を作らない
+  length_target:
+    min: 5500
+    max: 8000
+- id: sl_003
+  category: slow_living
+  persona: 20-40代、モノに圧迫されている感覚があり、生活を軽くしたい
+  intent: informational
+  pain: ミニマリスト本は読んだが過激すぎて自分には合わない。生活を保ちつつ持ち物を1-2割減らす現実的な手順が欲しい
+  promise: 1週間で持ち物を1-2割減らせる 丁寧な減らし方 プログラム。7日×30分で、捨てる/譲る/売るの判断軸とBefore/Afterの暮らしの変化を提示
+  outline: 導入(ミニマリズムと丁寧な暮らしの違い) / 7日プログラム全体像 / Day1 玄関 / Day2 衣類 / Day3 書類 / Day4
+    キッチン / Day5 リビング(本/雑貨) / Day6 デジタル(写真/メール) / Day7 振り返り+残すルール / 売る経路(メルカリ/2nd STREET/ブックオフ)
+    / 譲る経路(地域コミュニティ等) / まとめ
+  evidence_required:
+  - 実在書籍 (近藤麻理恵/佐々木典士等、ISBN必須)
+  - メルカリ等の公式利用ガイド
+  - 自治体の不用品回収公式ページ
+  - 心理学的減らし方研究 (査読論文)
+  affiliate_family: self_improvement
+  rotation_weight: 1.1
+  cooldown_days: 60
+  prohibited_angles:
+  - 他人のモノ/服装/暮らしを批評しない
+  - 捨てを礼賛して廃棄物環境負荷を無視しない (リユース優先で書く)
+  - 高額収納グッズ販売を煽らない
+  length_target:
+    min: 5500
+    max: 8000
