@@ -1,5 +1,98 @@
 # Latest Session
 
+## 2026-05-26 朝 — Slack バグ修正 + プレースホルダ禁止 prompt 強化 + K-beauty 成分入門 Free publish
+
+ユーザー指示「resume」 → 自走で Next Resume Actions #3 (forbidden_phrases
+prompt 強化) と #5 (Slack file upload バグ) を片付け、 続いてユーザー
+追加指示「Free でいいよ」「K-beauty paid への導線 (PDRN/エクソソーム入門)」
+→ 「肌悩み別 成分選び 全体ガイド」を手書きで Free publish。
+
+### コード修正 (commit `e313a0a`、 push 済)
+
+1. **`main.py::_post_rejected_to_slack`** — `content` が 2 バイト未満で
+   `files_upload_v2` を呼ぶと Slack API が `invalid_arguments — length must
+   be greater than 1` で reject される 3 セッション連続再現 (5-22 朝/夕 /
+   5-25 朝) バグを修正。 length<2 で `chat_postMessage` に fallback、
+   `files_upload_v2` 例外時も chat に fallback で 2 重防御。
+2. **`config/prompts.yaml` (note / zenn 両 prompt)** — 「数値ファクト捏造
+   禁止」の直後に「測定単位・成分名・産地・ジャンルのプレースホルダ表現
+   禁止」セクション (2026-05-26 ラベル付き) を追加。 5-25 で kb_004
+   「〇〇mg/100ml」 / kb_006 「〇〇由来」 / kc_001 「〇〇風」 / sl_002
+   「〇〇を飾りましょう」 が forbidden_phrases で reject された原因を根本
+   対処。 knowledge_topics outline のプレースホルダ的記述 (「成分1 / 成分2」
+   等) を文字通り写さず、 実数値が出せなければ outline 項目を skip して
+   良い旨を明示。
+
+検証: `py -c "import main"` OK / `py scripts/test_hallucination_deny.py`
+40 deny + 7 sanitizer + 3 RAG cases 全 PASS / YAML parse OK。
+
+### K-beauty 成分入門 Free publish (¥0)
+
+- **URL: https://note.com/note-user/n/n44bc30e643eb** (HTTP 200 検証済)
+- タイトル: 「【保存版】韓国コスメ「成分の正解」5悩み別ガイド ―
+  シカ・ナイアシンアミド・ペプチド・BHA・セラミドの覚え方」
+- 6773 字 / 10 H2 / 二人称・付け足しトーン (5-25 K-beauty 購入ガイドと
+  同じ語り口で「同じ著者の続編」感)
+- 構成: 5悩み (鎮静/美白/ハリ/毛穴/乾燥) × 主要成分:
+  - 鎮静: Centella / Madecassoside → Anua / Skin1004 / Abib / COSRX
+  - 美白・くすみ: Niacinamide → Beauty of Joseon / COSRX
+  - 肝斑: Tranexamic Acid → SKIN1004 / ISNTREE / Some By Mi
+  - ハリ: Peptide → COSRX The 6 Peptide / Medi-Peel Peptide 9
+    (PDRN/エクソソームは「次回深掘り」予告)
+  - 毛穴: BHA → COSRX BHA Blackhead Power Liquid
+  - 角質: AHA → Some By Mi 30Days
+  - 乾燥: 低分子 HA + Ceramide → Torriden Dive-In / Dr.Jart+ Ceramidin
+  + 組み合わせ NG 5 つ + パッチテストと「1週間1商品ルール」
+- 末尾 CTA: 姉妹記事 [K-beauty 購入経路ガイド (Free, n4e037aa7aeed)]
+  + K-POP 4世代 paid (n024111feee84) + 「PDRN/エクソソーム」 paid 続編予告
+- source: `scripts/_kbeauty_ingredient_guide.md`
+- publish script: `scripts/_publish_kbeauty_ingredient_guide.py`
+- hallucination ガード: 実在ブランド・実在成分・公知の事実のみ。
+  プレースホルダ表現ゼロ (今日入れた prompt 強化ルールを手書き側でも遵守)
+- 価格 ¥0 (free)
+
+### このセッションで起きた issue (publish 内)
+
+1. **ChatGPT 画像生成 batch 全失敗** (cover=False, inline=0/4):
+   - `taskkill /F /IM brave.exe` 後の `launch_persistent_context` が
+     起動直後 (pid=16796) に exitCode=21 で死亡 → Pollinations 空 fallback
+   - 原因推測: Brave の user_data_dir ロック競合 / 拡張機能の初期化失敗
+   - **Unsplash cover 1 枚で publish 完了** (inline 画像なし、見栄え弱め)
+   - `[ops-banner:image]` で #15 ChatGPT セレクタ漂流 / #3 MD5 同一画像 を
+     pick up (RAG 健全)
+   - **retroactive 差し替えは feedback_no_exhaustive_cleanup により
+     pursue しない** (ライブで本文は完成、 inline 画像は次回新規記事から)
+
+2. **メンバーシップ追加 UI 漂流** (既知、 5-20〜継続) — Free 記事だが
+   メンバー特典記録もしたい場合はダッシュボードから手動追加
+
+### 5-26 朝累計 publish
+
+- **note 1 Free (K-beauty 成分入門 ¥0)** = 1 件
+
+### Next Resume Actions (累積、 5-25 から繰り越し + 今日分)
+
+1. **note メンバーシップ手動追加 (累計 8 件)**:
+   - 5-25 7 件 (WiFi / CEO レイオフ / Star Citizen / アラバマ Toyota /
+     K-POP 4世代 / Ansel Adams / K-beauty 購入ガイド)
+   - **+ 5-26 1 件 (K-beauty 成分入門 n44bc30e643eb)**
+2. **K-beauty 続編シリーズ paid 化判断** (5-28 経過後):
+   - 5-25 購入ガイド (Free) + 5-26 成分入門 (Free) で Free 2 連発
+   - エンゲージメント観察し PDRN/エクソソーム deep-dive を paid (¥500-¥980)
+     で出すタイミングを決める
+3. **ChatGPT 画像 batch 失敗の根本対処** (今日再発、 別タスク化):
+   - Brave の user_data_dir ロック競合を回避するため、 一時 profile 切り替え
+     or CDP 起動 (`scripts/launch_brave_cdp.bat`) を Brave 動作中でも
+     試せるか検証
+4. **K-POP 4世代 (kc_003) と K-beauty 2 連発の連動効果計測** (5-28 経過後)
+5. **forbidden_phrases prompt 強化の動作確認**: 次回 generate サイクルで
+   knowledge_topics 経路 (kb_004 / kb_006 / kc_001 / sl_002 等) が新ルールで
+   pass するか検証
+6. **Slack file upload バグ修正の動作確認**: 次回 rejected が空コンテンツで
+   発火したときに chat_postMessage fallback がログに残るか
+
+---
+
 ## Current Topic
 
 ai-article-auto-publisher — 2026-05-21 セッション。 generate→publish フル
