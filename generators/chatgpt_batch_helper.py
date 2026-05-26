@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -103,6 +104,74 @@ def _pollinations_image_batch(
             logger.warning("pollinations fail %s: %s", dest.name, exc)
             results.append(None)
     return results
+
+
+def is_cdp_listening(port: int) -> bool:
+    """Cheap TCP probe: is *port* accepting connections on 127.0.0.1 right now?
+
+    Used as a non-blocking signal that Brave is already running with
+    ``--remote-debugging-port`` open, so the ChatGPT pipeline can attach
+    via ``connect_over_cdp`` instead of taking a profile lock.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            s.connect(("127.0.0.1", int(port)))
+            return True
+    except (OSError, ValueError):
+        return False
+
+
+def ensure_brave_cdp_listening(
+    port: int, *, allow_launch: bool, timeout: float = 15.0,
+) -> bool:
+    """Make sure Brave's CDP debug port is reachable, optionally launching it.
+
+    Returns True iff a CDP listener is reachable on ``port`` by the time
+    this function exits. When *allow_launch* is True and the port is not
+    yet listening, the function spawns ``scripts/launch_brave_cdp.bat``
+    and polls up to *timeout* seconds for the listener to appear.
+
+    Important side-effect: the launcher kills any already-running
+    ``brave.exe`` before relaunching with the debug port. Callers must
+    therefore only set ``allow_launch=True`` when the user has explicitly
+    opted in to that disruption — currently gated on the
+    ``AUTO_LAUNCH_BRAVE_CDP=1`` environment variable inside
+    :func:`chatgpt_image_batch`.
+    """
+    if is_cdp_listening(port):
+        return True
+    if not allow_launch:
+        return False
+    bat = _REPO_ROOT / "scripts" / "launch_brave_cdp.bat"
+    if not bat.exists():
+        logger.warning("[brave-cdp] missing launcher: %s", bat)
+        return False
+    logger.info(
+        "[brave-cdp] CDP port %d not listening — launching %s",
+        port, bat.name,
+    )
+    try:
+        subprocess.Popen(
+            ["cmd", "/c", str(bat)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[brave-cdp] launcher failed: %s", exc)
+        return False
+    deadline = time.time() + max(0.0, timeout)
+    while time.time() < deadline:
+        if is_cdp_listening(port):
+            logger.info("[brave-cdp] CDP up on port %d", port)
+            return True
+        time.sleep(0.5)
+    logger.warning(
+        "[brave-cdp] CDP did not come up within %.0fs on port %d",
+        timeout, port,
+    )
+    return False
 
 
 def is_brave_running() -> bool:
@@ -416,7 +485,37 @@ def chatgpt_image_batch(
     # mode (we'd hit a user_data_dir lock). With CHATGPT_CDP_PORT set
     # we ATTACH to the running Brave instead, so a live Brave is the
     # required state, not a blocker. Skip the kill-switch in that case.
-    cdp_attach_mode = bool(os.environ.get("CHATGPT_CDP_PORT"))
+    cdp_port_str = os.environ.get("CHATGPT_CDP_PORT", "").strip()
+    cdp_attach_mode = bool(cdp_port_str)
+    if chatgpt_usable and cdp_attach_mode:
+        # Optional auto-launch of launch_brave_cdp.bat when the port is
+        # cold. Gated behind AUTO_LAUNCH_BRAVE_CDP=1 because the launcher
+        # kills any running Brave — we only want to do that when the
+        # user has explicitly accepted the disruption in their .env.
+        # Without the opt-in we just probe: if Brave is already in CDP
+        # mode the attach succeeds, otherwise the ChatGPT step fails
+        # and we cascade to Pollinations / Unsplash as before.
+        try:
+            cdp_port = int(cdp_port_str)
+        except ValueError:
+            logger.warning(
+                "[brave-cdp] CHATGPT_CDP_PORT=%r is not an int — ignoring",
+                cdp_port_str,
+            )
+            cdp_attach_mode = False
+        else:
+            allow_launch = os.environ.get(
+                "AUTO_LAUNCH_BRAVE_CDP", "",
+            ).strip().lower() in {"1", "true", "yes", "on"}
+            if not ensure_brave_cdp_listening(
+                cdp_port, allow_launch=allow_launch,
+            ):
+                logger.warning(
+                    "[brave-cdp] port %d not reachable "
+                    "(AUTO_LAUNCH_BRAVE_CDP=%s) — ChatGPT attach will "
+                    "likely fail and cascade to fallback",
+                    cdp_port, "1" if allow_launch else "0",
+                )
     if chatgpt_usable and not cdp_attach_mode and is_brave_running():
         logger.warning(
             "Brave is running — ChatGPT path blocked "
