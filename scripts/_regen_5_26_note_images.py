@@ -28,8 +28,6 @@ import json
 import logging
 import os
 import re
-import socket
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -64,42 +62,19 @@ TARGETS = [
 ]
 
 
-def _wait_cdp(port: int, timeout: float = 15.0) -> bool:
-    """Return True once a TCP listener appears on ``port`` (Brave CDP)."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.5)
-            try:
-                s.connect(("127.0.0.1", port))
-                return True
-            except (OSError, socket.timeout):
-                time.sleep(0.5)
-    return False
-
-
 def _ensure_brave_cdp() -> bool:
-    """Launch Brave in CDP mode if 9222 isn't already listening."""
+    """Launch Brave in CDP mode if the port isn't already listening.
+
+    Delegates to the shared :func:`ensure_brave_cdp_listening` helper so
+    the main pipeline (`_publish_note`) and this one-shot regen script
+    use the same launch / wait logic. This script is allowed to
+    auto-launch unconditionally — it exists *because* the user wants
+    Brave restarted into CDP mode.
+    """
+    from generators.chatgpt_batch_helper import ensure_brave_cdp_listening
+
     port = int(os.environ.get("CHATGPT_CDP_PORT", "9222"))
-    if _wait_cdp(port, timeout=0.5):
-        logger.info("Brave already listening on CDP port %d", port)
-        return True
-    logger.info("CDP not up yet, launching scripts/launch_brave_cdp.bat...")
-    bat = _REPO / "scripts" / "launch_brave_cdp.bat"
-    if not bat.exists():
-        logger.error("missing launcher: %s", bat)
-        return False
-    subprocess.Popen(
-        ["cmd", "/c", str(bat)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
-    )
-    if _wait_cdp(port, timeout=15.0):
-        logger.info("Brave CDP up on port %d", port)
-        return True
-    logger.error("Brave CDP did not come up within 15s on port %d", port)
-    return False
+    return ensure_brave_cdp_listening(port, allow_launch=True, timeout=15.0)
 
 
 def _strip_local_images(content: str) -> str:

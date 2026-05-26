@@ -72,6 +72,17 @@ canonical な事故リスト: `docs/knowledge/hallucination_registry.md`
 で起動すれば、Brave 開きっぱでも `connect_over_cdp` で attach。
 詳細は CLAUDE.md / AGENTS.md の Compound Workflow Playbook 参照。
 
+#### 自動起動 opt-in (2026-05-27 追加)
+
+`.env` に `AUTO_LAUNCH_BRAVE_CDP=1` を入れると、`_publish_note` 内の
+`chatgpt_image_batch` が CDP port を probe し、cold なら
+`launch_brave_cdp.bat` を自動 spawn する (`ensure_brave_cdp_listening`)。
+launcher は `taskkill /F /IM brave.exe` してから再起動するので、Brave を
+別作業で使う最中に publish が走ると巻き込み再起動になる。Brave session
+restore で tab は戻るが、フォーム入力中などは消える。OFF のままでも、既に
+CDP listener が居れば attach、居なければ Pollinations / Unsplash に fallback
+する現状動作 — 自動 disrupt しない安全側がデフォルト。
+
 ### スタイル: Studio Ghibli 風 (ユーザー指定 2026-04-28)
 
 - cover は強 infographic OK

@@ -1,5 +1,81 @@
 # Latest Session
 
+## 2026-05-27 朝 — CDP attach の opt-in 自動起動 helper を main pipeline に配線 (Next Resume Action #5)
+
+ユーザー指示「resume」 → デグレチェック OK → 5-26 LATEST.md の Next Resume
+Actions のうち、5-28 経過待ち以外で着手可能な **#5「main pipeline
+(`_publish_note` の前) にも CDP 起動 helper を配線」** に着手。
+Brave 自動 kill+restart は副作用が大きいので opt-in 環境変数で gating する
+方向をユーザー確認の上で実装。
+
+### 何を直したか
+
+**`generators/chatgpt_batch_helper.py`** に共通 helper を 2 つ追加:
+- `is_cdp_listening(port)` — `127.0.0.1:port` への TCP probe (0.5s)。Brave
+  が CDP debug port 開きで起動済か非ブロッキングで判定。
+- `ensure_brave_cdp_listening(port, *, allow_launch, timeout=15.0)` —
+  既に listen していれば True、cold で `allow_launch=True` のときだけ
+  `scripts/launch_brave_cdp.bat` を subprocess.Popen で起動し、timeout 秒
+  まで polling。launcher は `taskkill /F /IM brave.exe` する側面を持つので、
+  `allow_launch` は呼び元が明示同意した時だけ True にする契約。
+
+**`chatgpt_image_batch()` 冒頭の CDP ブロック** を更新:
+- `CHATGPT_CDP_PORT` set 時は int parse → 失敗時は warn して
+  cdp_attach_mode=False に降格 (旧コードはこの分岐がなく、不正値で
+  `connect_over_cdp` を呼んでハングする risk があった)
+- `AUTO_LAUNCH_BRAVE_CDP=1` opt-in が立っている時のみ
+  `ensure_brave_cdp_listening(..., allow_launch=True)` を呼ぶ。
+  未設定なら `allow_launch=False` で probe のみ、cold なら warn して
+  attach 側で fail させて Pollinations / Unsplash cascade に任せる。
+- デフォルト動作は **完全に現状維持** (`AUTO_LAUNCH_BRAVE_CDP` 未設定 +
+  既存 .env なら何も変わらない)。
+
+**`scripts/_regen_5_26_note_images.py`** をリファクタ:
+- ローカル `_wait_cdp` + `_ensure_brave_cdp` を削除 (DRY 違反だった)
+- 共通 helper `ensure_brave_cdp_listening(allow_launch=True)` を呼ぶ
+  形に変更。one-shot 用なので allow_launch=True 固定で OK。
+
+**`.env.example`** に `AUTO_LAUNCH_BRAVE_CDP` セクションをコメントアウト
+形式で追加 (taskkill 副作用の注意書き付き)。
+
+**`docs/knowledge/operations.md` §5 CDP attach モード** に「自動起動 opt-in
+(2026-05-27 追加)」サブセクション追加。
+
+### 何を意図的にやらなかったか
+
+- Brave 強制 kill のデフォルト ON 化 — `feedback_no_scheduler` /
+  `project_chatgpt_image_pipeline` で「ユーザーが意図して Brave 制御」が
+  確立してるので opt-in に留めた
+- `generate` フローへの配線 — 画像生成は `_publish_note` 内なので、
+  publish 直前で probe すれば十分。generate 中に Brave を起動する必要なし
+- 既存スクリプト群 (`_regen_today_note_with_chatgpt.py` 等) の一括リファクタ
+  — feedback_no_exhaustive_cleanup により retroactive cleanup は控える。
+  共通 helper はあるので、次回 one-shot を書く時から使う方針
+
+### デグレチェック (07:10–07:30)
+- `py -c "import main"` OK
+- `py scripts/test_hallucination_deny.py` → **40 deny + 7 sanitizer + 3 RAG
+  全 PASS**
+- `is_cdp_listening(9222)` → False (Brave 非起動状態の挙動確認)
+- `ensure_brave_cdp_listening(9222, allow_launch=False, timeout=1)` →
+  False (probe-only path 確認)
+- `_regen_5_26_note_images.py` import OK (リファクタ regression なし)
+
+### Next Resume Actions (5-26 から継続、+ 今日の追加 / 解消)
+
+- ~~#5 CDP モード安定運用 — main pipeline に配線~~ → **本セッションで解消**
+- **#5' (新規) AUTO_LAUNCH_BRAVE_CDP の効果計測**: ユーザーが opt-in した
+  状態で generate→publish を回し、今朝 (5-26) の `cover=False fallback`
+  パターンが再発しないか観測
+1. note メンバーシップ手動追加 (累計 13 件、5-26 から繰り越し)
+2. メンバーシップ UI セレクタ修正 (別タスク継続)
+3. forbidden_phrases prompt 強化の効果観測 (5-28 経過後)
+4. K-beauty 2 連発のクロス効果計測 (5-28 経過後)
+5. anti-pattern filter の効果計測 (次回 generate で観測継続)
+6. Zenn cap 4-15 から 6 週間 article 0 (別タスク継続)
+
+---
+
 ## 2026-05-26 午前 — ROI レビュー + anti-pattern feedback loop + learn→generate→publish + CDP 画像差し替え
 
 ユーザー指示「ツールが現時点で最適化されているか様々な視点でリサーチ」 →
