@@ -1,5 +1,95 @@
 # Latest Session
 
+## 2026-05-27 午前 — learn→generate→publish ALL FREE (note 3 件、knowledge_topics 2 件復活)
+
+ユーザー指示「learn generate publish ALL FREE」 → compound workflow #2 variant
+で実行。`--free-first 999` で note 全件 free 化。Brave CDP は今朝配線した
+helper を `allow_launch=True` で同期実行して up させた (`ensure_brave_cdp_listening`
+動作確認 OK)。
+
+### learn (07:41–07:42)
+- 280 サンプル / joined **126/154 (82%)** ← 5-26 122/150 から +4
+- past_articles **381 chunks** (5-26 378 → +3、5-26 publish 3 件 + 5-27 0 件 ingest)
+- RAG 総 **503 chunks** (5-26 500 → +3)
+- 新スナップショット: `quality_insights_2026-05-27.md` /
+  `note-trends/2026-05-27_auto_learning.md`
+
+### generate (07:43–08:18)
+- 合格 **3 件 (全 note)** / 不合格 **4 件**
+- cooldown filter: note 3 件 drop (5-26 reject 再来防止が機能)
+- anti-pattern filter: 0 件 drop (今回 trigger 無し、 機能は配線済)
+
+- **合格 3 件 (全 note)**:
+  - row 102: 東京で韓国カフェの世界観 (**kc_002** — 5-25 で title_fulfillment 落ち → 今回 pass、knowledge_topics 拡張効果第 2 弾)
+  - row 103: 二十四節気をベースに、その時期にやる3つのこと (**sl_002** — 5-25 で「〇〇を飾りましょう」forbidden 落ち → 今回 pass、5-26 朝の `e313a0a` placeholder ban が効いた実証)
+  - row 104: 2026春時点で話題の K-beauty 成分 3-4 種 (薬理学エビデンス整理)
+
+- **不合格 4 件**:
+  - zenn: TypeScriptの裏側を浴びた2日間 ── TSKaigi 2026参加記 (forbidden_phrases:
+    「── TSKaigi 2026参加記」を含む複合 reject、ログ汚染あり)
+  - zenn: TanStack Query × Dexie.js (citation 0)
+  - note: 2026春の韓国食トレンド (word 8096 chars、8000 上限 +96)
+  - note: US Law Enforcement Warns of 'AI' (word 8113 chars、+113)
+
+### publish (08:18–09:07、bulk_approve 3 → free-first 999)
+全 note を ¥0 で強制 publish:
+
+- **note 3 free**:
+  - 韓国カフェ (kc_002): https://note.com/note-user/n/n40b6f0a288b8
+  - 二十四節気 (sl_002): https://note.com/note-user/n/n13b18638efe1
+  - K-beauty 成分 4 選: https://note.com/note-user/n/nd46941eaff51
+- **zenn 0** (今回 zenn 合格なし)
+- update_status dup_count=1 全件 (idempotent 健全継続)
+
+### 画像生成の劣化 (継続課題、retroactive 差し替えは pursue しない)
+
+- **記事 1 (韓国カフェ)**: vision-eval 「all submission paths failed —
+  composer still has text=」 + 「no reply parseable; FAIL (fail-closed)」 →
+  batch 2 regen → timeout screenshot 保存。inline CDN upload 0 件。
+- **記事 2 (二十四節気)**: batch 4 で「no image found」 → inline CDN upload
+  1 件のみ
+- **記事 3 (K-beauty)**: 詳細ログ薄め、inline CDN upload 2 件
+- CDP attach 自体は成功 (今朝配線した helper の動作確認 OK)、 ChatGPT 側の
+  vision-eval / composer 周りで間欠的に詰まる症状。`feedback_no_exhaustive_cleanup`
+  により retroactive 差し替えは控える (前提どおり、新規 publish からの
+  cosmetic 修正は追わない)。
+- メンバーシップ追加: 全 3 件 UI 漂流で失敗 (既知、累計 16 件溜まり)
+
+### 副次的観測 (Next Resume Actions 進捗)
+
+- **#3 forbidden_phrases prompt 強化の効果** (5-28 経過前だが今日も実証):
+  sl_002 と kc_002 が 5-25 で落ちていたものが復活。 placeholder unit ban
+  ルールが knowledge_topics outline と整合した
+- **#5 CDP モード安定運用**: 今朝配線した `ensure_brave_cdp_listening` が
+  generate→publish フルサイクルで動作確認 OK (一度ローンチして以降は
+  cdp_attach_mode で probe-only)
+- **#6 anti-pattern filter の効果計測**: 今回も trigger 0 (collector が
+  【そもそも解説】【入門】を出さなかった = sources が健全)
+- **Slack file upload バグ**: 5-26 朝の `e313a0a` 修正が継続効果。 rejected
+  4 件中 3 件 Slack upload 成功 (残り 1 件は重複スキップ)。`invalid_arguments`
+  再現なし
+
+### 5-27 1 日累計 publish
+note 3 free / zenn 0 = **3 件**
+
+### Next Resume Actions (累積)
+
+1. **note メンバーシップ手動追加 (累計 16 件)**:
+   - 5-25 7 件 / 5-26 6 件 / **5-27 3 件 (韓国カフェ / 二十四節気 / K-beauty 成分)**
+2. ChatGPT 画像 vision-eval 詰まりの調査 (新症状、ログ:
+   「all submission paths failed — composer still has text=」 +
+   「batch 4: no image found」)。 connect_over_cdp 経由でも composer 送信が
+   詰まるケースが今日の 1-2 件目で再現
+3. **anti-pattern filter の効果計測**: 継続 (今日も trigger 0)
+4. **K-beauty 3 連発のクロス効果** (5-25 購入ガイド Free + 5-26 成分入門 Free
+   + 5-27 成分 4 選 Free): K-POP 4世代 paid への流入率を 5-30 経過後に計測
+5. **forbidden_phrases prompt 強化 (`e313a0a`) の継続効果**: kc_002 / sl_002
+   復活が今日の実証。 残り kc_001 / sl_001 / sl_003 / kb_004 / kb_006 も
+   再 generate で pass する可能性
+6. Zenn cap 4-15 から 6 週間 article 0 (別タスク継続)
+
+---
+
 ## 2026-05-27 朝 — CDP attach の opt-in 自動起動 helper を main pipeline に配線 (Next Resume Action #5)
 
 ユーザー指示「resume」 → デグレチェック OK → 5-26 LATEST.md の Next Resume
