@@ -1,5 +1,71 @@
 # Latest Session
 
+## 2026-05-27 夕方 — title_fulfillment scorer に shop counter ゲート追加 (kc_002 事故の再発防止)
+
+ユーザー指示「やることない?」 → 5-27 昼に発見した kc_002 タイトル負け事故
+(タイトル「個人店 5-6 軒」だが本文に店名 0 軒で title_fulfillment が pass
+させた) の再発防止コードを追加。
+
+### 何を直したか
+
+**`generators/title_fulfillment_scorer.py`**:
+- `_SHOP_COUNTER_RE` 新規: `軒/店舗/店/件/品/箇所/ヶ所/カ所/施設/商品/アイテム/品目`
+  を含む数値タイトルパターンを検出。 range 表記「5-6 軒」「3〜5 件」も
+  最小値 expected として認識。
+- `_SHOP_ENTITY_URL_RE` 新規: Instagram / Tabelog / Google Maps / ホットペッパー /
+  Retty / ぐるなび の shop URL を強い entity 信号として detect。
+- `_SHOP_ENTITY_BOLD_RE` 新規: `**店名**` 形式の bold inline name を補助
+  信号として detect (純ひらがなは除外、 generic emphasis 「**重要**」等を
+  false positive させない)。
+- `_count_shop_like_entities(body)` 新規: 上記 2 種を dedupe して合計数を
+  返す。
+- `_check_numeric_listicle` 拡張: shop counter promise の場合は
+  `numeric_shop_listicle` type で `list_items >= N` **かつ** `shop_entities >= N`
+  の **両方** を要求 (heading count だけ満たして店名 0 軒の本文を弾く)。
+
+### 効果検証
+
+新 gate を kc_002 の旧本文 (店名 0、エリア H2 6 個) と新本文 (店名 6 軒 +
+Instagram URL 6 件) で run:
+- 旧本文: **grade C** (`numeric_shop_listicle expected=5, shop_entities=0`)
+  = 今後同パターンは fail-closed reject される
+- 新本文: **grade A** (店名 6 + URL 6 で両 check pass)
+
+`scripts/backtest_title_fulfillment.py` を過去記事に対して run:
+- 9 worst offender 中 3 件が新 `numeric_shop_listicle` で C 認定:
+  - `shinjuku_izakaya` (穴場居酒屋 5 軒、本文に店名・URL 0)
+  - `豆の仕入...コーヒーロースター` (信頼できる 5 店、本文 22 heading で店名 0)
+  - `赤羽駅周辺` (3-4 軒紹介、本文 9 heading で店名 0)
+- 既存 numeric_listicle (5選/3つ etc.) は sanity test 全 pass、 regression なし
+
+過去 3 件の retroactive 修正は `feedback_no_exhaustive_cleanup` により
+pursue しない (赤羽は memory `feedback_no_more_akabane` で seed 除外済、
+shinjuku / コーヒーロースターも既 publish の cosmetic)。
+
+### デグレチェック
+- `py -c "import main; from generators.title_fulfillment_scorer import score"` OK
+- `py scripts/test_hallucination_deny.py` → 40 deny + 7 sanitizer + 3 RAG 全 PASS
+- Sanity 1 (5選 with 5 items) → numeric_listicle promise satisfied
+- Sanity 2 (5選 with 3 items) → fail (既存動作維持)
+- Sanity 3 (no numeric promise) → neutral B (既存動作維持)
+- Sanity 4 (3軒 with 3 IG URLs) → A (新 logic 機能)
+
+### Next Resume Actions (5-27 累積、 5-28 待ち以外)
+
+- ~~Track A 韓国カフェ記事リッチ化~~ → 完了 (実店舗 6 軒)
+- ~~Track B 借用画像ポリシー配線~~ → 完了
+- ~~title_fulfillment shop counter ゲート~~ → **完了**
+1. note メンバーシップ手動追加 (累計 16 件、ユーザー作業)
+2. **新ゲートの効果計測**: 次回 generate で店舗系記事が出たら
+   `numeric_shop_listicle` 該当の reject ログが出るか観測
+3. ChatGPT 画像 vision-eval 詰まり (5-27 朝の調査項目、継続)
+4. 借用画像ポリシーの prompt 経路効果計測 (次回 generate)
+5. forbidden_phrases prompt 強化の継続効果 (5-28 経過後)
+6. K-beauty 3 連発 + 韓国カフェのクロス効果 (5-30 経過後)
+7. Zenn cap 4-15 から (別タスク継続)
+
+---
+
 ## 2026-05-27 昼 — 借用画像ポリシー配線 + 韓国カフェ記事を実店舗 6 軒で全面リライト
 
 ユーザー指示「実際に店の URL も画像も添付してほしい。出典忘れずに。 他人画像

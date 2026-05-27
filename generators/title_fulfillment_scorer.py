@@ -46,6 +46,30 @@ _NUMERIC_PROMISE_RE = re.compile(
     r"|の方法|の理由|のコツ|のステップ|のポイント|のテクニック)"
 )
 
+# Shop / venue / product counter — same numeric_listicle promise but
+# requires extra named-entity verification because a heading count of
+# districts (e.g. "## エリア1: 中目黒") trivially satisfies the basic
+# list-item check while the body names zero real shops. 2026-05-27
+# regression: kc_002 ("個人店 5-6 軒をエリア別に提示") snuck past with
+# 8 district H2s but 0 actual shop names.
+_SHOP_COUNTER_RE = re.compile(
+    r"(\d+)(?:\s*[-〜~]\s*\d+)?\s*"
+    r"(?:軒|店舗|店|件|品|箇所|ヶ所|カ所|施設|商品|アイテム|品目)"
+)
+
+# Entity signals that prove the body names real shops/products. URL
+# patterns are the strongest (an explicit Instagram / Tabelog / Maps
+# link is unmistakable intent); bold inline names are a secondary fallback.
+_SHOP_ENTITY_URL_RE = re.compile(
+    r"https?://(?:www\.)?"
+    r"(?:instagram\.com/|tabelog\.com/|goo\.gl/maps/|maps\.app\.goo\.gl/"
+    r"|hot-pepper\.jp/|hotpepper\.jp/|retty\.me/|gnavi\.co\.jp/)"
+    r"[^\s)]+"
+)
+_SHOP_ENTITY_BOLD_RE = re.compile(
+    r"\*\*([\w・A-Za-zぁ-んァ-ヶー]{3,40})\*\*"
+)
+
 # Time claims: digit + time unit.
 _TIME_PROMISE_RE = re.compile(
     r"(\d+)\s*(?:ヶ月|か月|カ月|年間|年|日間|日|週間|時間)"
@@ -280,6 +304,33 @@ def _check_numeric_listicle(
                     f"title promised {n} items, body has {actual}"
                 ),
             })
+    # Shop / venue counters — additionally require named-entity proof.
+    # Range expressions ("5-6 軒") use the minimum (5) as expected, so
+    # the lower bound has to be cleared.
+    for match in _SHOP_COUNTER_RE.finditer(title):
+        n = int(match.group(1))
+        if n <= 1 or n > 30:
+            continue
+        if n in seen_n:
+            # Already handled as a generic numeric listicle; the
+            # shop-entity check below still adds value, so don't skip.
+            pass
+        seen_n.add(n)
+        promises.append({"type": "numeric_shop_listicle", "expected": n})
+        list_items = _count_list_items(body)
+        shop_entities = _count_shop_like_entities(body)
+        if list_items < n or shop_entities < n:
+            unfulfilled.append({
+                "type": "numeric_shop_listicle",
+                "expected": n,
+                "list_items": list_items,
+                "shop_entities": shop_entities,
+                "detail": (
+                    f"title promised {n} shop/venue items, body has "
+                    f"{list_items} headings and {shop_entities} shop "
+                    f"entities (URL or bold name) — both must be ≥ {n}"
+                ),
+            })
 
 
 def _check_time_claims(
@@ -423,6 +474,35 @@ def _count_list_items(body: str) -> int:
         r"^\s*\*\*[^*\n]{2,40}\*\*[:：]", body, re.MULTILINE,
     ))
     return max(numbered, bulleted, h2, h3, bold_label)
+
+
+def _count_shop_like_entities(body: str) -> int:
+    """Count distinct shop / venue / product entity references in *body*.
+
+    Used by numeric_shop_listicle promises ("5 軒紹介" etc.). Heading
+    count alone is not enough — a body that uses "## エリア1: 中目黒"
+    sections without naming any shops passes the generic list-item
+    check but is a tile-fulfilment failure. We require either an
+    explicit Instagram / Tabelog / Maps URL per shop, OR a bold inline
+    name per shop. Bold and URL hits dedupe case-insensitively so the
+    same shop mentioned twice still counts as one.
+    """
+    hits: set[str] = set()
+    for m in _SHOP_ENTITY_URL_RE.finditer(body):
+        # Dedupe URL by its trailing handle/slug so 'instagram.com/abc'
+        # and 'instagram.com/abc/' count as one shop.
+        token = m.group(0).rstrip("/").lower()
+        hits.add(token)
+    for m in _SHOP_ENTITY_BOLD_RE.finditer(body):
+        name = m.group(1).strip().lower()
+        # Filter generic emphasis like **重要** / **ポイント** that
+        # aren't shop names. A 3-char minimum is already in the regex;
+        # also reject pure-hiragana strings (heuristic: shop names
+        # usually have katakana / ascii / kanji).
+        if re.fullmatch(r"[ぁ-ん]+", name):
+            continue
+        hits.add(name)
+    return len(hits)
 
 
 def _extract_proper_nouns(text: str) -> list[str]:
