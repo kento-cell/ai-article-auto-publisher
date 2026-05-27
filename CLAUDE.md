@@ -218,7 +218,7 @@ config/
 - `.claude/skills/` と `.codex/skills/` は同一内容。更新時は両方同期
 - 品質スコアは A/B/C グレード制（旧数値スコアは廃止）
 - Mermaidオンラインレンダリングは無効化（セキュリティ: 記事内容の外部送信防止）
-- 画像はCC0/Unsplash/Pexels/AI生成のみ使用可
+- 画像はCC0/Unsplash/Pexels/AI生成のみ paid 可。 店舗・商品の公式 SNS 借用画像は free 限定 (`main.py::_has_borrowed_image_attribution` が「画像をお借りしました」等の出典 marker を検知して price=¥0 強制、商用利用の copyright リスク回避、2026-05-27 追加)
 - チェーン店ブラックリストは `config/settings.yaml` の `evidence.gourmet_rules.chain_blacklist`
 - 構成パターンは `config/prompts.yaml` の `article_structures` + `structure_selection`
 
