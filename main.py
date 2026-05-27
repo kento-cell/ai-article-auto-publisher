@@ -4716,11 +4716,61 @@ def _fetch_topic_cover(title: str, content: str = "") -> Path | None:
         return None
 
 
+_BORROWED_IMAGE_MARKERS = (
+    "画像をお借りしました",
+    "画像引用",
+    "画像提供",
+    "Photo via",
+    "Photo by",
+    "Image credit",
+    "Image via",
+    "(c)",
+    "© ",
+)
+
+
+def _has_borrowed_image_attribution(content: str) -> tuple[bool, str | None]:
+    """Detect borrowed-image attribution markers in article body.
+
+    Returns ``(True, marker)`` when the article references third-party
+    images with attribution text (e.g. 「画像をお借りしました: 〇〇公式」).
+    Publishing such a piece for money is copyright-risky under JP law's
+    商用利用 line, so :func:`_publish_note` overrides ``price`` to 0
+    whenever this returns True.
+
+    Markers are conservative — they only match phrases that signal the
+    author *is borrowing someone else's image*. Stock-photo paths
+    (Unsplash / Pexels) and ChatGPT-generated PNGs in
+    ``data/images/stock|covers`` do not contain these markers, so the
+    paid pipeline is unaffected for the existing image flow.
+    """
+    if not content:
+        return False, None
+    for marker in _BORROWED_IMAGE_MARKERS:
+        if marker in content:
+            return True, marker
+    return False, None
+
+
 def _publish_note(
     title: str, content: str, config: dict, source: str = "", price: int = 0
 ) -> str | None:
     """note記事を投稿する（ハッシュタグ自動生成付き）。"""
     note_pub = None
+    # Copyright guard (2026-05-27): if the body credits borrowed images
+    # ("画像をお借りしました" etc.) the article reuses third-party photos
+    # — distributing those for money turns this into 商用利用, which the
+    # original copyright holder did not grant. Override price=0 so the
+    # publish path stays compliant. The piece can still ship; it just
+    # can't be paywalled. Loud log so an operator notices.
+    borrowed, marker = _has_borrowed_image_attribution(content)
+    if borrowed and price > 0:
+        logger.warning(
+            "[note] borrowed-image attribution detected ('%s') — "
+            "forcing price ¥%d → ¥0 to avoid commercial-use copyright risk",
+            marker, price,
+        )
+        price = 0
     try:
         note_pub = NotePublisher()
 

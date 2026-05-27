@@ -1,5 +1,110 @@
 # Latest Session
 
+## 2026-05-27 昼 — 借用画像ポリシー配線 + 韓国カフェ記事を実店舗 6 軒で全面リライト
+
+ユーザー指示「実際に店の URL も画像も添付してほしい。出典忘れずに。 他人画像
+なら有料記事は NG (商用利用)」 → 借用画像ポリシーを config + publish logic
+に配線し、 5-27 朝 publish の n40b6f0a288b8 (韓国カフェ記事) を実店舗 6 軒入り
+で全面リライトして edit_article で差し替えた。
+
+### 発見: n40b6f0a288b8 は致命的タイトル負け状態だった
+
+リッチ化作業を始めた直後に判明: タイトルが「個人店 5-6 軒をエリア別に提示」
+と書いてあるのに **本文には店名が 1 軒も入ってない**。エリア (中目黒・表参道・
+三茶・蔵前・高円寺・新大久保) を漠然と説明してるだけで実用性ゼロ。
+title_fulfillment ゲートが見逃した品質事故。 CLAUDE.md の最上位ルール
+「タイトル負け = 読者への裏切り = 絶対禁止」に違反する状態だった。
+
+ユーザー指示に沿って **全面リライト方針 (実在店 5-6 軒をリサーチして書き直し)**
+で対応。
+
+### 借用画像ポリシー配線 (Track B)
+
+**`main.py::_has_borrowed_image_attribution(content)`** 新規追加:
+- 本文中の borrowed-image marker (`画像をお借りしました` / `Photo via` /
+  `Photo by` / `Image credit` / `(c)` / `© ` 等 9 種) を検知
+- 戻り値: `(True, marker)` / `(False, None)`
+
+**`main.py::_publish_note`** 冒頭で `_has_borrowed_image_attribution` を
+呼び、 True かつ `price > 0` の場合に warn ログ + `price = 0` を強制。
+理由は、 第三者画像を借用した記事を有料化すると商用利用扱いになり、
+JP 著作権法の引用要件を満たさなくなるリスク。 publisher 側のセーフティ
+ネットとして、 prompts ルール (出典明記 + free 限定) を破った記事が
+すり抜けても、 実際の有料配信は止まるようにする。 stock 画像
+(Unsplash / Pexels / ChatGPT 生成 / Pillow バナー) は marker を含まない
+ので paid 経路は無影響。
+
+**`config/prompts.yaml`** (note / zenn 両 writer prompt に追加、
+2026-05-27 ラベル):
+- 「店舗・施設・商品を実名で紹介する記事は実在性が必須 — 店名 + 区市町村 +
+  公式 Instagram / 公式 Web URL を本文に必ず書く。地域名止まりで店名が
+  無いのは即全文却下」
+- 「借用画像の取り扱い: `> 画像をお借りしました: [媒体名]公式 (URL)` 出典
+  形式必須、借用画像 1 枚でも置いた記事は paid 化禁止 (price=0 強制)」
+- 「借用したくないなら Unsplash / Pexels / ChatGPT 生成画像 / Pillow バナー
+  の従来パスをそのまま使ってよい (これらは paid 可)」
+
+**`CLAUDE.md`** 開発時注意の画像ルールを更新 (旧:「CC0/Unsplash/Pexels/AI
+生成のみ使用可」 → 新:「stock 系は paid 可、 公式 SNS 借用画像は free 限定」)。
+
+### Track A 韓国カフェ記事リライト
+
+`scripts/_kc_002_rewrite.md` に新本文を起こし、
+`scripts/_edit_kc_002_with_real_shops.py` で edit_article 経由で差し替え。
+
+**新タイトル**: 「【保存版】「新大久保以外」で韓国カフェの本物に出会う —— 都内
+6 軒、エリア別に実名で」
+
+**紹介店舗 6 軒** (Agent リサーチで Instagram alive を一次確認):
+1. **alors** (中目黒・祐天寺) — 韓国×北欧ミニマル、夜カフェ対応、
+   https://www.instagram.com/alors_nakameguro/
+2. **PARLOR NOON** (目黒駅前 2F) — 1F は姉妹店 NOON、
+   https://www.instagram.com/parlornoon_2f/
+3. **cafe486** (表参道) — 2024 年 3 月開業、「486 = 사랑해」由来、
+   https://www.instagram.com/cafe486__/
+4. **And Co.ffee** (三軒茶屋) — 韓国家具メーカー什器、夜カフェ切替、
+   https://www.instagram.com/andco.ffee/
+5. **I'll coffee** (浅草・蔵前) — 2025 年 8 月最新、韓国人オーナー、
+   https://www.instagram.com/i.ll____/
+6. **Cafe Neul** (新大久保) — 日韓夫婦経営、聖水洞テイスト、
+   https://www.instagram.com/neul_shinokubo/
+
+各店ブロックの末尾に `> 画像をお借りしました: 〇〇公式 Instagram (URL)`
+出典を明記。価格は ¥0 維持 (借用画像方針に準拠)。
+
+**Live page 確認**: 新タイトル `<title>【保存版】「新大久保以外」で…
+都内 6 軒、エリア別に実名で｜KENTO</title>` で curl 取得 OK。 article store
+JSON も同期更新 (`_title_before_rewrite_5_27` / `_rewrite_note_5_27`
+フィールド付与で後追い可能に)。
+
+**edit_article known bug 確認**: `edit_article returned: True` 表示で、
+今回は live page にも反映済み。 5-13 known bug (False を返すが live は
+保存済み) は今回出ず。
+
+### デグレチェック
+- `py -c "import main; from main import _has_borrowed_image_attribution"` OK
+- 「画像をお借りしました」「Photo via」「© 」マーカー 4 ケース判定確認 OK
+- `py scripts/test_hallucination_deny.py` → **40 deny + 7 sanitizer + 3 RAG
+  全 PASS**
+
+### Next Resume Actions (5-27 累積)
+
+- ~~Track A 韓国カフェ記事リッチ化~~ → **完了 (実店舗 6 軒入りで全面リライト)**
+- ~~Track B 借用画像ポリシー配線~~ → **完了 (config + publish logic + CLAUDE.md)**
+1. note メンバーシップ手動追加 (累計 16 件、 韓国カフェ記事はリライト前後で
+   同じ URL なので再追加不要)
+2. **新 anti-pattern**: 「title_fulfillment ゲートが本文に店名 0 軒でも pass
+   させた」(kc_002 で実証)。 title に「N 軒紹介」「N 件比較」が入る場合は
+   本文内の固有名詞検知を強めるべき (新規調査項目)
+3. **借用画像ポリシーの効果計測**: 次回 generate で店舗系記事が出たら、
+   新プロンプトルールがちゃんと店舗 URL を本文に書かせるかチェック
+4. ChatGPT 画像 vision-eval 詰まり (5-27 朝の調査項目、継続)
+5. forbidden_phrases prompt 強化の継続効果計測 (5-28 経過後)
+6. K-beauty 3 連発 + 韓国カフェのクロス効果計測 (5-30 経過後)
+7. Zenn cap 4-15 から (別タスク継続)
+
+---
+
 ## 2026-05-27 午前 — learn→generate→publish ALL FREE (note 3 件、knowledge_topics 2 件復活)
 
 ユーザー指示「learn generate publish ALL FREE」 → compound workflow #2 variant
