@@ -1,5 +1,86 @@
 # Latest Session
 
+## 2026-05-28 朝 — learn→generate→publish ALL FREE (note 4 件、Claude Code 月10万円系を deny-pattern で reject)
+
+ユーザー指示「resume」 → 「learn generate publish ALL FREE」 で compound
+workflow #2 variant 実行 (5-27 と同じパターン)。 `--free-first 999` で note
+全件 ¥0 強制。
+
+### learn (07:21–07:33)
+- 280 サンプル / joined **129/157 (82%)** ← 5-27 126/154 から +3
+- past_articles **384 chunks** (5-27 381 → +3、5-27 publish 3 件 ingest)
+- RAG 総 **506 chunks** (5-27 503 → +3)
+- 新スナップショット: `quality_insights_2026-05-28.md` /
+  `note-trends/2026-05-28_auto_learning.md`
+- Anti-pattern 変化なし: 【そもそも解説】【入門】 が下位独占で継続
+  (collector で機械除外済み)
+
+### generate (07:34–08:11)
+- 合格 **5 件 (全 note)** / 不合格 **2 件 (zenn 両方)**
+- cooldown filter: note 1 件 drop (5-27 reject 再来防止が継続機能)
+- 新 shop counter gate: trigger 観測なし (今回 collection に「N軒」型タイトル無し、 健全)
+
+- **合格 5 件 (全 note)**:
+  - row 105: Claude Code 月10万円ロードマップ (B/A, deep_dive)
+  - row 106: 日本で韓国コスメ買える 4 経路 (kc_004, B/A, trend_report、 dup-check sim 0.933 警告 = 5-25 と類似だが pass)
+  - row 107: 1週間持ち物 1-2割減 (sl_003, B/A, trend_report、 sl_001/sl_002 続編)
+  - row 108: 韓国コスメ起因の肌トラブル 5 パターン (kb_007, B/A, deep_dive)
+  - row 109: Tech CEOs AI psychosis (B/A, deep_dive, TechCrunch grounded)
+
+- **不合格 2 件 (zenn 両方)**:
+  - AI実装力『コードを書く力』… (forbidden_phrases: 「〇〇というモデルを使う」)
+  - TsKaigi 2026 振り返り (citation 0)
+
+### publish (08:12–08:32、 bulk_approve 5 → free-first 999)
+
+- **note 4 free publish 成功 / 1 件 deny reject**:
+  - row 105 Claude Code 月10万円 → **deny-pattern hit で reject** (matched
+    「誰でも月収〇〇万円！」キラキラ系) → Sheets 自動 ❌却下。
+    Codex の hallucination ガードが publish 直前で機能した実証
+  - row 106 韓国コスメ 4 経路: https://note.com/note-user/n/n46ccc31f4994
+  - row 107 1週間持ち物減 (sl_003): https://note.com/note-user/n/ne0959d6ff8f7
+  - row 108 韓国コスメ肌トラブル 5 (kb_007): https://note.com/note-user/n/nd5cd08163f15
+  - row 109 Tech CEOs AI psychosis: https://note.com/note-user/n/nfd797bf2135d
+
+- **ChatGPT 画像 batch 全 4 件 fail**:
+  - CDP port 9222 未起動 + AUTO_LAUNCH_BRAVE_CDP=0
+  - launch_persistent_context fallback も Brave kill 直後 pid=14844/19300/7652/17804 が
+    全て `exitCode=21` で死亡 (5-26 朝再現の Brave user_data_dir ロック競合疑い)
+  - 結果: Pollinations 空 → Unsplash cover/inline fallback (全 4 件)
+  - `[ops-banner:image]` で 「15. ChatGPT 画像セレクタ漂流」 と
+    「3. MD5 同一画像」 を RAG が pick up (健全動作)
+  - **retroactive 差し替えは `feedback_no_exhaustive_cleanup` で pursue しない**
+- メンバーシップ追加: 全 4 件 UI 漂流で失敗 (既知、累計 20 件)
+- 借用画像 policy 配線: 今回 stock/AI 画像経路のみで marker trigger 無し (健全)
+
+### 5-28 朝累計 publish
+note 4 free / zenn 0 = **4 件**
+
+### Next Resume Actions (5-28 累積)
+
+1. **note メンバーシップ手動追加 (累計 20 件)**:
+   - 5-25 7 件 / 5-26 6 件 / 5-27 3 件 / 5-28 4 件
+2. **ChatGPT 画像 batch 復旧** (5-28 でも継続再現):
+   - CDP 経路 (`scripts/launch_brave_cdp.bat` を AUTO_LAUNCH_BRAVE_CDP=1 で打鍵)
+     を推奨。 launch_persistent_context は Brave 通常起動と user_data_dir 競合
+     して exitCode=21 で死ぬので fallback 経路として信頼できない実証
+   - メンバーシップ UI セレクタ修正 (5-20 から累積、 backlog 20 件で着手推奨)
+3. **deny-pattern reject の効果**: row 105 (キラキラ系 Claude Code 月10万円) が
+   publish 直前で reject されて Sheets 自動却下。 publish 経路の hallucination
+   guard が機能している実証。 generate 通過後の最後の関門として継続有効
+4. **dup-check 警告の取り扱い検討**: row 106 kc_004 が 5-25 公開済記事と
+   sim 0.933 で類似警告だが publish 完遂。 ALL FREE では問題ないが、 paid で
+   sim>=0.93 が出る場合は ❌ 自動却下を検討する余地あり
+5. **forbidden_phrases prompt 強化 (5-26 `e313a0a`) の継続効果**: sl_003 / kc_004
+   / kb_007 が pass、 knowledge_topics 経路で安定して効いている実証 (4 日連続)
+6. **K-beauty クロス効果計測** (5-30 経過後):
+   - 5-25 購入ガイド Free + 5-26 成分入門 Free + 5-27 4選 Free +
+     **5-28 kb_007 肌トラブル Free + kc_004 購入ガイド Free** = K-beauty/韓国 5 連発
+   - K-POP 4世代 paid (n024111feee84) への流入率を 5-30+ で測定
+7. Zenn cap 4-15 から 6 週間 article 0 (別タスク継続)
+
+---
+
 ## 2026-05-27 夕方 — title_fulfillment scorer に shop counter ゲート追加 (kc_002 事故の再発防止)
 
 ユーザー指示「やることない?」 → 5-27 昼に発見した kc_002 タイトル負け事故
