@@ -122,9 +122,11 @@ CDP listener が居れば attach、居なければ Pollinations / Unsplash に f
 
 ## 関連ドキュメント
 
-- `CLAUDE.md` — Claude Code 用、Compound Workflow Playbook + Scripts カタログ
-- `AGENTS.md` — Codex / 一般 agent 用、同じ playbook + 罠を mirror
-- `docs/sessions/LATEST.md` — 今日の状態 + Next Resume Actions
+- `CLAUDE.md` — root universal rules、 詳細は subdir `publishers/` `scripts/` `bot/` の CLAUDE.md
+- `AGENTS.md` — Codex / 一般 agent 用、 同じ playbook + 罠を mirror
+- `docs/sessions/STATE.md` — current state + Next Actions (≤60 行)
+- `docs/sessions/JOURNAL.md` — 今日の append-only log (auto-read しない)
+- `docs/sessions/2026-05_archive.md` — 過去 session 履歴 (旧 LATEST.md from rename)
 - `docs/knowledge/hallucination_registry.md` — ハルシネーション事故レジストリ (canonical)
 - `docs/requirements.md` — 要件定義
 - `config/settings.yaml.example` — 48 forbidden_phrases、伏字+業態語、AI 開示 footer
