@@ -13,8 +13,12 @@ description: Use when starting a new task or pipeline run. Establish minimal con
 
 ## Entry Workflow (STRICT ORDER)
 
-1. Read `docs/sessions/LATEST.md`
-   - 前回の実行結果、エラー状態、トークン残量を把握
+(2026-05-28 改訂 — context refactor 反映、 cold-start 76K→6.8K tok 削減)
+
+1. Read `docs/sessions/STATE.md`
+   - current state + Next Actions (≤60 行)
+   - 詳細履歴は `JOURNAL.md` or `2026-05_archive.md`、 もしくは
+     `Agent(subagent_type="session-reader")` で Haiku 圧縮
 
 2. Read `AGENTS.md`
    - パイプラインルールと制約を確認

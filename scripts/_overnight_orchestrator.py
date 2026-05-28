@@ -11,7 +11,7 @@ User is going to sleep. This poll-driven script:
      flow falls through to its existing Unsplash fallback.
      CHATGPT_VISION_EVAL=0 to avoid the retry-loop seen earlier.
   4. Verifies which articles successfully published (Sheets status).
-  5. Writes a morning briefing into docs/sessions/LATEST.md.
+  5. Writes a morning briefing into docs/sessions/JOURNAL.md.
   6. Commits + pushes everything.
 
 Designed to be idempotent on partial failure — re-running picks up
@@ -150,7 +150,12 @@ def _publish_all_note_free() -> str:
 
 
 def _update_latest(publish_tail: str) -> None:
-    """Append a morning-briefing section to LATEST.md."""
+    """Append a morning-briefing section to JOURNAL.md.
+
+    2026-05-28 redirected from LATEST.md → JOURNAL.md after context
+    refactor (LATEST.md was split into STATE/JOURNAL/archive, see root
+    CLAUDE.md "起動時の必読" section).
+    """
     from utils.sheets_manager import SheetsManager
     sm = SheetsManager()
     ws = sm._sheet
@@ -165,12 +170,12 @@ def _update_latest(publish_tail: str) -> None:
 
 ---
 
-## 2026-05-15 morning briefing (autonomous overnight run)
+## {today} morning briefing (autonomous overnight run)
 
 **ユーザーが寝ている間に走ったタスク** (`scripts/_overnight_orchestrator.py`):
-1. 13th generate (variant=v3_codex) の完了待機
+1. generate の完了待機
 2. 合格分を bulk approve → free-first publish
-3. LATEST.md 更新 + commit + push
+3. JOURNAL.md 更新 + commit + push
 
 **Sheets 状態 (現時点):**
 - 全 ✅投稿済み 行 (直近 30 行のうち今日分): {len(published_today)}
@@ -186,16 +191,16 @@ def _update_latest(publish_tail: str) -> None:
 - もし黄色矢印プレースホルダーや Unsplash 写真風なら、`_start_new_chat` 修正がまだ
   足りていない → `_test_rag_rerank.py` のような診断スクリプトを書いて原因絞り込み
 """
-    path = _REPO / "docs" / "sessions" / "LATEST.md"
-    cur = path.read_text(encoding="utf-8")
+    path = _REPO / "docs" / "sessions" / "JOURNAL.md"
+    cur = path.read_text(encoding="utf-8") if path.exists() else "# JOURNAL\n"
     path.write_text(cur + briefing, encoding="utf-8")
-    log.info("LATEST.md updated (+ %d chars)", len(briefing))
+    log.info("JOURNAL.md updated (+ %d chars)", len(briefing))
 
 
 def _git_push() -> None:
     _run(
         ["git", "add",
-         "docs/sessions/LATEST.md",
+         "docs/sessions/JOURNAL.md",
          "scripts/_overnight_orchestrator.py",
          "scripts/_smoke_test_today_fixes.py"],
         timeout=30,

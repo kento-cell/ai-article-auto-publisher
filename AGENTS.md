@@ -7,10 +7,15 @@ AI記事自動生成・投稿システムのエージェント運用ガイド。
 
 ## Entry Workflow
 
-1. Read `docs/sessions/LATEST.md` first for immediate context recovery.
-2. If `LATEST.md` is missing or stale, read the newest `docs/sessions/YYYYMMDD_*.md` file.
-3. Read `config/settings.yaml` for current system configuration.
-4. Read `AI_CONTEXT.md` for repository structure understanding.
+(2026-05-28 改訂 — context refactor 反映)
+
+1. Read `docs/sessions/STATE.md` first (≤60 行、 current state + Next Actions)
+2. 詳細履歴は `docs/sessions/JOURNAL.md` (今日) or `docs/sessions/2026-05_archive.md`
+   (past sessions、 必要時のみ)、 もしくは `Agent(subagent_type="session-reader")`
+   で Haiku に圧縮させる
+3. Read `config/settings.yaml` for current system configuration (必要時)
+4. Read `AI_CONTEXT.md` for repository structure (任意、 root CLAUDE.md
+   §プロジェクト概要 で大半カバー済)
 
 ## Local Skill Set
 
