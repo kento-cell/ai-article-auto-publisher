@@ -1,6 +1,6 @@
 """SQLite telemetry store for RAG / generation observability.
 
-Schema designed 2026-05-11 — see docs/sessions/20260511_db_schema_design.md.
+Schema designed 2026-05-11 — see docs/sessions/archive/_legacy/20260511_db_schema_design.md.
 4 tables, all append-only:
 - engagement_log    : public-article engagement (♥ / 💬 / views)
 - regen_history     : per-attempt scoring history for each article

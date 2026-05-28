@@ -109,7 +109,7 @@ CDP listener が居れば attach、居なければ Pollinations / Unsplash に f
 - chromadb + e5-base embedding
 - ハルシ防御 + 重複検出 + RAG-prompt + 画像 alt gate に配線済
 - `RAG_ENABLED` env var で A/B 計測中
-- 詳細: `docs/sessions/20260511_*` / `generators/rag_*`
+- 詳細: `docs/sessions/archive/_legacy/20260511_*` / `generators/rag_*`
 
 ## 9. 即興スクリプト → 即 commit ポリシー (2026-05-13)
 

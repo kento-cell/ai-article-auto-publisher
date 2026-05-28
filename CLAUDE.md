@@ -17,7 +17,7 @@
 長期参照 (任意、 必要に応じて):
 - `AGENTS.md` — エージェント設計 (Researcher/Strategist/Writer/Critic/Coordinator)
 - `docs/requirements.md` — 要件定義
-- `docs/sessions/20260407_*` — 初期設計判断 (4-7 時点のスナップ)
+- `docs/sessions/archive/_legacy/20260407_*` — 初期設計判断 (4-7 時点、 歴史参照のみ)
 
 ### 起動後の自動アクション
 
