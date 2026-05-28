@@ -85,3 +85,34 @@ memory `project_zenn_cap_blocked` を「slow-walk queue」 に書き換え、 ME
 **memory 更新**:
 - `project_zenn_cap_blocked` を「slow-walk queue (旧 cap 誤診断)」 に書き換え
 - MEMORY.md 索引のエントリ更新
+
+### Afternoon (13:30–) — 最強環境 optimization round (Pattern 6-10 追加)
+
+ユーザー指示「すべてを最適化してくれ。 最強環境を目指している」 → 残課題
+全部潰す自走 round。
+
+| # | 対応 | 効果 |
+|---|---|---|
+| 6 | `scripts/_session_status.py` 新規 — STATE.md AUTO セクション (`Updated` / `Recent Output` / `Pipeline Health`) を自動再生成。`--quick` で Zenn API skip | 手動メンテ消滅、 0.26 秒で更新 |
+| 7 | SessionStart hook 強化 — JOURNAL rotation **に加え** `_session_status.py --quick` 自動呼び出し。 STATE.md が CC 起動ごとに fresh | 起動ごとに最新の publish 状況・ commit history が STATE に反映 |
+| 8 | AGENTS.md 大幅 trim — 483 → 183 行 (-62%)。 重複していた Compound Workflow Playbook / Scripts カタログ / 既知の罠 / Repository Layout / Local Skill Set duplication を `scripts/CLAUDE.md` `publishers/CLAUDE.md` `bot/CLAUDE.md` `.claude/skills/` への参照に置換 | AGENTS.md auto-load 経路で 13.8KB 節約 |
+| 9 | 旧設計ドキュメント 7 file を `docs/sessions/archive/_legacy/` に git mv — 20260407_* / 20260429_* / 20260511_* | `docs/sessions/` が STATE / JOURNAL / archive の 3 file だけになり cognitive load 減 |
+| 10 | memory 全 27 file に `last_verified: 2026-05-28` 付与 (`scripts/_memory_add_verified_field.py`) | 30+日前の memory は trust 前に verify するシグナル。 今日の Zenn cap 誤診断のような事故の再発防止 |
+
+**最終 cold-start サイズ**:
+- 旧: 190KB / 76K tokens (LATEST.md 104KB が支配)
+- Pattern 1-5 後: 17KB / 6.8K tokens (-91%)
+- Pattern 6-10 後: **同 17KB / 6.8K tokens** (auto-load 経路は変化なし、 trim は副次経路)
+- AGENTS.md (任意 read 経路) が 23 → 9KB に縮小、 必要時の context cost も -61%
+
+**未実施** (リスクで保留):
+- scripts/ 161 files の整理 — dated one-shot 多数だが user 個別に思い入れ
+  あり得るので audit list 化のみ、 git rm はユーザー指示後
+- `AI_CONTEXT.md` (1.7KB) 削除 — AGENTS.md からの参照が trim で消えたので
+  孤立、 次セッションで削除候補
+
+**新規 SOP**:
+- `py scripts/_session_status.py` (full) or `--quick` (hook 自動): STATE 更新
+- `py scripts/_memory_add_verified_field.py --apply`: 新規 memory の verified
+  backfill (re-run safe、 既存 entry は skip)
+- SessionStart hook が両方をハンドル、 手動呼び出しは optional
