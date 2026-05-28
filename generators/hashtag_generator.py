@@ -84,11 +84,16 @@ KEYWORD_CATEGORIES: dict[str, str] = {
 class HashtagGenerator:
     """Generate relevant hashtags for articles."""
 
-    def __init__(self, max_tags: int = 10) -> None:
+    def __init__(self, max_tags: int = 5) -> None:
         """Initialize with max hashtag count.
 
         Args:
-            max_tags: Maximum number of hashtags to generate.
+            max_tags: Maximum number of hashtags to generate. Default
+                lowered from 10 → 5 (2026-05-28 growth pivot): note
+                公式マガジン editors discover via hashtag-page ranking
+                — 10 tags spread the signal across 10 weak rankings,
+                5 well-chosen tags rank stronger on each. See
+                docs/strategy/2026-05-28_growth_plan.md.
         """
         self.max_tags = max_tags
 

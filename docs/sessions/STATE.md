@@ -6,7 +6,7 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-05-28 13:43 JST
+2026-05-28 16:08 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
@@ -53,14 +53,14 @@
 ## Pipeline Health (auto)
 
 <!-- AUTO:pipeline -->
-- JOURNAL.md: 87 lines (rotation at 500 via SessionStart hook)
-- Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
+- JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
+- Zenn queue head (slow-walk): 2026-05-28 | 20260417-rad-2
 - Recent commits (last 48h):
+  - c4dc1a6 docs(context): Pattern 6-10 optimization round — auto-status + AGENTS trim + memory verified + legacy archive
   - f95b269 fix(context): redirect stale LATEST.md refs to STATE/JOURNAL after split
   - 785a540 docs(context): split LATEST.md → STATE/JOURNAL/archive + subdir CLAUDE.md (-91% cold-start tokens)
   - e9bf8d0 chore(scripts,learn): 5-28 one-shots — ChatGPT regen with poster route + Zenn prompt-book push + auto-learn snapshot
   - 150499d feat(scorer): title_fulfillment shop counter gate (kc_002 regression)
-  - 5e15b6a feat(policy): borrowed-image free-only guard + Korean cafe article rewrite
 <!-- /AUTO:pipeline -->
 
 ## Pointers

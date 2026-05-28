@@ -116,3 +116,39 @@ memory `project_zenn_cap_blocked` を「slow-walk queue」 に書き換え、 ME
 - `py scripts/_memory_add_verified_field.py --apply`: 新規 memory の verified
   backfill (re-run safe、 既存 entry は skip)
 - SessionStart hook が両方をハンドル、 手動呼び出しは optional
+
+### Afternoon (14:30–) — note フォロワー成長戦略 + 自走実装 (14→500/12mo)
+
+ユーザー指示「note フォロワー / サブスクを増やす作戦」 → ディスカッション型で
+Researcher (外部 + 内部) → Strategist → Critic → 統合。 確定情報:
+- 現状フォロワー **14 人** / membership **0 件** / note Premium **無し** / engagement rate 20-35% (audience 小だが質高)
+- 1 年目標 = **500 フォロワー** (月平均 35% 成長、 S 字想定)
+- 「ジャンル委任、 いかなる手も」 → K-beauty 主軸 70%、 AI 副業 20%、 橋渡し 10%
+
+**真の問題**: 「audience が小さい」 ではなく「**discovery 経路がない**」。
+engagement rate 20-35% = 既読者の質は良い、 新規流入経路ゼロが真因。
+
+**ストラテジー文書**: `docs/strategy/2026-05-28_growth_plan.md`
+**memory**: `project_note_growth_target`
+
+**自走実装 4 件 (本セッション完遂)**:
+
+| # | 実装 | 効果 |
+|---|---|---|
+| 1 | `main.py::publish_approved` に **note 1 本/日 hard-cap** + `data/publish_history.jsonl` audit log。 ENV `NOTE_CADENCE_CAP=0` で override 可、 `NOTE_DAILY_LIMIT` で上限変更可 | note 2026-02 anti-mass-publish 規制 (6+/日 = 停止) 回避、 suspension risk 解消 |
+| 2 | `scripts/_reweight_topics_for_growth.py` + `_expand_kbeauty_topics.py` (apply 済) | knowledge_topics 比重 **AI 93.5% → K-beauty 主軸 86.5%** に逆転、 新規 k_beauty 8 + k_culture 4 topic 追加 (合計 66 topics)、 cooldown 30-60d → 7d 短縮で recycle 高速化。 実 sampling 検証 50/200: K-beauty 52% + K-culture 28% + AI 副業 16% + bridge 4% |
+| 3 | `HashtagGenerator(max_tags=5)` (default 10→5、 main.py 両 caller も追従) | note 公式マガジン editor は hashtag page ranking 経由で discover、 5 strong rankings > 10 weak rankings (1 broad + 4 narrow 構造目標) |
+| 4 | `scripts/_publish_at_slot.py` 新規 — 火 19-22 / 金 16-19 / 土 10-12 / 日 11-14 JST の peak slot 内のみ publish 実行、 slot 外は次 ETA 表示で exit 2 | note Premium 無しでも 初速の法則 boost を狙える半手動 slot 投稿 (1 publish reach 2-4x) |
+
+**ユーザー側 タスク (CC 不可、 並行で)**:
+1. note プロフィール文 + 過去 30 記事から「AI 自動生成」 言及を grep + 削除
+2. membership 20 件 backlog をダッシュボード手動追加 (audience 育つ前に conversion 経路を生かす)
+3. K-beauty 専用 X account 立ち上げ + プロフィール設定
+4. note 公式マガジン curation 傾向 月次 check (note.com/magazine/official)
+
+**90 日 / 1 年 KPI**:
+- フォロワー: 14 → 80-150 (90 日) → **500** (1 年)
+- 月次 ♥ 中央値: 1-2 → 5-10 → 10-20
+- 公式マガジン pickup: 0 → 1-2/四半期 → 4-6/年
+- X フォロワー: 0 → 500-800 → 2,000-3,000
+- membership: 0 → 0 (audience 待ち) → 20-50

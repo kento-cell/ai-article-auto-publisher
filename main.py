@@ -3769,7 +3769,7 @@ def _generate_single_article(
         # path scanned the body for inline #tags, but note bodies
         # don't carry hashtags — stats were structurally stuck at 0%.
         try:
-            _preview_hashtags = HashtagGenerator(max_tags=10).generate(
+            _preview_hashtags = HashtagGenerator(max_tags=5).generate(
                 title=article["title"],
                 content=content,
                 source=article.get("source", ""),
@@ -4292,10 +4292,43 @@ def publish_approved(
     # without paying the 25-second 404-wait again.
     _zenn_cap_exhausted = False
 
+    # 2026-05-28 cadence cap: note 1 publish/day enforced to stay below
+    # note's 2026-02 anti-mass-publish enforcement signature (6+/day +
+    # AI-disclosure bio = suspendable). Override via NOTE_CADENCE_CAP=0
+    # in .env (use sparingly, e.g. one-shot bulk catchup). Zenn is not
+    # capped — its slow-walk queue is the natural throttle.
+    _CADENCE_CAP_ENABLED = os.environ.get(
+        "NOTE_CADENCE_CAP", "1",
+    ).strip().lower() not in {"0", "false", "no", "off"}
+    _NOTE_DAILY_LIMIT = int(os.environ.get("NOTE_DAILY_LIMIT", "1") or "1")
+    _note_published_today = (
+        _count_publishes_today("note") if _CADENCE_CAP_ENABLED else 0
+    )
+    if _CADENCE_CAP_ENABLED:
+        logger.info(
+            "[cadence-cap] note 既 publish %d 件/日 (上限 %d、 残 %d 件まで publish 可)",
+            _note_published_today, _NOTE_DAILY_LIMIT,
+            max(0, _NOTE_DAILY_LIMIT - _note_published_today),
+        )
+
     for article_data in approved:
         platform = article_data.get("platform", "")
         title = article_data.get("title", "")
         article_id = article_data.get("article_id", "")
+
+        # Cadence cap: skip note rows when today's count is at limit.
+        # Sheet row stays ✅承認 so it's eligible for tomorrow's run.
+        if (
+            platform == "note"
+            and _CADENCE_CAP_ENABLED
+            and _note_published_today >= _NOTE_DAILY_LIMIT
+        ):
+            logger.warning(
+                "[cadence-cap] note 上限 %d 件/日 到達 — '%s' を翌日以降に持ち越し "
+                "(解除は NOTE_CADENCE_CAP=0)",
+                _NOTE_DAILY_LIMIT, title[:40],
+            )
+            continue
 
         # Guard against duplicate approved rows sharing an article_id.
         # Root-caused to slug collisions when two titles share the first
@@ -4490,6 +4523,10 @@ def publish_approved(
                 sheets.update_status(article_id, "✅投稿済み")
                 slack.notify_published(platform, title, url)
                 gmail.notify_published(platform, title, url)
+                # Audit log + cadence-cap source of truth (2026-05-28).
+                _log_publish_event(platform, url, title)
+                if platform == "note":
+                    _note_published_today += 1
                 feedback.record_publish(
                     platform=platform,
                     title=title,
@@ -4526,6 +4563,72 @@ def publish_approved(
             gmail.notify_error(str(e), f"{platform}: {title[:30]}")
 
     return results
+
+
+_PUBLISH_HISTORY_PATH = Path(__file__).resolve().parent / "data" / "publish_history.jsonl"
+
+
+def _publish_history_today_jst() -> str:
+    """Return today's date in Asia/Tokyo (YYYY-MM-DD)."""
+    import datetime as _dt
+    jst = _dt.timezone(_dt.timedelta(hours=9))
+    return _dt.datetime.now(jst).date().isoformat()
+
+
+def _log_publish_event(platform: str, url: str, title: str) -> None:
+    """Append a publish event to data/publish_history.jsonl (audit + cap source).
+
+    Schema: ``{"date": "YYYY-MM-DD", "ts": "ISO8601", "platform":
+    "note|zenn", "url": "...", "title": "..."}``. JST date is
+    intentional — the cadence cap window is "per local day", and
+    using UTC would split publishes across two cap windows at midnight.
+    """
+    import datetime as _dt
+    import json as _json
+    jst = _dt.timezone(_dt.timedelta(hours=9))
+    now = _dt.datetime.now(jst)
+    entry = {
+        "date": now.date().isoformat(),
+        "ts": now.isoformat(timespec="seconds"),
+        "platform": platform,
+        "url": url,
+        "title": (title or "")[:120],
+    }
+    try:
+        _PUBLISH_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _PUBLISH_HISTORY_PATH.open("a", encoding="utf-8") as f:
+            f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        logger.warning("[publish-history] write failed: %s", exc)
+
+
+def _count_publishes_today(platform: str) -> int:
+    """Count successful publishes today (JST) for the given platform.
+
+    Reads data/publish_history.jsonl. Returns 0 if file missing or
+    unreadable — fail-open so a corrupted history file can't block
+    every publish forever.
+    """
+    import json as _json
+    if not _PUBLISH_HISTORY_PATH.is_file():
+        return 0
+    today = _publish_history_today_jst()
+    count = 0
+    try:
+        with _PUBLISH_HISTORY_PATH.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = _json.loads(line)
+                except _json.JSONDecodeError:
+                    continue
+                if e.get("date") == today and e.get("platform") == platform:
+                    count += 1
+    except OSError:
+        return 0
+    return count
 
 
 def _is_zenn_article_404(url: str, indexing_wait_sec: int = 25) -> bool:
@@ -4774,8 +4877,10 @@ def _publish_note(
     try:
         note_pub = NotePublisher()
 
-        # ハッシュタグ自動生成
-        hashtag_gen = HashtagGenerator(max_tags=10)
+        # ハッシュタグ自動生成 — 2026-05-28 growth pivot: 10 → 5 に絞ることで
+        # note 公式マガジン editor の hashtag-page ranking 上で各 tag の
+        # signal が強まる (10 weak rankings より 5 strong rankings)。
+        hashtag_gen = HashtagGenerator(max_tags=5)
         tags = hashtag_gen.generate(
             title=title,
             content=content,
