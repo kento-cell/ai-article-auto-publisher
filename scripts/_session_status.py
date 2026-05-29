@@ -93,8 +93,9 @@ def _zenn_queue_head() -> str | None:
     """Zenn API: what slug is the queue currently publishing? None on error."""
     try:
         import urllib.request
+        zenn_user = os.environ.get("ZENN_USERNAME", "")
         url = (
-            "https://zenn.dev/api/articles?username=zenn-user"
+            f"https://zenn.dev/api/articles?username={zenn_user}"
             "&order=latest&count=1"
         )
         req = urllib.request.Request(

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import os
 import re
 import sys
 from pathlib import Path
@@ -54,7 +55,7 @@ def main() -> None:
             print(f"  slug: {slug}")
             print(f"  published: {success}")
             if success:
-                print(f"  https://zenn.dev/zenn-user/articles/{slug}")
+                print(f"  https://zenn.dev/{os.environ.get('ZENN_USERNAME', '')}/articles/{slug}")
         except Exception as e:
             print(f"  ERROR: {e}")
 
