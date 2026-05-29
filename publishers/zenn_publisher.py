@@ -402,13 +402,29 @@ class ZennPublisher:
         topics: list[str],
         article_type: str,
     ) -> str:
-        """Build Zenn YAML frontmatter block."""
-        topics_yaml = ", ".join(f'"{t}"' for t in topics)
+        """Build Zenn YAML frontmatter block.
+
+        Title/topics originate from LLM output, so they must be sanitised:
+        an unescaped ``"`` or newline would let a crafted title inject
+        arbitrary frontmatter keys (e.g. ``published: true``). Strip quotes,
+        backslashes and CR/LF from every interpolated value.
+        """
+        def _yaml_str(value: str) -> str:
+            return (
+                str(value)
+                .replace("\\", " ")
+                .replace('"', "'")
+                .replace("\r", " ")
+                .replace("\n", " ")
+                .strip()
+            )
+
+        topics_yaml = ", ".join(f'"{_yaml_str(t)}"' for t in topics)
         return (
             "---\n"
-            f'title: "{title}"\n'
+            f'title: "{_yaml_str(title)}"\n'
             'emoji: "📝"\n'
-            f'type: "{article_type}"\n'
+            f'type: "{_yaml_str(article_type)}"\n'
             f"topics: [{topics_yaml}]\n"
             "published: false\n"
             "---\n"

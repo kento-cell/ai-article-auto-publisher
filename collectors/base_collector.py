@@ -10,6 +10,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
@@ -17,6 +18,24 @@ logger = logging.getLogger(__name__)
 
 # Standard keys every collected article dict must contain.
 ARTICLE_KEYS = ("title", "url", "source", "content", "published_date", "authors")
+
+
+def safe_external_url(url: str) -> str:
+    """Return *url* if it is a plain http(s) URL, else an empty string.
+
+    Article URLs come from untrusted feeds (RSS / Reddit / Google Trends /
+    Bluesky), where a crafted entry can supply ``file://``, ``data:``,
+    ``javascript:`` or ``gopher://`` targets. Those would be an SSRF /
+    local-file hazard if any downstream step re-fetches the stored URL, so
+    reject anything that is not a well-formed http(s) URL at the choke point.
+    """
+    try:
+        parsed = urlparse((url or "").strip())
+    except (ValueError, AttributeError):
+        return ""
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        return url.strip()
+    return ""
 
 
 class BaseCollector(ABC):
@@ -168,7 +187,7 @@ class BaseCollector(ABC):
             published_date = self._parse_date(published_date)
         article: dict[str, Any] = {
             "title": self._clean_text(title),
-            "url": url,
+            "url": safe_external_url(url),
             "source": source,
             "content": self._clean_text(content),
             "published_date": published_date,

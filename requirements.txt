@@ -8,6 +8,7 @@ Pillow==12.2.0
 selenium==4.41.0
 beautifulsoup4==4.14.3
 feedparser==6.0.12
+defusedxml==0.7.1  # hardened XML parsing (XXE / billion-laughs) for untrusted feeds
 
 # Google APIs (Sheets + Gmail)
 gspread==6.2.1
