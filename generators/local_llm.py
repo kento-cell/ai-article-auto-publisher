@@ -215,6 +215,10 @@ class LocalLLM:
         ):
             return ""
         codex_bin = os.getenv("CODEX_CLI_PATH") or "codex"
+        # The prompt embeds scraped/LLM text, so bound its size and drop NULs
+        # before handing it to the Codex CLI (defence against a feed trying to
+        # smuggle an oversized / control-char payload into the fallback agent).
+        safe_prompt = prompt.replace("\x00", "")[:16000]
         try:
             import subprocess
             # ``codex exec`` runs the CLI in headless mode with the
@@ -222,7 +226,7 @@ class LocalLLM:
             # We add --sandbox read-only so the fallback cannot
             # accidentally modify files in this repo.
             r = subprocess.run(
-                [codex_bin, "exec", "--sandbox", "read-only", prompt],
+                [codex_bin, "exec", "--sandbox", "read-only", safe_prompt],
                 capture_output=True, text=True, timeout=900,
             )
             if r.returncode != 0:

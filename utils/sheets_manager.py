@@ -242,7 +242,7 @@ class SheetsManager:
                 )
                 return existing.row
         row = [str(data.get(col, "")) for col in HEADER_ROW]
-        self._sheet.append_row(row, value_input_option="USER_ENTERED")
+        self._sheet.append_row(row, value_input_option="RAW")
         row_num = len(self._sheet.get_all_values())
         self._logger.info(
             "Added article row %d: %s", row_num, data.get("title", ""),
@@ -278,7 +278,7 @@ class SheetsManager:
             content,
         ]
         self._rejected_sheet.append_row(
-            row, value_input_option="USER_ENTERED",
+            row, value_input_option="RAW",
         )
         row_num = len(self._rejected_sheet.get_all_values())
         self._logger.info(
@@ -363,7 +363,7 @@ class SheetsManager:
         self._sheet.update(
             f"A{cell.row}:{end_col}{cell.row}",
             [row_values],
-            value_input_option="USER_ENTERED",
+            value_input_option="RAW",
         )
         self._logger.info(
             "article_id=%s row updated (%s)",

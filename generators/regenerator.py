@@ -419,7 +419,9 @@ class Regenerator:
         """Save the full discussion log to a file for debugging."""
         try:
             LOG_DIR.mkdir(parents=True, exist_ok=True)
-            safe_title = re.sub(r'[\\/:*?"<>|]', '_', title[:30])
+            # Whitelist (not blacklist) so LLM-generated titles can't smuggle
+            # path separators or dot-segments into the log filename.
+            safe_title = re.sub(r"[^\w\-]", "_", title[:30])
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{timestamp}_{platform}_{safe_title}.md"
             path = LOG_DIR / filename

@@ -12,7 +12,9 @@ import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
-from xml.etree import ElementTree
+from urllib.parse import quote_plus
+from xml.etree import ElementTree  # noqa: kept for .Element / .ParseError types
+import defusedxml.ElementTree as _SafeET  # hardened parser (XXE / billion-laughs)
 
 from collectors.base_collector import BaseCollector
 
@@ -92,7 +94,7 @@ class GoogleTrendsCollector(BaseCollector):
             return []
 
         try:
-            root = ElementTree.fromstring(response.content)
+            root = _SafeET.fromstring(response.content)
         except ElementTree.ParseError:
             logger.error("Google Trends RSS XML parse failed")
             return []
@@ -175,7 +177,7 @@ class GoogleTrendsCollector(BaseCollector):
         url = (
             related_articles[0]["url"]
             if related_articles and related_articles[0]["url"]
-            else f"https://trends.google.co.jp/trending?geo=JP&q={title}"
+            else f"https://trends.google.co.jp/trending?geo=JP&q={quote_plus(title)}"
         )
 
         return self._make_article(

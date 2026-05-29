@@ -41,6 +41,14 @@ logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 ALLOWED_CHANNEL = os.getenv("DISCORD_CHANNEL_NAME", "ai-publisher")
+# Comma-separated Discord user IDs allowed to issue commands. Channel name
+# alone is NOT an authorisation boundary — anyone able to post in a same-named
+# channel could otherwise trigger publish/stop. Fail closed when unset.
+ALLOWED_USER_IDS = {
+    uid.strip()
+    for uid in os.getenv("DISCORD_ALLOWED_USERS", "").split(",")
+    if uid.strip()
+}
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PYTHON = str(PROJECT_ROOT / "venv" / "Scripts" / "python.exe")
 
@@ -59,8 +67,20 @@ bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 # ==================================================================
 
 def _is_allowed_channel(ctx: commands.Context) -> bool:
-    """Check if the command is in the designated channel."""
-    return ctx.channel.name == ALLOWED_CHANNEL
+    """Authorise a command: correct channel AND an allowlisted user ID.
+
+    Fail closed — if ``DISCORD_ALLOWED_USERS`` is unset, every command is
+    rejected so the remote-control bot can never run unauthenticated.
+    """
+    if getattr(ctx.channel, "name", None) != ALLOWED_CHANNEL:
+        return False
+    if not ALLOWED_USER_IDS:
+        logger.warning(
+            "DISCORD_ALLOWED_USERS is empty — denying command from %s",
+            getattr(ctx.author, "id", "?"),
+        )
+        return False
+    return str(getattr(ctx.author, "id", "")) in ALLOWED_USER_IDS
 
 
 def _get_sheets_url() -> str:

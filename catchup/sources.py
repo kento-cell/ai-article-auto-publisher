@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 import re
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # kept for ET.Element type annotations
+import defusedxml.ElementTree as _SafeET  # hardened parser (XXE / billion-laughs)
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -42,7 +43,7 @@ SOURCES: list[tuple[str, str, str, int]] = [
     # Community feeds.
     ("Reddit r/LocalLLaMA", "reddit", "https://www.reddit.com/r/LocalLLaMA/.rss", 3),
     ("Reddit r/MachineLearning", "reddit", "https://www.reddit.com/r/MachineLearning/.rss", 3),
-    ("arXiv cs.AI", "arxiv", "http://export.arxiv.org/rss/cs.AI", 3),
+    ("arXiv cs.AI", "arxiv", "https://export.arxiv.org/rss/cs.AI", 3),
 ]
 
 # Reject items older than this — widen to 72h so weekend news survives,
@@ -117,7 +118,7 @@ def _fetch(url: str) -> bytes:
 
 def _parse_rss(name: str, tier: int, url: str) -> list[dict[str, Any]]:
     body = _fetch(url)
-    root = ET.fromstring(body)
+    root = _SafeET.fromstring(body)
     items: list[dict[str, Any]] = []
     # Both RSS (channel/item) and Atom (entry) — iterate all entry-like nodes.
     for el in root.iter():
