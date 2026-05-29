@@ -119,7 +119,7 @@ def main() -> int:
     try:
         import subprocess
         import urllib.request
-        zenn_user = os.environ.get("ZENN_USERNAME", "zenn-user")
+        zenn_user = os.environ.get("ZENN_USERNAME", "")
         # Pick the most recent published commit slug.
         out = subprocess.check_output(
             [

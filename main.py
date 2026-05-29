@@ -4751,7 +4751,7 @@ def _publish_zenn(
     )
     success = publisher.publish(zenn_slug)
     if success:
-        zenn_user = os.getenv("ZENN_USERNAME", "zenn-user")
+        zenn_user = os.getenv("ZENN_USERNAME", "")
         return f"https://zenn.dev/{zenn_user}/articles/{zenn_slug}"
     return None
 
