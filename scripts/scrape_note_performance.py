@@ -60,7 +60,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scrape_note_performance")
 
-_NOTE_USER = os.environ.get("NOTE_USER", "note-user")
+_NOTE_USER = os.environ.get("NOTE_USER", "")
 _OUT_PATH = _REPO / "data" / "article_performance.jsonl"
 _API_BASE = f"https://note.com/api/v2/creators/{_NOTE_USER}/contents"
 
