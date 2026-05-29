@@ -6,14 +6,14 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-05-28 16:08 JST
+2026-05-29 19:04 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
-- なし (5-28: learn→generate→publish ALL FREE、 画像 regen (poster route)、
-  Zenn 技術書 push、 session context refactor (Pattern 1-5) + 最強環境
-  optimization round まで完遂)
+- なし (5-29: slot scheduler 平日 daytime 化 + Task Scheduler 5 タスク
+  本番登録 (`ai-publish-slot-{MON..FRI}` 12:00 JST、 初回 fire 2026-06-01
+  Mon) まで完遂、 commit `3b2d228`)
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
@@ -31,6 +31,8 @@
 - K-beauty/韓国 5 連発のクロス効果計測 (5-30 経過後、 K-POP 4 世代 paid 流入率)
 - ChatGPT 画像 vision-eval 詰まり (5-27 朝の調査項目、 5-28 朝も再発)
 - title_fulfillment shop counter gate (`numeric_shop_listicle`) 効果計測 (次回 generate 時)
+- **slot scheduler 初回 fire 観測** (2026-06-01 Mon 12:00 JST) —
+  `data/_logs/slot_publish.log` で publish 結果確認、 queue 空なら no-op で正常
 
 ## Known Live Issues (memory または ops_incidents に正典あり、 要 verify)
 
@@ -54,13 +56,13 @@
 
 <!-- AUTO:pipeline -->
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
-- Zenn queue head (slow-walk): 2026-05-28 | 20260417-rad-2
+- Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
+  - 364d751 feat(growth): note follower growth pivot — 14→500/12mo strategy + 4 implementation pieces
   - c4dc1a6 docs(context): Pattern 6-10 optimization round — auto-status + AGENTS trim + memory verified + legacy archive
   - f95b269 fix(context): redirect stale LATEST.md refs to STATE/JOURNAL after split
   - 785a540 docs(context): split LATEST.md → STATE/JOURNAL/archive + subdir CLAUDE.md (-91% cold-start tokens)
   - e9bf8d0 chore(scripts,learn): 5-28 one-shots — ChatGPT regen with poster route + Zenn prompt-book push + auto-learn snapshot
-  - 150499d feat(scorer): title_fulfillment shop counter gate (kc_002 regression)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
