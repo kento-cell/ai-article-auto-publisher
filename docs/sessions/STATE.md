@@ -6,7 +6,7 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-05-29 19:04 JST
+2026-05-29 19:20 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
@@ -17,13 +17,11 @@
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
-1. **`ChatGPTImageGenerator._build_prompt` staticmethod gotcha ドキュメント化**
-   — 5-28 1st pass regen で踏んだ Python 落とし穴を docstring に追加
-2. **`AUTO_LAUNCH_BRAVE_CDP` opt-in 化の再検討** — publish 時 cold port を
+1. **`AUTO_LAUNCH_BRAVE_CDP` opt-in 化の再検討** — publish 時 cold port を
    毎回起動するか議論
-3. **poster route 汎用化** — `chatgpt_image_batch` に `style_preset` 引数追加
+2. **poster route 汎用化** — `chatgpt_image_batch` に `style_preset` 引数追加
    (現状 monkey-patch hack)
-4. **note メンバーシップ手動追加 (累計 20 件)** — ユーザー作業、 CC は対応不可
+3. **note メンバーシップ手動追加 (累計 20 件)** — ユーザー作業、 CC は対応不可
 
 ## Active Backlog (緊急度低、 観測タスク等)
 
@@ -58,11 +56,11 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
+  - 61a8014 docs(state): record slot scheduler installed — 5 weekly tasks live
+  - 3b2d228 feat(scheduler): weekday-daytime slot publish + Task Scheduler install scripts
   - 364d751 feat(growth): note follower growth pivot — 14→500/12mo strategy + 4 implementation pieces
   - c4dc1a6 docs(context): Pattern 6-10 optimization round — auto-status + AGENTS trim + memory verified + legacy archive
   - f95b269 fix(context): redirect stale LATEST.md refs to STATE/JOURNAL after split
-  - 785a540 docs(context): split LATEST.md → STATE/JOURNAL/archive + subdir CLAUDE.md (-91% cold-start tokens)
-  - e9bf8d0 chore(scripts,learn): 5-28 one-shots — ChatGPT regen with poster route + Zenn prompt-book push + auto-learn snapshot
 <!-- /AUTO:pipeline -->
 
 ## Pointers

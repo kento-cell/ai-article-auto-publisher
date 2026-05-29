@@ -719,6 +719,21 @@ class ChatGPTImageGenerator:
           5. 全部日本語
 
         ``is_cover`` switches the noun between サムネイル / インライン.
+
+        STATICMETHOD GOTCHA (2026-05-28, proven in _regen_5_28_note_images):
+        This is a ``@staticmethod``. If you monkey-patch it for a single
+        batch (e.g. the K-beauty poster route), do NOT grab the original
+        via attribute access — ``cls._build_prompt`` unwraps the
+        descriptor to a *bare function*, and reassigning that bare
+        function turns it back into an instance method. ``self`` then
+        slips in as positional arg 1 on the next call and every later
+        standard-route batch dies with
+        ``_build_prompt() got multiple values for argument 'is_cover'``.
+        Always save/restore the descriptor itself:
+            original = cls.__dict__["_build_prompt"]
+            cls._build_prompt = staticmethod(my_patch)
+            ...
+            cls._build_prompt = original          # descriptor, not bare fn
         """
         kind = "サムネイル画像" if is_cover else "インライン画像"
         # Default Ghibli-ish block. 2026-04-28: 「スタジオジブリ風」直書き
