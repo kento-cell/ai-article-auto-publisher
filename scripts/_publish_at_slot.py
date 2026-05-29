@@ -4,11 +4,13 @@ algorithm boost). note's recommendation algorithm pushes a post into
 publish. Posting at peak reader-traffic slots multiplies first-hour
 reach 2-4x.
 
-Peak slots (per [atelier jun 2025 analysis](https://note.com/fancy_snipe9439/n/nead06c21d9d4)):
-  - 火 19-22 JST
-  - 金 16-19 JST (17:00 最強)
-  - 土 10-12 JST
-  - 日 11-14 JST
+Slot definition (2026-05-28 user-confirmed: 平日 daytime only —
+weekend slots dropped because home, evening slots dropped because home):
+  - Mon-Fri 9:00-15:00 JST (lunch break peak around 12:00)
+
+Why daytime weekday: user is at office Mon-Fri 9-18, PC at home idle
+and safe for Selenium automation. Weekend + after-hours = personal
+time, intentionally excluded.
 
 Without note Premium (= no native scheduled-publish), this script:
   1. Validates that NOW is inside a peak slot
@@ -29,8 +31,8 @@ Usage:
 Suggested workflow:
   - Generate the night before (`py main.py --generate`)
   - bulk_approve at any time (`py scripts/_bulk_approve_sheet.py`)
-  - Have Windows Task Scheduler or a manual reminder fire this script
-    at the peak slot
+  - Have Windows Task Scheduler fire this script Mon-Fri 12:00
+    (install via scripts/install_slot_scheduler.bat)
 """
 from __future__ import annotations
 
@@ -46,11 +48,14 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 _REPO = Path(__file__).resolve().parent.parent
 
 # Each slot: (weekday 0=Mon-6=Sun, start_hour, end_hour) in JST.
+# 2026-05-28 user revision: 平日 daytime only (Mon-Fri 9-15 JST).
+# Weekend + after-hours dropped — user is home during those times.
 SLOTS = [
-    (1, 19, 22),  # Tue 19-22
-    (4, 16, 19),  # Fri 16-19 (17:00 peak)
-    (5, 10, 12),  # Sat 10-12
-    (6, 11, 14),  # Sun 11-14
+    (0, 9, 15),  # Mon 9-15
+    (1, 9, 15),  # Tue 9-15
+    (2, 9, 15),  # Wed 9-15
+    (3, 9, 15),  # Thu 9-15
+    (4, 9, 15),  # Fri 9-15
 ]
 JST = _dt.timezone(_dt.timedelta(hours=9))
 
