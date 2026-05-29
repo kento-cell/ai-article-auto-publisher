@@ -73,7 +73,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("fix_recent_note_images")
 
-NOTE_USER = "note-user"
+NOTE_USER = os.environ.get("NOTE_USER", "")
 NOTE_API_BASE = f"https://note.com/api/v2/creators/{NOTE_USER}/contents"
 _LOCAL_IMG_RE = re.compile(
     r"!\[[^\]]*\]\((data/images/[^)\s]+)(?:\s+\"[^\"]*\")?\)"

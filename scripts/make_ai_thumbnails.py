@@ -216,7 +216,7 @@ def _apply(built: list[tuple[Path, dict]]) -> int:
     pub = NotePublisher(headless=False)
     try:
         for path, t in apply_targets:
-            url = f"https://note.com/note-user/n/{t['key']}"
+            url = f"https://note.com/{os.environ.get('NOTE_USER', '')}/n/{t['key']}"
             print(f"[apply] {t['key']} → {path.name}")
             try:
                 ok = pub.edit_article(
