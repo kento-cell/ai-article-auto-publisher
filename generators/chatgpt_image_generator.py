@@ -181,6 +181,7 @@ class ChatGPTImageGenerator:
         out_paths: Optional[list[Path]] = None,
         topic: str = "",
         style_block: str | None = None,
+        cover_styled: bool = False,
     ) -> list[Optional[Path]]:
         """Generate multiple images in a single ChatGPT session.
 
@@ -248,6 +249,7 @@ class ChatGPTImageGenerator:
                 full_prompt = self._build_prompt(
                     prompt, size, is_cover=is_cover,
                     style_block=style_block,
+                    cover_styled=cover_styled,
                 )
                 try:
                     self._send_prompt(full_prompt)
@@ -704,6 +706,7 @@ class ChatGPTImageGenerator:
         size: Size,
         is_cover: bool = False,
         style_block: str | None = None,
+        cover_styled: bool = False,
     ) -> str:
         """Compose the imperative prompt sent to ChatGPT (Japanese).
 
@@ -720,20 +723,21 @@ class ChatGPTImageGenerator:
 
         ``is_cover`` switches the noun between サムネイル / インライン.
 
-        STATICMETHOD GOTCHA (2026-05-28, proven in _regen_5_28_note_images):
-        This is a ``@staticmethod``. If you monkey-patch it for a single
-        batch (e.g. the K-beauty poster route), do NOT grab the original
-        via attribute access — ``cls._build_prompt`` unwraps the
-        descriptor to a *bare function*, and reassigning that bare
-        function turns it back into an instance method. ``self`` then
-        slips in as positional arg 1 on the next call and every later
-        standard-route batch dies with
-        ``_build_prompt() got multiple values for argument 'is_cover'``.
-        Always save/restore the descriptor itself:
-            original = cls.__dict__["_build_prompt"]
-            cls._build_prompt = staticmethod(my_patch)
-            ...
-            cls._build_prompt = original          # descriptor, not bare fn
+        ``cover_styled`` (2026-06-01): when the cover should ALSO follow
+        ``style_block`` instead of the default click-bait infographic
+        banner. This is the in-tree generalization of the old K-Beauty
+        poster route — set it (via the ``style_preset`` arg on
+        :func:`generators.chatgpt_batch_helper.chatgpt_image_batch`)
+        rather than monkey-patching this method. Has no effect on inline
+        images. Ignored when no ``style_block`` is supplied.
+
+        NO-MONKEY-PATCH NOTE: this method used to be swapped at runtime
+        for the poster route, which required save/restoring the
+        staticmethod *descriptor* (``cls.__dict__["_build_prompt"]``) —
+        attribute access unwraps it to a bare function and reassigning
+        that turns it into an instance method, leaking ``self`` as a
+        positional arg. The ``cover_styled`` path removes the need for
+        that hack entirely; do not reintroduce the monkey-patch.
         """
         kind = "サムネイル画像" if is_cover else "インライン画像"
         # Default Ghibli-ish block. 2026-04-28: 「スタジオジブリ風」直書き
@@ -751,6 +755,28 @@ class ChatGPTImageGenerator:
             "- 中央に被写体を配置、シネマティックな構図"
         )
         style = style_block.strip() if style_block else default_style
+        # Styled-cover route (2026-06-01): cover follows the style_block
+        # (e.g. K-Beauty editorial poster) instead of the click-bait
+        # infographic banner. Same imperative anti-template framing as
+        # the other branches; the style_block carries every look/forbid
+        # directive so this template stays generic across presets.
+        if is_cover and cover_styled and style_block:
+            return (
+                f"【最重要】このメッセージで全情報を提供しています。"
+                f"即座に画像を1枚生成してください。"
+                f"テンプレ確認・項目の聞き返し・追加質問は禁止。\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"用途: note記事のサムネイル画像 (1枚)\n"
+                f"サイズ: {_SIZE_PHRASE[size]}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"描いてほしいシーン:\n{prompt}\n\n"
+                f"【スタイル指定】\n{style}\n\n"
+                f"【絶対禁止】\n"
+                f"- テキスト・読める文字・ロゴ・透かし・UIスクリーンショット\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"出力は画像1枚のみ。"
+                f"前置き・後置き・質問・テンプレ要求は一切禁止。"
+            )
         # Anti-template-prompt directive (2026-05-07):
         # ChatGPT Memory has been observed to repeatedly answer image
         # requests with a fixed 5-item template ("【記事の内容】
