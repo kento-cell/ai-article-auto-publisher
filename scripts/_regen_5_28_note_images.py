@@ -19,11 +19,13 @@ Targets and routing:
   - sl_003 (1週間持ち物減)            → standard chatgpt_image_batch
   - Tech CEOs AI psychosis            → standard chatgpt_image_batch
 
-For the poster route we bypass the infographic-banner cover template by
-swapping ChatGPTImageGenerator._build_prompt with a poster variant for
-the duration of that article's batch, then restore the original. We do
-NOT monkey-patch globally because the standard articles still want the
-infographic cover.
+For the poster route we use the ``style_preset="kbeauty_poster"`` arg on
+``chatgpt_image_batch`` (generalized 2026-06-01). The preset's
+``cover_styled`` flag makes the cover follow the K-Beauty editorial style
+instead of the infographic banner, so the standard articles still get the
+infographic cover with no per-batch monkey-patch. (Previously this script
+swapped ``ChatGPTImageGenerator._build_prompt`` at runtime — see the
+staticmethod-descriptor gotcha in that method's docstring.)
 """
 from __future__ import annotations
 
@@ -74,49 +76,6 @@ def _ensure_brave_cdp() -> bool:
     return ensure_brave_cdp_listening(port, allow_launch=True, timeout=20.0)
 
 
-def _poster_build_prompt(
-    prompt: str,
-    size,
-    is_cover: bool = False,
-    style_block: str | None = None,
-) -> str:
-    """Drop-in replacement for ChatGPTImageGenerator._build_prompt that
-    forces a realistic K-Beauty magazine-poster style for BOTH cover
-    and inline. Bypasses the infographic-banner cover template."""
-    from generators.chatgpt_image_generator import _SIZE_PHRASE
-    kind = "サムネイル画像" if is_cover else "インライン画像"
-    size_phrase = _SIZE_PHRASE[size]
-    return (
-        f"【最重要】このメッセージで全情報を提供しています。"
-        f"即座に画像を1枚生成してください。"
-        f"テンプレ確認・項目の聞き返し・追加質問は禁止。\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"用途: note記事の{kind} (1枚)\n"
-        f"サイズ: {size_phrase}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"描いてほしいシーン:\n{prompt}\n\n"
-        f"【スタイル指定 — 韓国美容雑誌 / K-Beauty ポスター調】\n"
-        f"- 韓国の美容雑誌 (Vogue Korea, Allure Korea, Marie Claire Korea) "
-        f"の編集ページのような実写エディトリアル写真\n"
-        f"- 高解像度のグロッシーな雑誌表紙 / ポスター質感\n"
-        f"- 韓国モデル (20代女性、ナチュラルメイク、グラスキン透明肌) "
-        f"または韓国コスメの製品 (ボトル・チューブ・パッド・パッケージ) が主役\n"
-        f"- ソフトな自然光、淡いピンク / クリーム / ベージュ / パールホワイト / "
-        f"ミルキーローズ のパステルパレット\n"
-        f"- 雑誌表紙のような余白、中央〜オフセンター構図、ミニマル整然\n"
-        f"- 小道具: 化粧鏡 / 花びら / 大理石 / シルクの布 / 韓国カフェの陽光 など\n\n"
-        f"【絶対禁止】\n"
-        f"- アニメ・水彩・3D CGI・イラスト・漫画・落書き・ピクセルアート "
-        f"(すべて NG。あくまで実写写真風)\n"
-        f"- テキスト・読める文字・ロゴ・透かし・UI スクリーンショット\n"
-        f"- 実在ブランドの商標ロゴ "
-        f"(ボトルはジェネリックなパッケージに置き換え可)\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"出力は実写写真風ポスター画像 1 枚のみ。"
-        f"前置き・後置き・質問・テンプレ要求は一切禁止。"
-    )
-
-
 def _drop_local_image_md(content: str) -> str:
     """Remove ``![alt](data/images/...)`` markdown so edit_article's
     inline_image_paths route re-uploads fresh ones via note CDN
@@ -129,18 +88,6 @@ def _drop_local_image_md(content: str) -> str:
     )
 
 
-def _extract_h2_sections(content: str, limit: int) -> list[str]:
-    """Pull up to ``limit`` H2 heading titles from the article body."""
-    out: list[str] = []
-    for m in re.finditer(r"^##\s+(.+?)\s*$", content, flags=re.MULTILINE):
-        t = m.group(1).strip()
-        if t and not t.startswith("#"):
-            out.append(t)
-        if len(out) >= limit:
-            break
-    return out
-
-
 def _poster_batch(
     title: str,
     content: str,
@@ -148,65 +95,20 @@ def _poster_batch(
     slug_hint: str,
 ) -> tuple[Path | None, list[Path]]:
     """Run a ChatGPT image batch with K-Beauty poster style for ALL
-    slots (cover + inline). Bypasses chatgpt_image_batch so the
-    monkey-patch is scoped to this call only."""
-    from generators.chatgpt_image_generator import ChatGPTImageGenerator
-    from generators.visual_prompt_builder import build_visual_prompt
+    slots (cover + inline) via the ``kbeauty_poster`` style preset.
 
-    # Build per-slot scene descriptions. First slot = cover (whole-
-    # article visual), rest = inline (one per H2 section).
-    sections = _extract_h2_sections(content, inline_count)
-    while len(sections) < inline_count:
-        sections.append(title)
-    cover_brief = build_visual_prompt(
-        title=title, section=None,
+    The preset's ``cover_styled`` flag makes the cover follow the
+    editorial style instead of the infographic banner — no per-batch
+    monkey-patch of ``_build_prompt`` needed (generalized 2026-06-01)."""
+    from generators.chatgpt_batch_helper import chatgpt_image_batch
+    return chatgpt_image_batch(
+        title=title,
+        content=content,
+        inline_count=inline_count,
+        slug_hint=slug_hint,
         genre_hint="K-beauty / Korean cosmetics editorial",
+        style_preset="kbeauty_poster",
     )
-    inline_briefs = [
-        build_visual_prompt(
-            title=title, section=s,
-            genre_hint="K-beauty / Korean cosmetics editorial",
-        )
-        for s in sections
-    ]
-    prompts = [cover_brief] + inline_briefs
-    out_dir = _REPO / "data" / "images" / "covers"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    safe_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", slug_hint)[:40]
-    out_paths = [
-        out_dir / f"poster_{safe_slug}_{ts}_{i:02d}.png"
-        for i in range(len(prompts))
-    ]
-
-    gen = ChatGPTImageGenerator(headless=False)
-    # Swap _build_prompt only for this batch. ChatGPTImageGenerator is
-    # a single instance per call so the patch stays local to this run.
-    # Use __dict__ to retrieve the original staticmethod *descriptor*
-    # (attribute access unwraps it to a plain function, and reassigning
-    # that bare function turns it back into an instance method — then
-    # ``self`` slips in as positional arg 1 on the next call and breaks
-    # every later standard-route batch with "multiple values for
-    # 'is_cover'").
-    original_build = ChatGPTImageGenerator.__dict__["_build_prompt"]
-    ChatGPTImageGenerator._build_prompt = staticmethod(_poster_build_prompt)
-    try:
-        results = gen.generate_batch(
-            prompts=prompts,
-            size="landscape",
-            out_paths=out_paths,
-            topic=f"K-beauty editorial: {title[:60]}",
-        )
-    finally:
-        ChatGPTImageGenerator._build_prompt = original_build
-        try:
-            gen.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-    cover_p = results[0] if results else None
-    inlines_p = [p for p in (results[1:] if len(results) > 1 else []) if p]
-    return cover_p, inlines_p
 
 
 def _standard_batch(

@@ -465,12 +465,21 @@ def chatgpt_image_batch(
     inline_count: int,
     slug_hint: str,
     genre_hint: str = "general tech / lifestyle",
+    style_preset: str | None = None,
 ) -> tuple[Path | None, list[Path]]:
     """Generate (1 cover + ``inline_count`` inline) images via ChatGPT.
 
     H2 headings in ``content`` seed inline prompts so each image is
     bound to its section. When the article has fewer than
     ``inline_count`` H2s the slots fall back to the article title.
+
+    ``style_preset`` (2026-06-01): name of an
+    :mod:`generators.image_style_presets` preset (e.g.
+    ``"kbeauty_poster"``). When given it takes precedence over the
+    game-homage auto-selection and, if the preset is ``cover_styled``,
+    the cover follows the preset style instead of the infographic
+    banner. This is the in-tree replacement for the old poster route's
+    runtime monkey-patch of ``_build_prompt``.
 
     Returns ``(cover_path | None, [inline_paths])``. The list of
     inline paths may be shorter than ``inline_count`` on partial
@@ -597,26 +606,37 @@ def chatgpt_image_batch(
     # reads as a coherent set rather than a montage.
     style_block: str | None = None
     style_label = "ghibli"
-    try:
-        from generators.game_homage_styles import (
-            is_game_homage_enabled,
-            pick_style_for_article,
-        )
-        if is_game_homage_enabled():
-            # 2026-05-11: pass content excerpt for RAG-based style
-            # selection (副業 → hunt_success, 比較 → ready_fight 等).
-            # pick_style_for_article falls back to SHA-256 if RAG miss.
-            chosen = pick_style_for_article(title, (content or "")[:1000])
-            style_block = chosen["style_block"]
-            style_label = f"game_homage:{chosen['name']}"
-    except Exception as exc:  # noqa: BLE001 — never block image gen on style pick
-        logger.warning("style pack selection failed (%s) — using default", exc)
+    cover_styled = False
+    # An explicit preset wins over the game-homage auto-selection. The
+    # preset may also flag the cover to follow its style (cover_styled)
+    # instead of the infographic banner — see image_style_presets.
+    from generators.image_style_presets import get_preset
+    preset = get_preset(style_preset)
+    if preset is not None:
+        style_block = preset["style_block"]
+        cover_styled = preset["cover_styled"]
+        style_label = f"preset:{style_preset}"
+    else:
+        try:
+            from generators.game_homage_styles import (
+                is_game_homage_enabled,
+                pick_style_for_article,
+            )
+            if is_game_homage_enabled():
+                # 2026-05-11: pass content excerpt for RAG-based style
+                # selection (副業 → hunt_success, 比較 → ready_fight 等).
+                # pick_style_for_article falls back to SHA-256 if RAG miss.
+                chosen = pick_style_for_article(title, (content or "")[:1000])
+                style_block = chosen["style_block"]
+                style_label = f"game_homage:{chosen['name']}"
+        except Exception as exc:  # noqa: BLE001 — never block image gen on style pick
+            logger.warning("style pack selection failed (%s) — using default", exc)
 
     logger.info(
         "Building image prompts (%d total, style=%s)…",
         inline_count + 1, style_label,
     )
-    if style_block:
+    if style_block and preset is None:
         # Game-homage / explicit style: skip the Gemma3-generated
         # Japanese summary because that summary bakes in the default
         # 「水彩アニメ調」 phrasing which fights the override style.
@@ -636,6 +656,10 @@ def chatgpt_image_batch(
             h2_sections=h2_sections,
         )
     else:
+        # Default (ghibli) OR a named preset (e.g. K-beauty poster):
+        # descriptive visual prompts for the cover + each section. For a
+        # preset the style_block / cover_styled override the look while
+        # build_visual_prompt supplies the concrete scene per slot.
         cover_prompt = build_visual_prompt(title, genre_hint=genre_hint)
         inline_prompts = [
             build_visual_prompt(
@@ -673,6 +697,7 @@ def chatgpt_image_batch(
             results = gen.generate_batch(
                 prompts=all_prompts, size="landscape", out_paths=out_paths,
                 topic=title, style_block=style_block,
+                cover_styled=cover_styled,
             )
         except Exception as exc:  # noqa: BLE001 — fail open to fallback
             logger.warning(

@@ -88,8 +88,12 @@ scripts/launch_brave_cdp.bat
 
 ## ChatGPT 画像 batch の落とし穴
 
-- `ChatGPTImageGenerator._build_prompt` は @staticmethod。 monkey-patch する
-  時は `cls.__dict__["_build_prompt"]` で descriptor object を取得して復元。
+- **cover を style 化したい時は monkey-patch せず `style_preset` を使う**
+  (2026-06-01 汎用化)。 `chatgpt_image_batch(..., style_preset="kbeauty_poster")`
+  → preset の `cover_styled=True` で cover も infographic banner ではなく
+  style_block 準拠になる。 preset 定義は `generators/image_style_presets.py`。
+- `ChatGPTImageGenerator._build_prompt` は @staticmethod。 万一 monkey-patch
+  する時は `cls.__dict__["_build_prompt"]` で descriptor object を取得して復元。
   `cls._build_prompt` (attribute access) は unwrap して bare function を返し、
   bare function を class attr に書き戻すと instance method 化 → `self` が
   positional arg 1 として渡って引数衝突する (2026-05-28 実証)
