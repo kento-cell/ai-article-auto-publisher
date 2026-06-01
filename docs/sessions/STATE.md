@@ -11,21 +11,26 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
-- なし (6-01: poster route 汎用化完遂 — `generators/image_style_presets.py`
-  新設 + `chatgpt_image_batch(style_preset=...)` / `_build_prompt(cover_styled=)`
-  追加で K-beauty 雑誌調 cover を in-tree 化、 旧 monkey-patch hack 除去。
-  全 import / behavior / hallucination deny test pass。 未 commit)
+- なし (6-01: ①poster route 汎用化 commit `4ba5e80`。 ②generate→publish 完遂:
+  note 4 本 (free 2: K-food/リジュラン + 有料 2: 緊急ケア/シカ) + Zenn 2 scraps。
+  cap 注意: NOTE_CADENCE_CAP=1/日, Zenn queue 枯渇→scrap fallback。
+  ③note membership-add を根本診断 (selection-mode と判明、 `note_publisher.py`
+  書き換え + 診断スクリプト群)。 navigation/ticking は動くが選択モードが JS
+  トグルで崩れ e2e 未達 → 手動追加へ。 詳細 `publishers/CLAUDE.md`)
 - (5-29: slot scheduler 平日 daytime 化 + Task Scheduler 5 タスク
   本番登録 (`ai-publish-slot-{MON..FRI}` 12:00 JST、 初回 fire 2026-06-01
   Mon) まで完遂、 commit `3b2d228`)
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
-1. **`AUTO_LAUNCH_BRAVE_CDP` opt-in 化の再検討** — publish 時 cold port を
-   毎回起動するか議論
-2. **note メンバーシップ手動追加 (累計 20 件)** — ユーザー作業、 CC は対応不可
-3. **(完了 6-01) poster route 汎用化** — `style_preset="kbeauty_poster"` で
-   monkey-patch なしに cover も style 化。 commit 待ち
+1. **note membership 手動追加 — 今日の note 4 本** (data/articles の
+   published_url 参照): `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→
+   4 本チェック→「メンバー全員に公開」の「追加」。 累計 backlog も同様
+2. **今日の note 4 本の画像 regen** — Brave CDP 9222 未起動で全 Unsplash
+   fallback だった。 `scripts/launch_brave_cdp.bat` 起動後 kbeauty_poster
+   preset で regen → edit_article 差し替え (K-beauty 3 本)
+3. **`AUTO_LAUNCH_BRAVE_CDP` opt-in 化の再検討** — publish 時 cold port を
+   毎回起動するか議論 (上記 regen の恒久化とも関連)
 
 ## Active Backlog (緊急度低、 観測タスク等)
 
