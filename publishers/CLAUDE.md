@@ -22,13 +22,31 @@
   ¥1980 articles でも ¥300 で publish されると損失
 - 検証: publish 後に note ダッシュボードで価格確認、 間違っていれば edit で修正
 
-## 🚧 note membership-add ボタン消失
+## 🚧 note membership-add (2026-06-01 再診断: selection-mode と判明)
 
-- 「メンバー特典記事を追加する」 ボタンが post-publish flow で見つからない
-  (タイミング or UI 変更)
-- best-effort なので publish 自体は成功、 ただし membership には未追加 →
-  ダッシュボードから手動追加が必要
-- 累計 20 件 backlog (STATE.md 参照)
+旧バグ「クリエーターページ リンクが見つからない」は avatar→creatorページ遷移の
+破綻。正しいフロー (live DOM 確認済、 `_apply_membership_fix.py` で実装):
+
+```
+自分の記事 /notes → 記事行の ⋮ (button[aria-label='その他'])
+  → balloon の「メンバーシップ特典追加・解除」
+  → /notes が【選択モード】化:
+       各記事に input.a-checkbox__field (slug で特定: .o-articleList__item
+         :has(a[href*='/n/<slug>']))
+       右ペインに【プラン別「追加」ボタン】(<a class=a-button>)
+       現状プラン2つ:「メンバー全員に公開」(全員向け汎用) /「有益なAIプラン」(AI特化)
+  → 対象記事チェック → 目的プランの「追加」で確定
+```
+
+`NotePublisher.add_articles_to_membership(slugs, plan_name)` に書き換え済
+(navigation + slug 特定 + ticking は動作確認)。K-beauty/一般記事は
+「メンバー全員に公開」へ。
+
+**未解決の壊れやすさ**: JS で hidden input をトグルすると選択モードが崩れる
+(Vue の選択状態に登録されずプラン「追加」ボタンが消滅 → 確定不可)。
+real-gesture click (可視 `.a-checkbox__check` を実クリック) が要る可能性。
+**エンドツーエンド自動追加は未達 → 当面は手動追加が確実**。best-effort なので
+publish 自体は成功。累計 backlog は STATE.md 参照。
 
 ## 🚧 edit_article の「更新ボタンが見つかりません」 FAIL は false negative
 
