@@ -41,11 +41,15 @@ logging.basicConfig(
 logger = logging.getLogger("regen_today_note")
 
 
+# Default targets (editable per batch). 2026-06-03: today's 3 K-beauty
+# note posts that published with Unsplash fallback (Brave CDP was cold)
+# — regen cover+inline via ChatGPT kbeauty_poster preset.
+# Run: py scripts/_regen_today_note_with_chatgpt.py \
+#        --preset kbeauty_poster --genre "K-beauty / 韓国コスメ"
 TARGETS = [
-    "note-Bill_to_block_publis-96763b3f",
-    "note-Xbox_is_rebranding_t-cc3512f2",
-    "note-A_History_of_IDEs_at-70de8f73",
-    "note-Motorola_Razr_Fold_r-dfa4bb53",
+    "note-PDRNの科学的根拠_自宅ケア商品__R-1d19f756",
+    "note-シカ__Centella_Asiatic-d9db9ea8",
+    "note-トラブル別_緊急ケア_5_ステップ___-5ae5455a",
 ]
 
 
@@ -72,7 +76,14 @@ def _strip_local_images(content: str) -> str:
 
 
 def main() -> int:
-    _kill_brave()
+    # CDP attach mode (CHATGPT_CDP_PORT set) needs a LIVE Brave on the
+    # debug port — killing it here would force a launch_persistent_context
+    # fallback. Only kill when running the old persistent-context path.
+    if os.environ.get("CHATGPT_CDP_PORT", "").strip():
+        logger.info("CDP mode (port %s) — skip brave kill, attaching instead",
+                    os.environ["CHATGPT_CDP_PORT"].strip())
+    else:
+        _kill_brave()
 
     from generators.chatgpt_batch_helper import (
         chatgpt_image_batch,
@@ -87,8 +98,32 @@ def main() -> int:
         )
         return 1
 
-    # Slugs may be passed as CLI args (batch mode); else use TARGETS.
-    targets = [a for a in sys.argv[1:] if not a.startswith("-")] or TARGETS
+    # Optional style preset + genre hint (e.g. K-beauty regen):
+    #   --preset kbeauty_poster   --genre "K-beauty / 韓国コスメ"
+    # When --preset is given the cover follows the preset style (if the
+    # preset is cover_styled) instead of the default infographic banner.
+    argv = sys.argv[1:]
+    style_preset: str | None = None
+    genre_hint = "general tech / lifestyle"
+    consumed: set[str] = set()  # values eaten by space-separated flags
+    for i, a in enumerate(argv):
+        if a == "--preset" and i + 1 < len(argv):
+            style_preset = argv[i + 1]
+            consumed.add(argv[i + 1])
+        elif a.startswith("--preset="):
+            style_preset = a.split("=", 1)[1]
+        elif a == "--genre" and i + 1 < len(argv):
+            genre_hint = argv[i + 1]
+            consumed.add(argv[i + 1])
+        elif a.startswith("--genre="):
+            genre_hint = a.split("=", 1)[1]
+
+    # Slugs are positional args (not flags, not flag-values); else TARGETS.
+    targets = [
+        a for a in argv if not a.startswith("-") and a not in consumed
+    ] or TARGETS
+    if style_preset:
+        logger.info("style_preset=%s genre_hint=%s", style_preset, genre_hint)
 
     articles_dir = _REPO / "data" / "articles"
     jobs: list[dict] = []
@@ -124,7 +159,8 @@ def main() -> int:
                 content=j["content"],
                 inline_count=4,
                 slug_hint=f"regen_{slug}",
-                genre_hint="general tech / lifestyle",
+                genre_hint=genre_hint,
+                style_preset=style_preset,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("chatgpt_image_batch raised: %s", exc)
