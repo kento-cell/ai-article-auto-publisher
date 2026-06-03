@@ -6,31 +6,41 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-01 07:22 JST
+2026-06-03 09:25 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
-- なし (6-01: ①poster route 汎用化 commit `4ba5e80`。 ②generate→publish 完遂:
-  note 4 本 (free 2: K-food/リジュラン + 有料 2: 緊急ケア/シカ) + Zenn 2 scraps。
-  cap 注意: NOTE_CADENCE_CAP=1/日, Zenn queue 枯渇→scrap fallback。
-  ③note membership-add を根本診断 (selection-mode と判明、 `note_publisher.py`
-  書き換え + 診断スクリプト群)。 navigation/ticking は動くが選択モードが JS
-  トグルで崩れ e2e 未達 → 手動追加へ。 詳細 `publishers/CLAUDE.md`)
+- 6-02: ①generate→publish 完遂: 3 本生成 (全 B/A) → publish。 note PDRN 有料
+  (n17f9115b4383)、 zenn 2 本は queue 満杯で scrap fallback
+  (scraps/f06dd121ebe5dd, 809cdfe2ef2165)。 却下 2 本。
+  ②**無料バズ狙い記事を市場調査ベースで追加 publish**: 「塗る針」スピキュール
+  完全ガイド (¥0, n8cd1361dc883)。 PDRN/エクソソームの"次"トレンドを first-mover。
+  手書き custom_post + Unsplash 画像、 ハルシ規律 (架空商品名/価格ゼロ) で執筆。
+  ③**エビデンス格付け型の確かな知財記事を無料 publish** (¥0, nb563aaac6175):
+  「2026バズ美容成分、効果はどこまで本当か」。 FDA 一次/査読/皮膚科医のみ引用、
+  ベンダー発の未検証数値 (78%, +64.32% 等) は峻別して不採用、 anti-hype literacy
+  自体を読者に渡す構成。 今日 note 3 本 (PDRN 有料 + スピキュール無料 + 格付け無料)、
+  custom_post 経路は cadence cap を通らないため user 明示依頼で override
+- (6-01: poster route 汎用化 `4ba5e80`。 note membership-add を selection-mode と
+  根本診断、 e2e 未達 → 手動追加へ。 詳細 `publishers/CLAUDE.md`)
 - (5-29: slot scheduler 平日 daytime 化 + Task Scheduler 5 タスク
   本番登録 (`ai-publish-slot-{MON..FRI}` 12:00 JST、 初回 fire 2026-06-01
   Mon) まで完遂、 commit `3b2d228`)
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
-1. **note membership 手動追加 — 今日の note 4 本** (data/articles の
-   published_url 参照): `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→
-   4 本チェック→「メンバー全員に公開」の「追加」。 累計 backlog も同様
-2. **今日の note 4 本の画像 regen** — Brave CDP 9222 未起動で全 Unsplash
-   fallback だった。 `scripts/launch_brave_cdp.bat` 起動後 kbeauty_poster
-   preset で regen → edit_article 差し替え (K-beauty 3 本)
+1. **note membership 手動追加 — 6-02 の PDRN 有料記事** (n17f9115b4383):
+   `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
+   公開」の「追加」。 (スピキュール記事は無料なので membership 不要)。 累計 backlog も同様
+2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
+   kbeauty_poster preset で cover+inline 計 15 枚 ChatGPT 再生成 → edit_article
+   差し替え (generated=3 uploaded=3 failed=0)。 og:image 3 本とも新規 .png に更新確認、
+   全記事 paid-flow「有料エリア設定」経由で paywall 保持、 ChatGPT chat leak 0。
+   スクリプト一般化: `_regen_today_note_with_chatgpt.py` に `--preset`/`--genre` flag
+   + CDP モード時 brave kill skip を追加
 3. **`AUTO_LAUNCH_BRAVE_CDP` opt-in 化の再検討** — publish 時 cold port を
-   毎回起動するか議論 (上記 regen の恒久化とも関連)
+   毎回起動するか議論 (上記 regen は手動 launch_brave_cdp.bat で対応した)
 
 ## Active Backlog (緊急度低、 観測タスク等)
 
@@ -38,8 +48,9 @@
 - K-beauty/韓国 5 連発のクロス効果計測 (5-30 経過後、 K-POP 4 世代 paid 流入率)
 - ChatGPT 画像 vision-eval 詰まり (5-27 朝の調査項目、 5-28 朝も再発)
 - title_fulfillment shop counter gate (`numeric_shop_listicle`) 効果計測 (次回 generate 時)
-- **slot scheduler 初回 fire 観測** (2026-06-01 Mon 12:00 JST) —
-  `data/_logs/slot_publish.log` で publish 結果確認、 queue 空なら no-op で正常
+- ~~slot scheduler 初回 fire 観測~~ **✅確認済 (6-03)**: 6-01 月 fire exit 0
+  (cadence cap で 3 本翌日持ち越し→6-02 手動 publish 済)、 6-02 火 exit 0 (承認済なし no-op)。
+  ops-banner/cadence-cap/free-first 全発火、 配線健全
 
 ## 次回提案候補 (5-29 セキュリティ監査の積み残し、 詳細は memory `feedback_public_repo_no_pii`)
 
@@ -65,11 +76,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [Tech CEOs are apparently suffering from AI psych…](https://note.com/kento_kanazawa/n/nfd797bf2135d?app_launch=false)
-- [1週間で持ち物を1-2割減らせる 丁寧な減らし方 プログラム。7日×30分で、捨てる/譲る/売る…](https://note.com/kento_kanazawa/n/ne0959d6ff8f7?app_launch=false)
-- [韓国コスメ起因の肌トラブル 5 パターン (接触皮膚炎/光毒性/酸不耐症/エクソソーム反応/偽物…](https://note.com/kento_kanazawa/n/nd5cd08163f15?app_launch=false)
-- [日本で韓国コスメを買える 4 経路 (OliveYoung実店舗 / @cosme TOKYO韓…](https://note.com/kento_kanazawa/n/n46ccc31f4994?app_launch=false)
-- [【保存版】「新大久保以外」で韓国カフェの本物に出会う —— 都内 6 軒、エリア別に実名で…](https://note.com/kento_kanazawa/n/n40b6f0a288b8?app_launch=false)
+- [PDRNの科学的根拠、自宅ケア商品 (Rejuran系) と美容医療の境界、安全に始める順序を提…](https://note.com/kento_kanazawa/n/n17f9115b4383?app_launch=false)
+- [Tell HN: Meta's AI support feature allows Instag…](https://zenn.dev/kento_cell/scraps/809cdfe2ef2165)
+- [Unlawful by design: Exposing the human rights co…](https://zenn.dev/kento_cell/scraps/f06dd121ebe5dd)
+- [シカ (Centella Asiatica) 完全解剖: 成分構造 / ブランド別配合比 / 肌…](https://note.com/kento_kanazawa/n/n927503f7e3a4?app_launch=false)
+- [トラブル別 緊急ケア 5 ステップ + K-beauty おすすめ救急アイテム (鎮静/抗炎症/…](https://note.com/kento_kanazawa/n/nb8a49e7d42e5?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -78,7 +89,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - (no commits in last 48h)
+  - 086257c fix(note): rewrite membership-add to direct /notes selection-mode flow
 <!-- /AUTO:pipeline -->
 
 ## Pointers
