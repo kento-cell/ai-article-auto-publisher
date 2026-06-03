@@ -6,11 +6,27 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-03 09:25 JST
+2026-06-04 07:38 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-04: **AI 内部 技術仕様書 (xlsx) を PII 監査 → commit** (`c0a7301`)。
+  23 シート (概要 + 図 7 + 詳細 15: パイプライン/エージェント/LLM/プロンプト/
+  構成/客観・主観・集約スコア/RAG/ハルシ/画像 AI/トレンド/ハッシュタグ/主要
+  param/ファイル対応表)。 生成器 2 本 (`_build_ai_tech_spec_xlsx.py` +
+  Pillow 図 `_ai_spec_diagrams.py`) も commit、 中間 PNG `docs/_spec_assets/`
+  は gitignore (xlsx に埋込済)。 公開 repo 監査: handle/mail/実名/key/user
+  path 0 件、 localhost endpoint と config フラグ名のみで clean
+- 6-03: ①K-beauty 3 本 (PDRN/シカ/トラブル別) を kbeauty_poster preset で画像 regen
+  → edit_article 差し替え (uploaded=3/3、 og:image 新 .png、 paywall 保持、 chat leak 0)。
+  `_regen_today_note_with_chatgpt.py` を `--preset`/`--genre` + CDP-safe に一般化 (`bc8185d`)。
+  ②generate→全承認→publish: 登録 3 件 (zenn 2 + note 1)。 note 4 本は客観不合格
+  (title 負け/forbidden)、 5 本 dedup skip、 収集側も Reddit 403 + 美容 RSS 複数 dead。
+  publish 結果: **note 1 本有料** 「韓国コスメのアンチエイジング成分は嘘だった」
+  (n44ae338eca1e、 B/A→¥500、 live 価格確認済)、 **zenn 2 本** は queue 満杯 404→scrap
+  (scraps/e9f3e6ee99f0d9、 d8fe360be52b38、 両 200)。 「無料(zenn)+有料(note)両方」 は
+  user 承認の解釈で成立。 membership auto-add は失敗 (best-effort、 手動追加要)
 - 6-02: ①generate→publish 完遂: 3 本生成 (全 B/A) → publish。 note PDRN 有料
   (n17f9115b4383)、 zenn 2 本は queue 満杯で scrap fallback
   (scraps/f06dd121ebe5dd, 809cdfe2ef2165)。 却下 2 本。
@@ -30,9 +46,10 @@
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
-1. **note membership 手動追加 — 6-02 の PDRN 有料記事** (n17f9115b4383):
+1. **note membership 手動追加 — 有料記事 2 本** (auto-add 失敗、 手動確実):
+   (a) 6-02 PDRN (n17f9115b4383)、 (b) 6-03 韓国コスメ アンチエイジング (n44ae338eca1e)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
-   公開」の「追加」。 (スピキュール記事は無料なので membership 不要)。 累計 backlog も同様
+   公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様
 2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
    kbeauty_poster preset で cover+inline 計 15 枚 ChatGPT 再生成 → edit_article
    差し替え (generated=3 uploaded=3 failed=0)。 og:image 3 本とも新規 .png に更新確認、
@@ -76,11 +93,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [PDRNの科学的根拠、自宅ケア商品 (Rejuran系) と美容医療の境界、安全に始める順序を提…](https://note.com/kento_kanazawa/n/n17f9115b4383?app_launch=false)
-- [Tell HN: Meta's AI support feature allows Instag…](https://zenn.dev/kento_cell/scraps/809cdfe2ef2165)
-- [Unlawful by design: Exposing the human rights co…](https://zenn.dev/kento_cell/scraps/f06dd121ebe5dd)
-- [シカ (Centella Asiatica) 完全解剖: 成分構造 / ブランド別配合比 / 肌…](https://note.com/kento_kanazawa/n/n927503f7e3a4?app_launch=false)
+- [K-beauty アンチエイジング核成分 (レチノール / ナイアシンアミド / ペプチド / …](https://note.com/kento_kanazawa/n/n44ae338eca1e?app_launch=false)
+- [SimuScene: Simulation-Ready Compositional 3D Sce…](https://zenn.dev/kento_cell/scraps/d8fe360be52b38)
+- [Exploring Easy Boosts for Lidar Semantic Scene C…](https://zenn.dev/kento_cell/scraps/e9f3e6ee99f0d9)
 - [トラブル別 緊急ケア 5 ステップ + K-beauty おすすめ救急アイテム (鎮静/抗炎症/…](https://note.com/kento_kanazawa/n/nb8a49e7d42e5?app_launch=false)
+- [シカ (Centella Asiatica) 完全解剖: 成分構造 / ブランド別配合比 / 肌…](https://note.com/kento_kanazawa/n/n927503f7e3a4?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -89,7 +106,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - 086257c fix(note): rewrite membership-add to direct /notes selection-mode flow
+  - bc8185d feat(regen): parameterize note image regen with style preset + CDP-safe
 <!-- /AUTO:pipeline -->
 
 ## Pointers
