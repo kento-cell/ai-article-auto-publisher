@@ -6,11 +6,30 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-04 07:38 JST
+2026-06-05 07:04 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-05: **learn→generate→全承認→publish ALL FREE 完遂**。 learn (280 サンプル +
+  RAG 530 chunks 再index)。 generate 5 合格 / 2 不合格 (title_fulfillment +
+  no-grounding で却下)。 bulk_approve 5/0。 publish: **新規 `NOTE_FORCE_FREE=1`
+  env-gate** を main.py に追加 (`9598439`、 determine_price の grade 課金を ¥0 強制、
+  default 挙動不変)。 cadence cap (1/日) で初回 1 本→user 指示で `NOTE_CADENCE_CAP=0`
+  再 publish。 **note 計 5 本すべて ¥0** (live API で price=0/can_read=true 検証済):
+  Apple×Google (n168526d27318)、 Galaxy S27 繰越 (nfa2f68cba481)、 出張コーヒー
+  ポケットスケール (naf5b4a4eda56)、 89g カード型工具 (nef426e1b12e3)、 トンボ
+  エアプレス (n26fe4b0fdf13)。 **zenn 2 本** queue 満杯 404→scrap
+  (scraps/726b9e498708ff、 c0569b37763a87)。 membership add は失敗 (無料記事は不要)。
+  ChatGPT 画像 vision-eval FAIL→Unsplash fallback (既知)
+- 6-04: **generate→全承認→publish 完遂**。 生成 5 合格 / 2 不合格
+  (forbidden_phrases + title_fulfillment で自動却下)。 `bulk_approve.py` で
+  5 件承認 (0 skip)。 publish: **note 1 本** 「ダウンタイムが嘘だった (HIFU/
+  ダーマペン)」 (n065ae332ccd4、 B/A→¥500 想定だが log に価格確認行なし=要 live 確認)、
+  **zenn 2 本** queue 満杯 404→scrap (scraps/1514240e86a601、 2fab3f5ce9d181)。
+  note 2 本 (Apple×Google / Galaxy S27) は cadence cap で翌日繰越。
+  ⚠️ note publish 時 ChatGPT 画像生成失敗 (cover=False inline=0/4)→Unsplash cover
+  fallback ([ops-banner:image] 発火)。 membership auto-add 失敗 (既知、 手動要)
 - 6-04: **AI 内部 技術仕様書 (xlsx) を PII 監査 → commit** (`c0a7301`)。
   23 シート (概要 + 図 7 + 詳細 15: パイプライン/エージェント/LLM/プロンプト/
   構成/客観・主観・集約スコア/RAG/ハルシ/画像 AI/トレンド/ハッシュタグ/主要
@@ -47,7 +66,8 @@
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
 1. **note membership 手動追加 — 有料記事 2 本** (auto-add 失敗、 手動確実):
-   (a) 6-02 PDRN (n17f9115b4383)、 (b) 6-03 韓国コスメ アンチエイジング (n44ae338eca1e)。
+   (a) 6-02 PDRN (n17f9115b4383)、 (b) 6-03 韓国コスメ アンチエイジング (n44ae338eca1e)、
+   (c) 6-04 ダウンタイム/HIFU (n065ae332ccd4)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様
 2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
@@ -93,11 +113,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
+- [施術別 (HIFU / ダーマペン / レーザートーニング) のダウンタイムケア + 維持期に最…](https://note.com/<NOTE_USER>/n/n065ae332ccd4?app_launch=false)
+- [リファクタリング提案が来るたびに判断できない理由…](https://zenn.dev/kento_cell/scraps/2fab3f5ce9d181)
+- [Zennの記事一覧からAI関連の記事をAIの力によって滅ぼし、そして私も消えよう…](https://zenn.dev/kento_cell/scraps/1514240e86a601)
 - [K-beauty アンチエイジング核成分 (レチノール / ナイアシンアミド / ペプチド / …](https://note.com/<NOTE_USER>/n/n44ae338eca1e?app_launch=false)
 - [SimuScene: Simulation-Ready Compositional 3D Sce…](https://zenn.dev/kento_cell/scraps/d8fe360be52b38)
-- [Exploring Easy Boosts for Lidar Semantic Scene C…](https://zenn.dev/kento_cell/scraps/e9f3e6ee99f0d9)
-- [トラブル別 緊急ケア 5 ステップ + K-beauty おすすめ救急アイテム (鎮静/抗炎症/…](https://note.com/<NOTE_USER>/n/nb8a49e7d42e5?app_launch=false)
-- [シカ (Centella Asiatica) 完全解剖: 成分構造 / ブランド別配合比 / 肌…](https://note.com/<NOTE_USER>/n/n927503f7e3a4?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -106,6 +126,8 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
+  - 4e87b80 docs(state): log AI tech spec workbook commit in In Flight
+  - c0a7301 docs(spec): add AI internals technical spec workbook + generators
   - bc8185d feat(regen): parameterize note image regen with style preset + CDP-safe
 <!-- /AUTO:pipeline -->
 
