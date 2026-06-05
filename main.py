@@ -4510,6 +4510,16 @@ def publish_approved(
                     overall_grade=str(_scores.get("overall_grade", "")),
                     evidence_level=str(_scores.get("evidence_level", "")),
                 )
+                # 2026-06-05: opt-in free-publish mode. When NOTE_FORCE_FREE=1
+                # every note article ships at ¥0 regardless of grade — used for
+                # trust-building / audience-growth runs. Default behaviour (the
+                # determine_price tier table) is unchanged when the env is unset.
+                if os.environ.get("NOTE_FORCE_FREE") == "1" and note_price > 0:
+                    logger.info(
+                        "[free-mode] NOTE_FORCE_FREE=1 → price ¥%d → ¥0: %s",
+                        note_price, title,
+                    )
+                    note_price = 0
                 url = _publish_note(
                     title, content, config,
                     source=str(source), price=note_price,
