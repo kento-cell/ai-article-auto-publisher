@@ -11,6 +11,13 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-10 (2nd): **Fable 5 発表まとめ note を custom_post で無料 publish** (user
+  指示「Fableまとめ note、無料でいい」)。 一次ソース (Anthropic 公式 6-09 発表 +
+  TechCrunch/CNBC) のみで手書き、 公称は公称と明示、 数値は全て出典付き。
+  ndb39bec78631、 ¥0/can_read=true/eyecatch+inline4 live検証済。 spec は
+  `data/custom_posts/fable5_summary_2026-06-10.json`。 無料なので membership
+  不要。 ⚠️ サブスク補足: Fable 5 は 6/22 まで Pro/Max 追加課金なし、 6/23
+  以降 usage credits 必要 (公式)
 - 6-10: **daily pipeline (generate→全承認→publish auto価格) 完遂 + タイトル捏造
   事故対応**。 generate **5合格 / 2不合格** (却下: K-POPメイク=title負け、
   K-beautyテクスチャー=shop数6/20)。 bulk_approve 5/0。 publish: **zenn 2本**
