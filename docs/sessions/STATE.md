@@ -11,6 +11,15 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-10 (3rd): **Fable 5 記事の画像を ChatGPT 生成に差し替え** (user 指示
+  「Brave 落として再起動して画像差し替え」)。 Brave full kill →
+  `launch_brave_cdp.bat` で CDP 9222 再起動 → custom_post は store に無いため
+  synthetic entry (`note-Fable5発表まとめ-custom0610.json`) を作成して
+  `_regen_today_note_with_chatgpt.py` を positional slug + `--genre "AI /
+  technology news"` で実行。 **cover+inline 4/4 生成・差し替え成功**、 live 検証
+  (price=0/can_read=true/inline4) OK、 chat leak sweep 1 件削除。 ⚠️ 注意:
+  regen の TARGETS デフォルトは 6-03 の旧 K-beauty 3 本のまま (引数なし実行は
+  事故るので必ず positional slug 指定)
 - 6-10 (2nd): **Fable 5 発表まとめ note を custom_post で無料 publish** (user
   指示「Fableまとめ note、無料でいい」)。 一次ソース (Anthropic 公式 6-09 発表 +
   TechCrunch/CNBC) のみで手書き、 公称は公称と明示、 数値は全て出典付き。
