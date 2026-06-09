@@ -6,11 +6,53 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-05 07:04 JST
+2026-06-10 07:37 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-10: **daily pipeline (generate→全承認→publish auto価格) 完遂 + タイトル捏造
+  事故対応**。 generate **5合格 / 2不合格** (却下: K-POPメイク=title負け、
+  K-beautyテクスチャー=shop数6/20)。 bulk_approve 5/0。 publish: **zenn 2本**
+  queue満杯404→scrap (オントロジー scraps/f34b74dffc393e、 MySQL→PostgreSQL
+  scraps/fb51639f490b4a)、 **note 1本** ティファール電気ケトル (n552e052f7be2、
+  B/A→¥500、 live API 価格検証済)。 cadence cap で note 2本 (消しゴム/シェーバー)
+  翌日繰越。 membership auto-add 失敗 (既知)。 **🔴事故#21**: 旧 `_TITLE_BRACKETS`
+  の「100人に聞いた」が本文H1→日本語タイトル抽出経由で scrap タイトルに捏造公開
+  → live 修正済 (`_fix_scrap_title_0610.py`) + bracket 事実主張型5件除去 +
+  `\d+人に聞いた` deny 3箇所同期 + テスト 42 deny 化 + RAG 再ingest (555 chunks)。
+  詳細 ops_incidents #21。 残ギャップ: 抽出タイトルは品質ゲート未通過 (How to apply 参照)。
+  ※ ChatGPT画像 CDP未起動→Unsplash fallback (既知)。 Claude Code は npm版
+  削除→ネイティブ版へ一本化 (v2.1.170)
+- 6-09 (2nd): **2回目 generate→全承認→publish ALL FREE 完遂** (user 追加指示
+  「フリー記事の生成も note」)。 generate **5合格 / 2不合格** (却下: こぐれひでこ
+  =C title負け、 Amazonタイムセール=no grounding)。 bulk_approve 5/0。 publish
+  `--free-first 999` + `NOTE_CADENCE_CAP=0`: **note 3本すべて ¥0** (秒針自動巻き時計
+  ndce5692a1f19、 山崎実業/洗面脱衣室 nec4313794bf3、 リストレスト na60583526f49)、
+  **zenn 2本** queue満杯→scrap (3D動画World Model scraps/9a4b1af242e6d9、 LLM記憶+
+  想像 scraps/3011d8955b7aa3)。 無料記事なので membership 不要。 ChatGPT画像は
+  CDP未起動継続で Unsplash fallback
+- 6-09: **フル daily pipeline (generate→全承認→publish auto価格) 完遂**。 RAG
+  完全復活確認 (sentence_transformers/torch import OK、 `[ops-banner:generate]`
+  3件 + `rag-learn`/`hallu-guard`/`rag-coverage` 全段発火)。 generate **3合格 /
+  4不合格** (却下: K-POPメイク、 韓国カフェ=title_fulfillment Instagram言及なし、
+  K-beautyテクスチャー=shop数<20、 エクソソーム=forbidden_phrases「〇〇濃度」)。
+  bulk_approve 3/0。 publish: **zenn 2本** queue満杯→scrap (LLM8割コード保守
+  scraps/8506a21a6bc5f1、 Rust+Slint GUI scraps/d227ec736bc1ce)、 **note 1本**
+  「目の日焼け/眼鏡市場サングラス計画」 (nbcf9df14e410、 B/A→¥500 paid)。 note 1本
+  のみで cadence 繰越なし。 ⚠️ ChatGPT画像 CDP未起動 (AUTO_LAUNCH_BRAVE_CDP=0)
+  →Unsplash fallback (cover only, inline 0)。 ⚠️ membership「追加」not found→手動要
+- 6-08: **learn→generate→全承認→publish (auto価格) 完遂**。 generate 6 合格 /
+  1 不合格 (白T: word_count + title負け + heading)。 bulk_approve 6/0。 publish
+  1巡目: **zenn 2 本** queue満杯404→scrap (scraps/a1d2661b3aaf48、 2d86c17ef46ff5)、
+  **note 1 本** 韓国美容医療トレンド5 (n5c27f9e2d39a、 B/A→¥500)。 cadence cap (1/日)
+  で note 3 本繰越→ user 指示で **グラビア記事 (横野すみれ BOMB Love) を ❌却下で除外**、
+  残テクニカル 2 本を `NOTE_CADENCE_CAP=0` で publish: Copilot活用 (nc24c482dcd94、
+  B/A→¥500)、 エクセル/ワード数式 (nd085284d5bdf、 B/A→¥500)。 **note 計3本すべて
+  ¥500 paid だが membership「追加」ボタン not found→手動 membership 追加要 (既知)**。
+  ChatGPT画像 Brave CDP未起動 (AUTO_LAUNCH_BRAVE_CDP=0) で失敗→Unsplash fallback。
+  ⚠️ **venv 欠落**: defusedxml 追加導入で import 復旧、 sentence_transformers/torch
+  未導入で **RAG 無効 (grounding 弱)** — 次回 generate 前に要再導入
 - 6-05: **learn→generate→全承認→publish ALL FREE 完遂**。 learn (280 サンプル +
   RAG 530 chunks 再index)。 generate 5 合格 / 2 不合格 (title_fulfillment +
   no-grounding で却下)。 bulk_approve 5/0。 publish: **新規 `NOTE_FORCE_FREE=1`
@@ -65,9 +107,13 @@
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
-1. **note membership 手動追加 — 有料記事 2 本** (auto-add 失敗、 手動確実):
+1. **note membership 手動追加 — 有料記事** (auto-add 失敗、 手動確実):
    (a) 6-02 PDRN (n17f9115b4383)、 (b) 6-03 韓国コスメ アンチエイジング (n44ae338eca1e)、
-   (c) 6-04 ダウンタイム/HIFU (n065ae332ccd4)。
+   (c) 6-04 ダウンタイム/HIFU (n065ae332ccd4)、
+   (d) 6-08 韓国美容医療トレンド5 (n5c27f9e2d39a ¥500)、
+   (e) 6-08 Copilot活用 (nc24c482dcd94 ¥500)、 (f) 6-08 エクセル/ワード数式 (nd085284d5bdf ¥500)、
+   (g) 6-09 目の日焼け/眼鏡市場 (nbcf9df14e410 ¥500)、
+   (h) 6-10 ティファール電気ケトル (n552e052f7be2 ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様
 2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
@@ -113,11 +159,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [施術別 (HIFU / ダーマペン / レーザートーニング) のダウンタイムケア + 維持期に最…](https://note.com/kento_kanazawa/n/n065ae332ccd4?app_launch=false)
-- [リファクタリング提案が来るたびに判断できない理由…](https://zenn.dev/kento_cell/scraps/2fab3f5ce9d181)
-- [Zennの記事一覧からAI関連の記事をAIの力によって滅ぼし、そして私も消えよう…](https://zenn.dev/kento_cell/scraps/1514240e86a601)
-- [K-beauty アンチエイジング核成分 (レチノール / ナイアシンアミド / ペプチド / …](https://note.com/kento_kanazawa/n/n44ae338eca1e?app_launch=false)
-- [SimuScene: Simulation-Ready Compositional 3D Sce…](https://zenn.dev/kento_cell/scraps/d8fe360be52b38)
+- [「タイピングが痛い…」を解決する新感覚リストレスト。長時間の作業もまるで無重力のような快適さです…](https://note.com/kento_kanazawa/n/na60583526f49?app_launch=false)
+- [山崎実業の部屋干しグッズで「ピンチハンガーかさばる問題」を解決！ カーテンレールを有効活用できる…](https://note.com/kento_kanazawa/n/nec4313794bf3?app_launch=false)
+- [時計を見るたび急かされる人へ。秒針をなくした自動巻きという答え…](https://note.com/kento_kanazawa/n/ndce5692a1f19?app_launch=false)
+- [MemoryVLA++: Temporal Modeling via Memory and Im…](https://zenn.dev/kento_cell/scraps/3011d8955b7aa3)
+- [Latent Spatial Memory for Video World Models…](https://zenn.dev/kento_cell/scraps/9a4b1af242e6d9)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -126,9 +172,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - 4e87b80 docs(state): log AI tech spec workbook commit in In Flight
-  - c0a7301 docs(spec): add AI internals technical spec workbook + generators
-  - bc8185d feat(regen): parameterize note image regen with style preset + CDP-safe
+  - (no commits in last 48h)
 <!-- /AUTO:pipeline -->
 
 ## Pointers

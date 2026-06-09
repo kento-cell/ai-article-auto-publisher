@@ -121,6 +121,10 @@ evidence:
       - anonymous_sources
       - unverified_claims
   forbidden_phrases:
+    # 架空アンケート/調査主張。2026-06-10 旧 _TITLE_BRACKETS 由来の
+    # 「【100人に聞いた】」が zenn scrap に公開された実害事故。アンケート
+    # 実施の事実がない記事でこの主張は捏造 (bracket list からも除去済み)。
+    - "\\d+\\s*人に(?:聞いた|訊いた|アンケート)"
     - "月.*万円.*稼いだ"
     - "誰でも.*稼げる"
     - "簡単.*収益"

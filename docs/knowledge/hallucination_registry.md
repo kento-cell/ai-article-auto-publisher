@@ -34,6 +34,7 @@ _最終更新: 2026-05-14_
 | 17 | ソース外の数値ファクト捏造  | 2026-05-14   | prompts.yaml に「元ソース未記載の数値は書かない」ルール追加 (例: Lake Tahoe 1645m 誤記) | ✅ 修正済 (prompt層) |
 | 18 | 見出しを `**bold**` で代用し H2 count フェイル | 2026-05-14 | prompts.yaml に「## (H2) 構文必須、太字での見出し代用は全文却下」追加 | ✅ 修正済 (prompt層) |
 | 19 | 元記事スコープ逸脱で別物記事化 | 2026-05-14 | prompts.yaml に「元記事の主題から逸脱しない、観光ガイド化禁止」ルール追加 (Lake Tahoe 観光化事案) | ✅ 修正済 (prompt層) |
+| 20 | 架空アンケート主張タイトル (【100人に聞いた】) | 2026-06-10 | main.py `_TITLE_BRACKETS` から事実主張型 5 件除去 + forbidden_phrases / `_PUBLISH_DENY_PATTERNS` 3 箇所同期 `\d+人に聞いた` + 公開済み zenn scrap live 修正 | ✅ 修正済 (詳細 ops_incidents #21) |
 
 ---
 
@@ -402,6 +403,7 @@ PASS: all 40 deny + 7 sanitizer cases OK
 - 仮名/仮称/ダッシュ伏字 3 種
 - A/B/C 命名 2 種
 - プロンプト残留 3 種
+- 架空アンケート主張 2 種 (N人に聞いた/N人にアンケート、2026-06-10 追加 → 計 42 deny)
 - Bluesky/Threads/Mastodon 3 種
 - 架空ニュースイベント 3 種
 - AI 開示 footer 7 種 (本記事は/構成/別形/による/注釈型/英語/免責)

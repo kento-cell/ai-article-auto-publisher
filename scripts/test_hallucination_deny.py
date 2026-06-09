@@ -63,6 +63,10 @@ DENY_TEST_CASES: list[tuple[str, str, bool]] = [
     ("URLは記載しません",  "詳細URL: URLは記載しません\n",                       True),
     ("実際にはURL",        "実際にはこのURLを参照\n",                              True),
 
+    # ── 架空アンケート/調査主張 (2026-06-10 【100人に聞いた】scrap 事故) ──
+    ("N人に聞いた",        "【100人に聞いた】DB移行で失敗しない方法\n",            True),
+    ("N人にアンケート",    "エンジニア50人にアンケートを実施\n",                   True),
+
     # ── Bluesky/Threads/Mastodon 架空投稿 ──
     ("Bluesky氏の投稿",    "習近平氏のBluesky投稿が話題\n",                       True),
     ("Threads徹底",        "妻夫木聡さんのThreads投稿を徹底\n",                   True),
