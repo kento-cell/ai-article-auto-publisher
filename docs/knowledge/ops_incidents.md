@@ -38,6 +38,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 18 | note 記事が見出しだけから生成され全引用が捏造 (Reddit リンク投稿は `selftext` 空 + Codex grounding 無効) | 2026-05-17 | main.py `_fetch_article_text` / `_backfill_source_content` でリンク先本文を取得 → grounding gate に `has_source_content` 追加 | ✅ 修正済 |
 | 19 | #18 と同じ捏造が `NOTE_ALLOW_NO_CODEX_BRIEF=1` bypass 残置で再発 (Cybertruck Wade Mode 記事、source backfill 失敗→Writer 全創作) | 2026-05-21 | `.env` の bypass を `=0` に変更、両方欠落時 fail-closed 復活。bypass フラグは捏造の最後の入口になり得るので再導入しないこと | ✅ 修正済 |
 | 20 | SheetsManager.add_article が無条件 append → 同 article_id の重複行 → 二重投稿リスク (5-21 row 71 で実害手前) | 2026-05-21 | utils/sheets_manager.py の add_article を idempotent 化 (既存 article_id を find して既存行 番号を返し append しない、warn ログ出力) | ✅ 修正済 |
+| 21 | _TITLE_BRACKETS の事実主張型ブラケット (【100人に聞いた】等) がタイトル捏造として zenn scrap に公開 (6-10 実害) | 2026-06-10 | bracket list から事実主張型 5 件除去 + forbidden_phrases/_PUBLISH_DENY 3 箇所同期で `\d+人に聞いた` deny + 公開済み scrap live 修正 | ✅ 修正済 (タイトル抽出の構造ギャップは残) |
 
 ---
 
@@ -408,6 +409,43 @@ gate を作っても override フラグを残置すると無効化される、�
 再走か)。 idempotent 化で実害は止めたが、 warn ログが出始めたら呼び出し
 スタックを追って register_for_approval が 2 度走る経路を塞ぐ。 update_status
 側の `findall` 修正 (2026-04-23) と組み合わせて 2 重防御の状態にした。
+
+---
+
+## 21. _TITLE_BRACKETS の事実主張型ブラケットがタイトル捏造として公開される
+
+**観測日:** 2026-06-10
+
+**事象:** zenn scrap (fb51639f490b4a) が「【100人に聞いた】マルチテナント
+DB移行で…」のタイトルで公開された。本文にアンケート実施の記述は一切なく
+(出現は見出し 1 箇所のみ)、存在しない調査を主張するタイトル捏造。理念
+ルール「タイトルで煽った内容は本文で必ず回収する」の違反。
+
+**原因 (3 段の合わせ技):**
+1. `main.py::_pick_title_bracket_hint()` が `_TITLE_BRACKETS` からランダム
+   に 1 つ選び「タイトル先頭に必ず【X】を付けよ」と LLM に強制。リストに
+   「100人に聞いた」「現地レポ」「リーク」「プロが教える」「現場の声」など
+   **本文で裏付け不能な事実主張型**が混在していた (純粋な誇張系と未分離)
+2. LLM はブラケットを stored title でなく**本文 H1** に書いた
+3. publish 時の `_extract_japanese_title()` (日本語タイトル抽出) が本文 H1
+   をタイトルに昇格 → **品質ゲートが評価した stored title と公開タイトルが
+   別物**になり、title_fulfillment 評価をすり抜けた
+
+**対策 (2026-06-10):**
+- 公開済み scrap はタイトル修正済み (`scripts/_fix_scrap_title_0610.py`、
+  ZennScrapPublisher の persistent profile 再利用 + `button[aria-label=
+  'タイトルを編集']` で live edit、修正後 h1 検証済み)
+- `_TITLE_BRACKETS` から事実主張型 5 件を除去 (誇張・感情系のみ残す)
+- `settings.yaml` / `settings.yaml.example` の `forbidden_phrases` と
+  `main.py::_PUBLISH_DENY_PATTERNS` に `\d+\s*人に(?:聞いた|訊いた|アンケート)`
+  を 3 箇所同期で追加 (LLM が自発的に書くケースの最終防衛線)
+- `scripts/test_hallucination_deny.py` に deny 2 ケース追加 (42 deny に増加)
+
+**How to apply:** 「日本語タイトル抽出で公開タイトルが stored title と
+乖離する」構造ギャップ自体は残存 (品質ゲートは stored title しか見ない)。
+本文 H1 由来の公開タイトルにも title_fulfillment を効かせたい場合は、
+publish 前に extracted title を subjective evaluator に通す改修が候補。
+新ブラケット追加時は「本文で回収可能か (誇張 OK / 事実主張 NG)」を必ず判定。
 
 ---
 
