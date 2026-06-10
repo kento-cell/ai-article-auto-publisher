@@ -23,9 +23,12 @@
   ライブ反映)。 ④ **claude-dotfiles** (HIGH) — `cat *` 削除 + codex-review `$TARGET`
   注入修正 (`816e551`)。 ⑤ **Lp** — 架空サロンの実在地番/氏名→明示ダミー (`55edb6f`)。
   ⑥ **slide-forge** — CSP script-src 分離 + 鍵パス redact (`bd7bf8d`)。 ⑦ ai-article
-  ワンショットの zenn handle env-var 化 (`c922bf9`)。 ⚠️ 残: zenn-content **git履歴**に
-  旧経歴文が残存 (ライブは修正済、 履歴書き換えは未承認のため保留)。 waterfall-review-app
-  は PoC/デプロイなしで MEDIUM 据置 (未対応、 ポートフォリオ価値優先)
+  ワンショットの zenn handle env-var 化 (`c922bf9`)。 ⑧ **zenn-content 履歴書き換え** (user 承認、 6-11): 旧経歴文 (SIer/7月転職/副業) を
+  該当 2 行の一般化テキストへ replace-text で除去、 protection 一時解除→force push→
+  復元、 リモート API で現行記事0件+全100commit author=Kento 検証済。 ⚠️ GitHub は
+  unreferenced 旧 SHA を background GC まで full-SHA 直アクセスで保持しうる (5-19 同様、
+  完全 purge は GitHub Support 依頼が必要)。 waterfall-review-app は PoC/デプロイなしで
+  MEDIUM 据置 (未対応、 ポートフォリオ価値優先、 user 判断待ち)
 - 6-10 (5th): **`/routine` テスト運用完了 — 実地で1バグ検出・修正**。 二重実行
   ガード正常 (今日 generate 済み→publish-only path)。 初回 publish で
   `NOTE_CADENCE_CAP=4` が効かず繰越→ **変数取り違え発見: CAP は on/off ブール、
