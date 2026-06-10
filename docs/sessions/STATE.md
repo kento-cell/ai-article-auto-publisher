@@ -11,6 +11,21 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-11: **公開7repo セキュリティ再監査 + 全件対応 (Fable5 契機)**。 3 subagent 並列
+  (PII/secrets 全履歴 / 脆弱性 / dotfiles+残). **実キー漏洩ゼロ確認**。 対応:
+  ① **ai-article 履歴書き換え** — author 漢字フルネーム31commit→「Kento」統一 +
+  `C:\Users\kanaz`→`C:\Users\user` (blob+message)、 git filter-repo (mailmap +
+  replace-text/-message)、 branch protection 一時解除→force push→即復元、 リモート
+  GitHub API で 0 件検証、 ローカル stale branch 削除+gc。
+  ② **SWELL** (HIGH) — CORS 反射→allowlist (localhost+*.manuspre.computer) +
+  image-proxy SSRF (host検証+redirect:error) + .gitignore に .env (`b2b2a51`)。
+  ③ **zenn-content** — 経歴記述 (7月生成AIチーム転職/SIer/副業) を一般化 (`a4555d2`、
+  ライブ反映)。 ④ **claude-dotfiles** (HIGH) — `cat *` 削除 + codex-review `$TARGET`
+  注入修正 (`816e551`)。 ⑤ **Lp** — 架空サロンの実在地番/氏名→明示ダミー (`55edb6f`)。
+  ⑥ **slide-forge** — CSP script-src 分離 + 鍵パス redact (`bd7bf8d`)。 ⑦ ai-article
+  ワンショットの zenn handle env-var 化 (`c922bf9`)。 ⚠️ 残: zenn-content **git履歴**に
+  旧経歴文が残存 (ライブは修正済、 履歴書き換えは未承認のため保留)。 waterfall-review-app
+  は PoC/デプロイなしで MEDIUM 据置 (未対応、 ポートフォリオ価値優先)
 - 6-10 (5th): **`/routine` テスト運用完了 — 実地で1バグ検出・修正**。 二重実行
   ガード正常 (今日 generate 済み→publish-only path)。 初回 publish で
   `NOTE_CADENCE_CAP=4` が効かず繰越→ **変数取り違え発見: CAP は on/off ブール、
