@@ -11,6 +11,15 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-10 (5th): **`/routine` テスト運用完了 — 実地で1バグ検出・修正**。 二重実行
+  ガード正常 (今日 generate 済み→publish-only path)。 初回 publish で
+  `NOTE_CADENCE_CAP=4` が効かず繰越→ **変数取り違え発見: CAP は on/off ブール、
+  本数上限は `NOTE_DAILY_LIMIT`** (main.py:4314)。 routine.md 修正後
+  `NOTE_DAILY_LIMIT=4` で再実行: **note 2本 ¥0 publish 成功** (消しゴム
+  nbd9c81dd52b3、 シェーバー n9ebcbdcc3d11、 live検証 price=0/can_read=true)。
+  cadence「上限4 残3」発火確認、 free-first 2 の ¥0 強制確認、 公開タイトルは
+  誇張系ブラケットのみ (捏造系なし、 deny 通過)。 membership modal fail は無料
+  記事なので無問題。 本日 note 計4本 (¥500×1 + ¥0×3)、 6本/日 enforcement 圏外
 - 6-10 (4th): **朝のフルパイプラインを `/routine` カスタムコマンド化**
   (`.claude/commands/routine.md`)。 user が /schedule (クラウド=ローカル資源不可) と
   OS Task Scheduler (明示拒否) とセッション内 cron (7日失効で脆い、登録→削除済) を
