@@ -11,6 +11,13 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-10 (4th): **朝のフルパイプラインを `/routine` カスタムコマンド化**
+  (`.claude/commands/routine.md`)。 user が /schedule (クラウド=ローカル資源不可) と
+  OS Task Scheduler (明示拒否) とセッション内 cron (7日失効で脆い、登録→削除済) を
+  比較して手動コマンドに確定。 運用: 朝 CC を開いて `/routine` → learn→generate→
+  全承認→publish (`NOTE_CADENCE_CAP=4` + `--free-first 2`、 無料2+有料2+zenn2-3
+  目標、 品質ゲート不変)。 同日二重実行ガード指示も込み。 memory
+  `feedback_no_scheduler` 更新済
 - 6-10 (3rd): **Fable 5 記事の画像を ChatGPT 生成に差し替え** (user 指示
   「Brave 落として再起動して画像差し替え」)。 Brave full kill →
   `launch_brave_cdp.bat` で CDP 9222 再起動 → custom_post は store に無いため
