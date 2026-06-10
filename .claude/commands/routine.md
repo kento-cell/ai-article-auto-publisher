@@ -15,8 +15,10 @@ E:/ai-article-auto-publisher で learn→generate→全承認→publish を自�
    20分以上かかるので `run_in_background` + ログ追跡。シェルは bash 構文
    (PowerShell の `Tee-Object` / `$env:` は使うな — 過去に exit 127 事故あり)
 4. **全承認**: `py scripts/bulk_approve.py` (グレードC/SNSハルシガード付き)
-5. **publish**: `NOTE_CADENCE_CAP=4 PYTHONIOENCODING=utf-8 py scripts/_publish_free_first.py --free-first 2`
-   - note: 先頭 2 本 ¥0 + 残りグレード自動価格 (目標: 無料2+有料2、cap 4/日)
+5. **publish**: `NOTE_DAILY_LIMIT=4 PYTHONIOENCODING=utf-8 py scripts/_publish_free_first.py --free-first 2`
+   - note: 先頭 2 本 ¥0 + 残りグレード自動価格 (目標: 無料2+有料2、上限 4/日)
+   - ⚠️ 変数名注意: `NOTE_CADENCE_CAP` は on/off ブール (0で解除)、**本数上限は
+     `NOTE_DAILY_LIMIT`** (main.py:4314)。6-10 テスト運用でこの取り違えを実地検出済み
    - zenn: queue 投入、404 (queue 満杯) なら scrap fallback (2-3本想定)
 6. **検証**:
    - note 各記事を live API (`https://note.com/api/v3/notes/<key>`) で price / can_read 確認
