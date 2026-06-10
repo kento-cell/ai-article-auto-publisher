@@ -21,7 +21,17 @@ from publishers.zenn_scrap_publisher import ZennScrapPublisher  # noqa: E402
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-SCRAP_URL = "https://zenn.dev/kento_cell/scraps/fb51639f490b4a"
+import os
+
+# Zenn handle from env (d98fbba hardening: no hardcoded handles in repo).
+# Defaults preserve this one-shot's original target.
+_ZENN_USER = os.environ.get("ZENN_USERNAME", "")
+_SCRAP_ID = os.environ.get("SCRAP_ID", "fb51639f490b4a")
+SCRAP_URL = (
+    f"https://zenn.dev/{_ZENN_USER}/scraps/{_SCRAP_ID}"
+    if _ZENN_USER
+    else f"https://zenn.dev/scraps/{_SCRAP_ID}"
+)
 NEW_TITLE = (
     "マルチテナントDB移行で失敗しないための"
     "「PostgreSQLアーキテクチャ設計」完全ガイド"
