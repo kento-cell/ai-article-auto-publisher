@@ -11,6 +11,17 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-11: **`/routine` 本番初稼働完遂** (履歴書き換え後のクリーン状態で). learn
+  (280件 + RAG 再index 555 chunks) → generate **7合格/0不合格** (ops-banner/
+  rag-coverage 全段発火、 healthy) → bulk_approve 7/0 → publish:
+  **zenn 2本** queue 404→scrap (Fable5 review scraps/2c181f8a112c1b、 Nuxt Pinia
+  scraps/206452d4a128b0)、 **note 4本** (NOTE_DAILY_LIMIT=4 + free-first 2):
+  iOS 27 Siriモード (n8d95295b09ae **¥0**)、 アイドル誌構造分析=森脇梨々夏記事
+  (nddf849187aa9 **¥0**、 user 承認で publish)、 カロッツェリア Dolby Atmos
+  (nd70c0d90f5f0 **¥500**)、 シャオミ激安スピーカー (n54cdce174d62 **¥500**)。
+  Galaxy S27 Pro は cadence cap 4 到達で翌日繰越。 live API で全4本
+  price/can_read 検証済、 捏造系 deny pattern 検知0。 ChatGPT 画像 CDP 9222 動作中
+  (前回監査セッションから brave CDP 起動継続)、 membership auto-add は既知の fail
 - 6-11: **公開7repo セキュリティ再監査 + 全件対応 (Fable5 契機)**。 3 subagent 並列
   (PII/secrets 全履歴 / 脆弱性 / dotfiles+残). **実キー漏洩ゼロ確認**。 対応:
   ① **ai-article 履歴書き換え** — author 漢字フルネーム31commit→「Kento」統一 +
@@ -163,7 +174,9 @@
    (d) 6-08 韓国美容医療トレンド5 (n5c27f9e2d39a ¥500)、
    (e) 6-08 Copilot活用 (nc24c482dcd94 ¥500)、 (f) 6-08 エクセル/ワード数式 (nd085284d5bdf ¥500)、
    (g) 6-09 目の日焼け/眼鏡市場 (nbcf9df14e410 ¥500)、
-   (h) 6-10 ティファール電気ケトル (n552e052f7be2 ¥500)。
+   (h) 6-10 ティファール電気ケトル (n552e052f7be2 ¥500)、
+   (i) 6-11 カロッツェリア Dolby Atmos (nd70c0d90f5f0 ¥500)、
+   (j) 6-11 シャオミ激安スピーカー (n54cdce174d62 ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様
 2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
