@@ -11,6 +11,16 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-12: **`/routine` 2回目稼働完遂**. learn (280 + RAG 再index) → generate
+  **4合格 / 3不合格** (却下: 「Fable5自分以上に信頼」=`〇〇`伏字、 韓国カフェ=title
+  fulfillment+伏字、 エクソソーム=`〇〇mg/10ml`+`〇〇大学の研究` 伏字 deny) →
+  bulk_approve 4/0 → publish: **zenn 1本** queue 404→scrap (Mythos 5
+  scraps/42b5e7ff0a28db)、 **note 4本** (NOTE_DAILY_LIMIT=4 + free-first 2):
+  Galaxy S27 Pro バッテリー (n3570c3d68048 **¥0**)、 K-POPメイク再現
+  (n1bb1790e9701 **¥0**)、 Galaxy Z Fold8 ディスプレイ (nef4720dcb32f **¥500**)、
+  推し活戦略=和泉芳怜記事 (n12e336a94735 **¥500**、 user 方針継続で publish)。
+  live API 全4本 price/can_read 検証済、 タイトル捏造系 deny 検知0。 ChatGPT 画像
+  CDP 9222 動作中継続、 membership auto-add は既知の fail
 - 6-11: **`/routine` 本番初稼働完遂** (履歴書き換え後のクリーン状態で). learn
   (280件 + RAG 再index 555 chunks) → generate **7合格/0不合格** (ops-banner/
   rag-coverage 全段発火、 healthy) → bulk_approve 7/0 → publish:
@@ -176,7 +186,9 @@
    (g) 6-09 目の日焼け/眼鏡市場 (nbcf9df14e410 ¥500)、
    (h) 6-10 ティファール電気ケトル (n552e052f7be2 ¥500)、
    (i) 6-11 カロッツェリア Dolby Atmos (nd70c0d90f5f0 ¥500)、
-   (j) 6-11 シャオミ激安スピーカー (n54cdce174d62 ¥500)。
+   (j) 6-11 シャオミ激安スピーカー (n54cdce174d62 ¥500)、
+   (k) 6-12 Galaxy Z Fold8 ディスプレイ (nef4720dcb32f ¥500)、
+   (l) 6-12 推し活戦略=和泉芳怜記事 (n12e336a94735 ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様
 2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
