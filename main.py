@@ -142,6 +142,29 @@ _REASON_MAP = {
 }
 
 
+def _strip_title_meta(title: str) -> str:
+    """Strip LLM prompt-instruction artifacts from an extracted title.
+
+    The publish title is pulled from the body H1 (see _extract_japanese_title),
+    which bypasses the quality gate. LLMs sometimes echo the prompt's
+    length budget ('35〜45文字') back into the H1 as a trailing annotation,
+    e.g. '…嘘だった。（35文字）' — this shipped live on note nd704d3e75847
+    (2026-06-15). Remove trailing （N文字）/(N文字)/【N文字】 meta notes,
+    optionally a range (35〜45文字), and tidy leftover punctuation.
+    """
+    if not title:
+        return title
+    cleaned = _re_title_meta.sub("", title).rstrip("。、． 　")
+    return cleaned.strip()
+
+
+# Trailing char-count annotation the LLM may echo from the title-length
+# prompt rule into the H1 (（35文字） / (35〜45文字) / 【70文字】).
+_re_title_meta = re.compile(
+    r"[（(【]\s*\d+\s*(?:[〜～~\-–]\s*\d+\s*)?文字\s*[）)】]\s*$",
+)
+
+
 def _extract_japanese_title(content: str) -> str:
     """Extract the Japanese article title from generated content.
 
@@ -150,6 +173,9 @@ def _extract_japanese_title(content: str) -> str:
     2. First line starting with 【...】 or 「...」 (Gemma3 often places title this way)
     3. First H2 ('## ') that is NOT a section heading (導入, はじめに, etc.)
     4. First H2 fallback
+
+    The chosen title is passed through _strip_title_meta to drop any
+    prompt-instruction artifacts (（N文字） length notes) before return.
     """
     if not content:
         return ""
@@ -167,12 +193,12 @@ def _extract_japanese_title(content: str) -> str:
         if line.startswith("# ") and not line.startswith("## "):
             title = line[2:].strip()
             if title and not _is_mostly_ascii(title):
-                return title[:100]
+                return _strip_title_meta(title[:100])
 
     # Priority 2: First line starting with 【 or 「 (Gemma3 title pattern)
     for line in lines[:3]:  # Only check first 3 lines
         if (line.startswith("【") or line.startswith("「")) and not _is_mostly_ascii(line):
-            return line[:100]
+            return _strip_title_meta(line[:100])
 
     # Priority 3: First H2 that's NOT a section heading
     first_section_h2 = None
@@ -183,12 +209,12 @@ def _extract_japanese_title(content: str) -> str:
             clean = title.split("：", 1)[0].split(":", 1)[0].strip()
             if title and not _is_mostly_ascii(title):
                 if clean not in section_words:
-                    return title[:100]
+                    return _strip_title_meta(title[:100])
                 if first_section_h2 is None:
                     first_section_h2 = title
 
     # Priority 4: Fallback to first section H2 (better than English source)
-    return (first_section_h2 or "")[:100]
+    return _strip_title_meta((first_section_h2 or "")[:100])
 
 
 def _is_mostly_ascii(text: str) -> bool:
