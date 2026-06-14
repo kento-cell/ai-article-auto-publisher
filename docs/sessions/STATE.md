@@ -6,11 +6,28 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-10 07:37 JST
+2026-06-15 07:18 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-15: **`/routine` 3回目稼働完遂**. learn (280 + RAG 再index **567 chunks**) →
+  generate **5合格 / 2不合格** (却下: K-beauty テクスチャー=title_fulfillment
+  shop 15/20、 Siri AI=`〇〇について教えて` 伏字 forbidden) → bulk_approve 5/0 →
+  publish: **zenn 2本** queue git失敗→scrap (Fable5ローカルLLMエージェント
+  scraps/643f20b2db9ef8、 Copilot代替OpenCode Go scraps/02be9d7754abc8)、
+  **note 3本** (NOTE_DAILY_LIMIT=4 + free-first 2): 岸みゆ写真集
+  (n6a931654eb90 **¥0**)、 上西怜ランジェリー (nc6651f484187 **¥0**)、
+  携帯ハサミ/シール交換文具 (nd704d3e75847 **¥500**)。 live API 全3本
+  price/can_read 検証済 (¥0×2 can_read=true、 ¥500 can_read=false paywall)、
+  捏造系 deny (N人に聞いた等) 検知0。 ⚠️ **note 2本がグラビア寄り** (岸みゆ/上西怜、
+  品質ゲートは合格・煽りブラケットは本文回収型)。 membership auto-add 全fail (既知)。
+  🔧 **タイトル artifact 修正 (`2bd045c`)**: 携帯ハサミ note の公開タイトル末尾に
+  プロンプトの文字数指示「（35文字）」が漏出 (本文 H1→`_extract_japanese_title`
+  抽出経由、 incident #21 の残ギャップ)。 `_strip_title_meta` で
+  （N文字）/(N〜M文字)/【N文字】 を抽出時除去 (正規ブラケットは保持)、 deny
+  test 42+7+3 PASS。 **既公開ライブタイトルは手動修正候補** (Next Actions #1-m、
+  Selenium 編集コスト高 + no-exhaustive-cleanup 方針で自走修正せず)
 - 6-12: **`/routine` 2回目稼働完遂**. learn (280 + RAG 再index) → generate
   **4合格 / 3不合格** (却下: 「Fable5自分以上に信頼」=`〇〇`伏字、 韓国カフェ=title
   fulfillment+伏字、 エクソソーム=`〇〇mg/10ml`+`〇〇大学の研究` 伏字 deny) →
@@ -188,9 +205,12 @@
    (i) 6-11 カロッツェリア Dolby Atmos (nd70c0d90f5f0 ¥500)、
    (j) 6-11 シャオミ激安スピーカー (n54cdce174d62 ¥500)、
    (k) 6-12 Galaxy Z Fold8 ディスプレイ (nef4720dcb32f ¥500)、
-   (l) 6-12 推し活戦略=和泉芳怜記事 (n12e336a94735 ¥500)。
+   (l) 6-12 推し活戦略=和泉芳怜記事 (n12e336a94735 ¥500)、
+   (m) 6-15 携帯ハサミ/シール交換文具 (nd704d3e75847 ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
-   公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様
+   公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様。
+   ⚠️ (m) は公開タイトル末尾に「（35文字）」混入 (コードは `2bd045c` で修正済、
+   既公開分のみ残存) → membership 追加ついでにタイトルから「（35文字）」を手動削除推奨
 2. ~~note 画像 regen (K-beauty 3 本)~~ **✅完了 (6-03)**: PDRN/シカ/トラブル別を
    kbeauty_poster preset で cover+inline 計 15 枚 ChatGPT 再生成 → edit_article
    差し替え (generated=3 uploaded=3 failed=0)。 og:image 3 本とも新規 .png に更新確認、
@@ -234,11 +254,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [「タイピングが痛い…」を解決する新感覚リストレスト。長時間の作業もまるで無重力のような快適さです…](https://note.com/kento_kanazawa/n/na60583526f49?app_launch=false)
-- [山崎実業の部屋干しグッズで「ピンチハンガーかさばる問題」を解決！ カーテンレールを有効活用できる…](https://note.com/kento_kanazawa/n/nec4313794bf3?app_launch=false)
-- [時計を見るたび急かされる人へ。秒針をなくした自動巻きという答え…](https://note.com/kento_kanazawa/n/ndce5692a1f19?app_launch=false)
-- [MemoryVLA++: Temporal Modeling via Memory and Im…](https://zenn.dev/kento_cell/scraps/3011d8955b7aa3)
-- [Latent Spatial Memory for Video World Models…](https://zenn.dev/kento_cell/scraps/9a4b1af242e6d9)
+- [和泉芳怜、ビキニ姿でたわわな柔らか美ボディ披露…](https://note.com/kento_kanazawa/n/n12e336a94735?app_launch=false)
+- [きめ細かさの限界へ！ 次期Galaxy Z Fold8、ディスプレイの鮮明さがさらに向上か…](https://note.com/kento_kanazawa/n/nef4720dcb32f?app_launch=false)
+- [K-POP 4 世代 主要グループ メンバー別 メイク 3-5 タイプ + 再現に必要な日本入手…](https://note.com/kento_kanazawa/n/n1bb1790e9701?app_launch=false)
+- [Anthropicの新モデル「Claude Fable 5 & Mythos 5」を徹底解説…](https://zenn.dev/kento_cell/scraps/42b5e7ff0a28db)
+- [スタミナに注目！ 次期「Galaxy S27 Pro」は6.5型で5000mAhバッテリー搭載か…](https://note.com/kento_kanazawa/n/n3570c3d68048?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
