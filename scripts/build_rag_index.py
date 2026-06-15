@@ -127,10 +127,21 @@ def _load_learning_chunks(source_path: Path) -> list[Chunk]:
     raw = source_path.read_text(encoding="utf-8")
     chunks: list[Chunk] = []
     idx = 0
+
+    def _emit(text: str, title: str) -> None:
+        nonlocal idx
+        chunks.append(Chunk(
+            text=text,
+            section_title=title,
+            section_index=idx,
+            source_file=source_path.name,
+        ))
+        idx += 1
+
     for title, body in _split_h2_sections(raw):
+        lines = body.splitlines()
         bullets = [
-            ln.strip() for ln in body.splitlines()
-            if ln.strip().startswith("- ")
+            ln.strip() for ln in lines if ln.strip().startswith("- ")
         ]
         # A bullet is "example-like" when it carries an engagement marker
         # (♥) or is a bracketed title link ("- [..."). Stat bullets like
@@ -138,26 +149,31 @@ def _load_learning_chunks(source_path: Path) -> list[Chunk]:
         example_bullets = [
             b for b in bullets if "♥" in b or b.startswith("- [")
         ]
-        if (
-            len(example_bullets) >= 2
-            and len(example_bullets) >= len(bullets) / 2
-        ):
+        # Split into per-example chunks when this H2 is an example list:
+        # its title says 例 (split even a single example), or most of its
+        # bullets are concrete examples (robust to title-wording drift).
+        is_example_section = bool(
+            ("例" in title and example_bullets)
+            or (
+                len(example_bullets) >= 2
+                and len(example_bullets) >= len(bullets) / 2
+            )
+        )
+        if is_example_section:
             for b in example_bullets:
-                chunks.append(Chunk(
-                    text=f"## {title}\n{b}",
-                    section_title=title,
-                    section_index=idx,
-                    source_file=source_path.name,
-                ))
-                idx += 1
+                _emit(f"## {title}\n{b}", title)
+            # Preserve everything that ISN'T an example bullet — trailing
+            # directive prose ("...避けるか別の切り口で書き直すこと") and any
+            # non-example stat bullets — as one residual chunk, so no
+            # guidance is dropped from the index (Codex review 2026-06-15).
+            residual = "\n".join(
+                ln for ln in lines
+                if ln.strip() and ln.strip() not in example_bullets
+            ).strip()
+            if residual:
+                _emit(f"## {title}\n{residual}", title)
         else:
-            chunks.append(Chunk(
-                text=f"## {title}\n{body}",
-                section_title=title,
-                section_index=idx,
-                source_file=source_path.name,
-            ))
-            idx += 1
+            _emit(f"## {title}\n{body}", title)
     return chunks
 
 
