@@ -155,13 +155,55 @@ new vis.Network(document.getElementById('net'),{{nodes,edges}},{{
 </script></body></html>"""
 
 
+def _render_3d(vecs, labels, texts, layout: str, out_path: str) -> int:
+    """Rotatable 3D scatter (plotly) — projects 768-dim vectors to 3 dims and
+    plots them as a point cloud you can drag-rotate / zoom / hover. Fully
+    self-contained HTML (plotly.js inlined, no internet needed)."""
+    import plotly.graph_objects as go
+
+    norm = vecs / (np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-9)
+    n = len(norm)
+    if layout == "pca" or n < 6:
+        from sklearn.decomposition import PCA
+        xyz = PCA(n_components=3, random_state=0).fit_transform(norm)
+    else:
+        from sklearn.manifold import TSNE
+        perp = max(5, min(30, (n - 1) // 3))
+        xyz = TSNE(
+            n_components=3, perplexity=perp, init="pca",
+            random_state=0, max_iter=600,
+        ).fit_transform(norm)
+
+    fig = go.Figure()
+    for name in [c for c in _PALETTE if c in set(labels)]:
+        idx = [i for i, l in enumerate(labels) if l == name]
+        fig.add_trace(go.Scatter3d(
+            x=xyz[idx, 0], y=xyz[idx, 1], z=xyz[idx, 2],
+            mode="markers", name=f"{name} ({len(idx)})",
+            marker=dict(size=4, color=_PALETTE[name], opacity=0.85),
+            text=[f"[{name}] {texts[i][:120]}" for i in idx],
+            hovertemplate="%{text}<extra></extra>",
+        ))
+    fig.update_layout(
+        title=f"RAG vectors — {n} chunks projected 768D→3D ({layout}). drag to rotate.",
+        template="plotly_dark", showlegend=True,
+        scene=dict(xaxis_title="", yaxis_title="", zaxis_title=""),
+        margin=dict(l=0, r=0, t=40, b=0),
+    )
+    fig.write_html(out_path, include_plotlyjs=True, full_html=True)
+    print(f"wrote {out_path}  ({n} points, 768D->3D {layout}, self-contained)")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--neighbors", type=int, default=4, help="kNN edges per node")
-    ap.add_argument("--min-sim", type=float, default=0.6, help="min cosine to draw an edge")
+    ap.add_argument("--mode", choices=["graph", "3d"], default="graph",
+                    help="graph = Obsidian-style kNN node-link; 3d = rotatable point cloud")
+    ap.add_argument("--neighbors", type=int, default=4, help="kNN edges per node (graph mode)")
+    ap.add_argument("--min-sim", type=float, default=0.6, help="min cosine to draw an edge (graph mode)")
     ap.add_argument("--layout", choices=["tsne", "pca"], default="tsne")
     ap.add_argument("--collections", default="", help="comma list to restrict (default: all)")
-    ap.add_argument("--out", default="data/rag_graph.html")
+    ap.add_argument("--out", default="", help="output path (default depends on --mode)")
     args = ap.parse_args()
 
     cols = [c.strip() for c in args.collections.split(",") if c.strip()] or None
@@ -172,6 +214,15 @@ def main() -> int:
         return 1
     print(f"  {len(vecs)} vectors, dim={vecs.shape[1]}, "
           f"collections={sorted(set(labels))}")
+
+    if args.mode == "3d":
+        out_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            args.out or "data/rag_graph_3d.html",
+        )
+        print(f"projecting 768D->3D ({args.layout}) ...")
+        return _render_3d(vecs, labels, texts, args.layout, out_path)
+
     print(f"projecting ({args.layout}) + building kNN graph ...")
     nodes, edges = _build(vecs, labels, texts, args.neighbors, args.min_sim, args.layout)
 
@@ -186,7 +237,8 @@ def main() -> int:
         edges=json.dumps(edges, ensure_ascii=False),
     )
     out_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), args.out
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        args.out or "data/rag_graph.html",
     )
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(out_html)
