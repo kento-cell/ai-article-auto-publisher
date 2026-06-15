@@ -271,13 +271,27 @@ def main() -> int:
     )
     parser.add_argument(
         "--rebuild", action="store_true",
-        help="Wipe the entire index directory before building",
+        help="(default behaviour now) wipe the entire index dir first",
     )
     args = parser.parse_args()
 
-    if args.rebuild and _INDEX_PATH.exists():
-        shutil.rmtree(_INDEX_PATH)
-        print(f"wiped {_INDEX_PATH}")
+    # Always wipe the whole index dir before building. chromadb's
+    # delete_collection (used by _build_collection on every rebuild) leaves
+    # orphaned HNSW segment directories behind — a slow leak that had grown
+    # the index to 72MB / 192 segment dirs for only 7 live collections / 586
+    # vectors by 2026-06-15, compounded daily by the --learn auto-reindex.
+    # A full rmtree guarantees the rebuilt index holds only live segments
+    # (drops it back to ~14MB). --rebuild is kept for back-compat; this is
+    # now the unconditional default. (_ = args.rebuild, intentionally unused.)
+    _ = args.rebuild
+    if _INDEX_PATH.exists():
+        try:
+            shutil.rmtree(_INDEX_PATH)
+            print(f"wiped {_INDEX_PATH} (full rebuild — avoids segment-dir leak)")
+        except OSError as exc:
+            # e.g. a stray process holding chroma.sqlite3 open on Windows.
+            # Fall back to in-place rebuild rather than aborting the reindex.
+            print(f"  WARN: could not wipe index dir ({exc}); rebuilding in place")
 
     print("loading embedding model ...")
     from sentence_transformers import SentenceTransformer
