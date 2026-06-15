@@ -47,6 +47,15 @@ if str(_REPO) not in sys.path:
 _INDEX_PATH = _REPO / "data" / "rag_index"
 _MODEL_NAME = "intfloat/multilingual-e5-base"
 
+# Chunker schema version. BUMP this whenever the chunking strategy changes
+# (and keep generators/rag_retriever.py::_EXPECTED_CHUNKER_VERSION in sync).
+# After a successful build it is written to <index>/chunker_version.txt; the
+# retriever warns when the on-disk index was built by a different version,
+# so a stale index after a chunking change can't masquerade as healthy
+# (Codex review 2026-06-15, finding #3).
+_CHUNKER_VERSION = "2026-06-15-per-example"
+_VERSION_SENTINEL = "chunker_version.txt"
+
 
 @dataclass
 class Chunk:
@@ -371,7 +380,15 @@ def main() -> int:
     ts_count = _build_collection(client, model, "thumbnail_styles", style_chunks)
     print(f"  thumbnail_styles: {ts_count} chunk(s) from generators/game_homage_styles.py")
     total += ts_count
-    print(f"DONE - total chunks indexed: {total}")
+    # Stamp the index with the chunker version so the retriever can detect
+    # a stale on-disk index after a chunking-strategy change.
+    try:
+        (_INDEX_PATH / _VERSION_SENTINEL).write_text(
+            _CHUNKER_VERSION, encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"  WARN: could not write version sentinel: {exc}")
+    print(f"DONE - total chunks indexed: {total} (chunker {_CHUNKER_VERSION})")
     print(f"index: {_INDEX_PATH}")
 
     if args.test:
