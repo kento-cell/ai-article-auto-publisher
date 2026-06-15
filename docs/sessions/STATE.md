@@ -11,6 +11,17 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-15 (4th): **RAG 自動チューニング全完了** (`bba85dd`、 user「すべてやって完璧に
+  自動でチューニング」)。 ① **threshold 自動較正ハーネス** `calibrate_rag_thresholds.py`
+  (正例/負例で Youden's J grid-search、 再現可能) → **0.825** 算出 (successes
+  recall1.0/fpr0.0)、 `_build_rag_learned_block` に反映 (env `RAG_LEARN_THRESHOLD`
+  上書き可)。 旧0.55 の Galaxy→0.765 リーク除去、 K-beauty/AI 発火継続を実測。
+  ② **reranker A/B 計測** `measure_rag_reranker.py` → **bi 5/5 vs rerank 3/5** で
+  reranker は dup 検出を悪化と判明、 `RAG_RERANKER=false` が正解と確定 (想定が計測で
+  覆った)。 ③ **index version sentinel** (build が書き retriever が不一致 WARNING)。
+  ④ **deny 陰性corpus +5** (gadget/kbeauty/shop/news/travel 全0 hits、 42+7+**8**)。
+  ⑤ **dup-check-summary** 1行を generate 終端に (観測のみ、 publish 不変)。 全段
+  import/py_compile/deny42+7+8/title PASS。 詳細 memory `project_rag_migration`
 - 6-15 (2nd): **RAG 有効性レビュー + 自走改良 (壊さず)**。 実コード+今朝の generate
   ログで監査 → 「配線済みだが死蔵」3件特定 (reranker dead-code、 rag-learn が
   static fallback、 dup-check log-only)。 安全な改良を deny regression
