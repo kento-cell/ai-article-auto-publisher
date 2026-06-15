@@ -142,6 +142,23 @@ _REASON_MAP = {
 }
 
 
+# Trailing char-count annotation an LLM may echo from the title-length
+# prompt rule into the H1: （35文字） / (35〜45文字) / 【70文字】, optionally
+# a 以内/程度/前後 suffix, optionally wrapped by an outer 」』】 from a quoted
+# title (「タイトル（35文字）」). Brackets are matched as proper pairs so a
+# mismatched （…) does not over-match. The optional ``close`` group captures
+# the outer closing quote so it can be preserved, not deleted.
+_re_title_meta = re.compile(
+    r"\s*"
+    r"(?:"
+    r"（\s*\d+\s*(?:[〜～~\-–]\s*\d+\s*)?文字(?:以内|程度|前後)?\s*）"
+    r"|\(\s*\d+\s*(?:[〜～~\-–]\s*\d+\s*)?文字(?:以内|程度|前後)?\s*\)"
+    r"|【\s*\d+\s*(?:[〜～~\-–]\s*\d+\s*)?文字(?:以内|程度|前後)?\s*】"
+    r")"
+    r"\s*(?P<close>[」』】])?\s*$",
+)
+
+
 def _strip_title_meta(title: str) -> str:
     """Strip LLM prompt-instruction artifacts from an extracted title.
 
@@ -149,20 +166,17 @@ def _strip_title_meta(title: str) -> str:
     which bypasses the quality gate. LLMs sometimes echo the prompt's
     length budget ('35〜45文字') back into the H1 as a trailing annotation,
     e.g. '…嘘だった。（35文字）' — this shipped live on note nd704d3e75847
-    (2026-06-15). Remove trailing （N文字）/(N文字)/【N文字】 meta notes,
-    optionally a range (35〜45文字), and tidy leftover punctuation.
+    (2026-06-15). Remove the trailing （N文字）/(N文字)/【N文字】 meta note
+    (optional range / 以内・程度・前後 suffix), preserving any outer closing
+    quote. Leftover trailing punctuation is tidied ONLY when the annotation
+    actually matched, so titles without an artifact are returned untouched.
     """
     if not title:
         return title
-    cleaned = _re_title_meta.sub("", title).rstrip("。、． 　")
-    return cleaned.strip()
-
-
-# Trailing char-count annotation the LLM may echo from the title-length
-# prompt rule into the H1 (（35文字） / (35〜45文字) / 【70文字】).
-_re_title_meta = re.compile(
-    r"[（(【]\s*\d+\s*(?:[〜～~\-–]\s*\d+\s*)?文字\s*[）)】]\s*$",
-)
+    cleaned, n = _re_title_meta.subn(lambda m: m.group("close") or "", title)
+    if not n:
+        return title
+    return cleaned.rstrip("。、． 　").strip()
 
 
 def _extract_japanese_title(content: str) -> str:
@@ -188,17 +202,24 @@ def _extract_japanese_title(content: str) -> str:
 
     lines = [line.strip() for line in content.split("\n") if line.strip()]
 
+    # Strip the meta artifact BEFORE the non-empty/ASCII test and the
+    # 100-char truncation: a title that is only an artifact must fall
+    # through to the next candidate, and a 96-char title + （35文字）
+    # must not leave a '（35文' fragment after truncation.
+
     # Priority 1: First H1
     for line in lines:
         if line.startswith("# ") and not line.startswith("## "):
-            title = line[2:].strip()
+            title = _strip_title_meta(line[2:].strip())
             if title and not _is_mostly_ascii(title):
-                return _strip_title_meta(title[:100])
+                return title[:100]
 
     # Priority 2: First line starting with 【 or 「 (Gemma3 title pattern)
     for line in lines[:3]:  # Only check first 3 lines
         if (line.startswith("【") or line.startswith("「")) and not _is_mostly_ascii(line):
-            return _strip_title_meta(line[:100])
+            cand = _strip_title_meta(line)
+            if cand:
+                return cand[:100]
 
     # Priority 3: First H2 that's NOT a section heading
     first_section_h2 = None
@@ -209,12 +230,14 @@ def _extract_japanese_title(content: str) -> str:
             clean = title.split("：", 1)[0].split(":", 1)[0].strip()
             if title and not _is_mostly_ascii(title):
                 if clean not in section_words:
-                    return _strip_title_meta(title[:100])
-                if first_section_h2 is None:
+                    cand = _strip_title_meta(title)
+                    if cand:
+                        return cand[:100]
+                elif first_section_h2 is None:
                     first_section_h2 = title
 
     # Priority 4: Fallback to first section H2 (better than English source)
-    return _strip_title_meta((first_section_h2 or "")[:100])
+    return _strip_title_meta(first_section_h2 or "")[:100]
 
 
 def _is_mostly_ascii(text: str) -> bool:
