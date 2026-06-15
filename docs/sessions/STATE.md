@@ -11,6 +11,20 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-15 (6th): **`/routine` 全改修フル適用の初回稼働**. learn (full-wipe reindex
+  **591 chunks**、 per-example chunking + sentinel) → generate **7合格/0不合格**
+  (全 B/A) → publish: **note 1本** 韓国カフェ (nac0669e0995d **¥0**、 live
+  price=0/can_read=true、 公開タイトル捏造deny=NONE)、 **zenn 2本** scrap
+  (マルチモーダルAI scraps/e96e63dd6cd622、 Transformer部品分解 scraps/620a397e529e36)。
+  cadence cap 本日4本目で1枠。 **改修の発火確認**: `[dup-check-summary]`(新規)、
+  `[rag-learn:note] success=0 anti=1`(0.825で選択的、 旧0.55の乱射を抑制)、 hallu-guard
+  8回、 ops-banner、 stale警告なし、 全タスク gemma4。 🔧 **リグレッション検出+修正**
+  (`572acb1`): `--learn` auto-reindex が cp932 で UTF-8出力(私の em-dash)をデコード失敗
+  →`r.stdout=None`→reindex 偽スキップ。 UTF-8 decode + None ガードで修正、 reindex 正常化。
+  ⚠️ **品質懸念**: gate が **オフブランドの Reddit life-essay 再構成3本を合格**させた
+  (スポーツ観戦の自国応援心理 / ふるさと納税配送トラブル / K-drama→医療批評=タイトル負け)。
+  全7本が「正直、…」定型開口(gemma4 の癖)。 3本を **❌却下** (publish前に除外、
+  オンブランドのみ公開)。 アイメイク(K-beauty)は✅承認で翌日繰越。 membership 不要(¥0)
 - 6-15 (5th): **全生成タスクを gemma4:e4b に統一** (`4ddf24c`、 user「すべて gemma4」)。
   Workflow 4並列監査で全モデル選択箇所を洗い出し (72 findings): default 2層
   (`llm_config._DEFAULT_MODEL` / `local_llm.DEFAULT_MODEL` 両 gemma3:12b) +
