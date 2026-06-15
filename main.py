@@ -5738,14 +5738,22 @@ def main():
                 builder = Path(__file__).resolve().parent / "scripts" / "build_rag_index.py"
                 if builder.exists():
                     logger.info("=== RAG auto-reindex 開始 ===")
+                    # build_rag_index reconfigures its stdout to UTF-8, so
+                    # decode as UTF-8 here — NOT text=True, which uses the
+                    # Windows locale (cp932) and crashed the reader thread on
+                    # non-ASCII output (em dash in the wipe message), leaving
+                    # r.stdout=None and aborting the reindex log (2026-06-15).
+                    # errors='replace' + the (r.stdout or "") guard make it
+                    # robust to any future non-ASCII chunk names.
                     r = subprocess.run(
                         [sys.executable, str(builder)],
-                        capture_output=True, text=True, timeout=300,
+                        capture_output=True, encoding="utf-8",
+                        errors="replace", timeout=300,
                     )
                     if r.returncode == 0:
                         # Echo just the chunk-summary lines, not the
                         # full embed-model loading noise.
-                        for line in r.stdout.splitlines():
+                        for line in (r.stdout or "").splitlines():
                             if "chunk(s)" in line or "DONE" in line:
                                 logger.info("  %s", line.strip())
                         logger.info("=== RAG auto-reindex 完了 ===")
