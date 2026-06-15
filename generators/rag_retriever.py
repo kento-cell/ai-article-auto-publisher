@@ -40,8 +40,10 @@ _DEFAULT_INDEX_PATH = _REPO / "data" / "rag_index"
 _DEFAULT_MODEL = "intfloat/multilingual-e5-base"
 
 # Bump when chunking strategy or embedding model changes so a stale
-# index is detected and rebuild is forced.
+# index is detected. Must match build_rag_index.py::_CHUNKER_VERSION —
+# _ensure_loaded() warns when the on-disk index sentinel disagrees.
 _INDEX_VERSION = "v1"
+_EXPECTED_CHUNKER_VERSION = "2026-06-15-per-example"
 
 
 @dataclass
@@ -119,10 +121,33 @@ class RagRetriever:
             self._client = chromadb.PersistentClient(
                 path=str(self._index_path),
             )
+            self._warn_if_stale_index()
             return True
         except Exception as exc:  # noqa: BLE001
             logger.warning("RAG retriever load failed: %s", exc)
             return False
+
+    def _warn_if_stale_index(self) -> None:
+        """Warn (once) when the on-disk index was built by a different
+        chunker version than this code expects.
+
+        Read-only: never rebuilds (the retriever must stay side-effect free
+        and rebuild is expensive). The --learn pipeline rebuilds daily, so a
+        loud warning is enough to catch a stale index after a chunking
+        change instead of letting it masquerade as healthy (Codex #3).
+        """
+        sentinel = self._index_path / "chunker_version.txt"
+        try:
+            found = sentinel.read_text(encoding="utf-8").strip() if sentinel.exists() else None
+        except OSError:
+            found = None
+        if found != _EXPECTED_CHUNKER_VERSION:
+            logger.warning(
+                "RAG index chunker version mismatch (on-disk=%r, expected=%r) "
+                "— rebuild with scripts/build_rag_index.py (or run --learn) so "
+                "retrieval reflects the current chunking.",
+                found, _EXPECTED_CHUNKER_VERSION,
+            )
 
     def retrieve(
         self,

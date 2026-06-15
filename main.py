@@ -947,14 +947,50 @@ def _check_topic_duplication(
                 "  similar: (sim %.3f) %s",
                 f["score"], f["title"],
             )
+    # Record for the run-level summary. In autonomous /routine runs nobody
+    # reads per-article WARN lines, so generate emits one greppable
+    # [dup-check-summary] line at the end (observation only — never blocks,
+    # publish path unchanged). Cleared by _log_dup_check_summary().
+    _DUP_FLAGS_THIS_RUN.append((title[:80], len(flagged), flagged[0]["score"]))
     return flagged
+
+
+# Run-level accumulator for the dup-check summary (see _check_topic_duplication).
+_DUP_FLAGS_THIS_RUN: list[tuple[str, int, float]] = []
+
+
+def _log_dup_check_summary() -> None:
+    """Emit one [dup-check-summary] line for the whole generate run and
+    reset the accumulator. Observation only — no blocking, no publish-path
+    effect (2026-06-15 soft observation, RAG review follow-up)."""
+    flagged = list(_DUP_FLAGS_THIS_RUN)
+    _DUP_FLAGS_THIS_RUN.clear()
+    if not flagged:
+        logger.info("[dup-check-summary] no near-duplicate topics this run")
+        return
+    logger.warning(
+        "[dup-check-summary] %d topic(s) matched a past article — review for "
+        "true duplicates before publish:", len(flagged),
+    )
+    for title, n, top in sorted(flagged, key=lambda x: x[2], reverse=True):
+        logger.warning("  (top sim %.3f, %d match) %s", top, n, title)
+
+
+# Calibrated 2026-06-15 by scripts/calibrate_rag_thresholds.py against a
+# labelled positive/negative set: at 0.825 the `successes` collection
+# separates topical matches from unrelated topics perfectly (recall 1.0,
+# fpr 0.0) and `anti_patterns` leaks no false positives (fpr 0.0). The old
+# hand-picked 0.55 let unrelated topics pull generic chunks (Galaxy→0.765).
+# Override at runtime with RAG_LEARN_THRESHOLD. Re-run the calibrator after
+# any chunking / corpus change.
+_RAG_LEARN_THRESHOLD_DEFAULT = 0.825
 
 
 def _build_rag_learned_block(
     query_seed: str,
     platform: str,
     top_k_each: int = 3,
-    score_threshold: float = 0.55,
+    score_threshold: float | None = None,
 ) -> str:
     """RAG-augmented replacement for ``_load_learned_block``.
 
@@ -966,16 +1002,30 @@ def _build_rag_learned_block(
     should reduce both prompt-token cost and the "ignore the noise"
     failure mode (cf. 2026-05-11 H2 全滅 incident).
 
-    The static path remains the default — the flag must be set
-    explicitly. Returns "" silently when:
+    The bi-encoder floor defaults to the calibrated
+    ``_RAG_LEARN_THRESHOLD_DEFAULT`` (overridable via ``RAG_LEARN_THRESHOLD``
+    or the ``score_threshold`` arg). The static path remains the default —
+    the flag must be set explicitly. Returns "" silently when:
       - flag is off, OR
       - RAG deps / index are missing, OR
-      - no chunks clear ``score_threshold``.
+      - no chunks clear the threshold.
     """
     if os.environ.get("RAG_ENABLED", "false").lower() not in (
         "true", "1", "yes", "on",
     ):
         return ""
+    # Resolve threshold: explicit arg > env override > calibrated default.
+    if score_threshold is None:
+        score_threshold = _RAG_LEARN_THRESHOLD_DEFAULT
+        _env = os.environ.get("RAG_LEARN_THRESHOLD")
+        if _env:
+            try:
+                score_threshold = float(_env)
+            except ValueError:
+                logger.warning(
+                    "RAG_LEARN_THRESHOLD=%r is not a float — using %.3f",
+                    _env, score_threshold,
+                )
     try:
         from generators.rag_retriever import RagRetriever
     except ImportError:
@@ -999,7 +1049,9 @@ def _build_rag_learned_block(
     if not anti_hits and not succ_hits:
         return ""
 
-    parts: list[str] = ["\n## 学習済みパターン (この記事に関連性 0.55+)\n"]
+    parts: list[str] = [
+        f"\n## 学習済みパターン (この記事に関連性 {score_threshold:.2f}+)\n",
+    ]
     if succ_hits:
         parts.append("### マネすべき (上位エンゲ実績)")
         for h in succ_hits:
@@ -4022,6 +4074,9 @@ def generate_and_score(
     if claude:
         claude.close()
 
+    # One greppable dup-check summary per generate run (every entry path —
+    # full run, dry-run, generate-only — returns through here).
+    _log_dup_check_summary()
     return approved, rejected
 
 
