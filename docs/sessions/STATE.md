@@ -11,6 +11,17 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-15 (2nd): **RAG 有効性レビュー + 自走改良 (壊さず)**。 実コード+今朝の generate
+  ログで監査 → 「配線済みだが死蔵」3件特定 (reranker dead-code、 rag-learn が
+  static fallback、 dup-check log-only)。 安全な改良を deny regression
+  (42+7+3、 clean-tech=0 不変) で都度検証しつつ実施: ① **hallu-guard multi-query
+  を `RAG_RERANKER` から独立** (`d2c69c7`、 RAG_RERANKER=false で single-query
+  退行していたバグ修正、 ログラベル rerank→sim)。 ② **学習2コレクションの per-example
+  chunking** (`a92c843`、 `_load_learning_chunks`、 具体例を個別 chunk 化)。 再構築後
+  anti 2→7・succ 3→8・hallu 18不変、 計 567→582。 実検索で rag-learn 発火確認
+  (K-beauty 0.855/AI副業 0.873、 Galaxy 0.765 で誤マッチせず)。 **未対応 (要判断)**:
+  reranker ON 計測 (メモリ圧 trade-off)、 dup-check soft-gate 化 (publish 判定波及)。
+  詳細 memory `project_rag_migration`
 - 6-15: **`/routine` 3回目稼働完遂**. learn (280 + RAG 再index **567 chunks**) →
   generate **5合格 / 2不合格** (却下: K-beauty テクスチャー=title_fulfillment
   shop 15/20、 Siri AI=`〇〇について教えて` 伏字 forbidden) → bulk_approve 5/0 →
