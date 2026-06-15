@@ -22,6 +22,16 @@
   (K-beauty 0.855/AI副業 0.873、 Galaxy 0.765 で誤マッチせず)。 **未対応 (要判断)**:
   reranker ON 計測 (メモリ圧 trade-off)、 dup-check soft-gate 化 (publish 判定波及)。
   詳細 memory `project_rag_migration`
+- 6-15 (3rd): **RAG 改良の end-to-end 検証 + Codex レビュー対応**。 ユーザー指摘
+  「GPT5.4 も Gemma3 も使ってない」を受け、 ①**Gemma3 実生成 (`--dry-run`)** で
+  `[rag-learn:note] success=3 anti=3 (block=827 chars)` 発火を確認 (embedding でなく
+  実LLM経路で chunking 改良が効くことを実証、 監査時 0→3)。 ②**Codex(GPT-5.4) 独立
+  レビュー** で実バグ検出: `_load_learning_chunks` が example 分割時に指示 prose を
+  破棄 → **`f99e4ad` で residual chunk 化修正** (anti 7→8、 prose 0.845 で取得可、
+  deny 42+7+3 不変)。 **未対応 Codex 指摘** (memory に記録): threshold 0.55 calibration
+  (#1、 私の「誤マッチせず」は不正確=0.765>0.55 で当たる)、 `_INDEX_VERSION` 自動無効化
+  (#3、 実害低)、 RAG陰性テスト拡充 (#4)。 dry-run は proof 取得後 TaskStop で停止
+  (Sheets/投稿なしで副作用ゼロ)
 - 6-15: **`/routine` 3回目稼働完遂**. learn (280 + RAG 再index **567 chunks**) →
   generate **5合格 / 2不合格** (却下: K-beauty テクスチャー=title_fulfillment
   shop 15/20、 Siri AI=`〇〇について教えて` 伏字 forbidden) → bulk_approve 5/0 →
