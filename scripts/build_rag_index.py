@@ -101,6 +101,66 @@ def _load_chunks(source_path: Path) -> list[Chunk]:
     return chunks
 
 
+def _load_learning_chunks(source_path: Path) -> list[Chunk]:
+    """Finer-grained chunking for the auto-generated learning files
+    (quality_successes.md / quality_anti_patterns.md).
+
+    Why (audited 2026-06-15): these files mix two kinds of H2 section —
+      * aggregate stats ("採用すべきタイトル型: ブラケット無し 10件…") —
+        meta-text that no topical query matches above the 0.55 floor, and
+      * concrete title examples ("- [【保存版】韓国コスメ成分の正解…](♥4)") —
+        each example IS topic-bearing, so a related new topic SHOULD be
+        able to retrieve it.
+    The whole-H2 chunking (_load_chunks) buried the topical examples inside
+    a stat-heavy blob, so _build_rag_learned_block scored 0 hits and always
+    fell back to the static block ([rag-learn]=0 in the 6-15 generate log).
+
+    Here each concrete example bullet becomes its own chunk (the H2 title is
+    kept as context so マネすべき / 避けるべき polarity stays attached);
+    stat / prose sections stay whole. Used ONLY for the two learning
+    collections — hallucinations / ops_incidents / generation_guides keep
+    _load_chunks so their long-tuned retrieval behaviour is untouched.
+    """
+    if not source_path.exists():
+        print(f"  WARN: {source_path} missing — skipped")
+        return []
+    raw = source_path.read_text(encoding="utf-8")
+    chunks: list[Chunk] = []
+    idx = 0
+    for title, body in _split_h2_sections(raw):
+        bullets = [
+            ln.strip() for ln in body.splitlines()
+            if ln.strip().startswith("- ")
+        ]
+        # A bullet is "example-like" when it carries an engagement marker
+        # (♥) or is a bracketed title link ("- [..."). Stat bullets like
+        # "- ブラケット無し: 10件" have neither.
+        example_bullets = [
+            b for b in bullets if "♥" in b or b.startswith("- [")
+        ]
+        if (
+            len(example_bullets) >= 2
+            and len(example_bullets) >= len(bullets) / 2
+        ):
+            for b in example_bullets:
+                chunks.append(Chunk(
+                    text=f"## {title}\n{b}",
+                    section_title=title,
+                    section_index=idx,
+                    source_file=source_path.name,
+                ))
+                idx += 1
+        else:
+            chunks.append(Chunk(
+                text=f"## {title}\n{body}",
+                section_title=title,
+                section_index=idx,
+                source_file=source_path.name,
+            ))
+            idx += 1
+    return chunks
+
+
 def _load_past_article_chunks() -> list[Chunk]:
     """Build chunks from data/articles/*.json — one per article.
 
@@ -212,9 +272,16 @@ def main() -> int:
         # not saving" and surface the 有料エリア設定 fix.
         ("ops_incidents", _REPO / "docs/knowledge/ops_incidents.md"),
     ]
+    # The two auto-generated learning files get finer per-example chunking
+    # so concrete title examples become individually retrievable; every
+    # other collection keeps the long-tuned whole-H2 chunking.
+    _LEARNING_COLLECTIONS = {"anti_patterns", "successes"}
     total = 0
     for collection_name, source_path in plan:
-        chunks = _load_chunks(source_path)
+        if collection_name in _LEARNING_COLLECTIONS:
+            chunks = _load_learning_chunks(source_path)
+        else:
+            chunks = _load_chunks(source_path)
         count = _build_collection(client, model, collection_name, chunks)
         print(f"  {collection_name}: {count} chunk(s) from {source_path.name}")
         total += count
