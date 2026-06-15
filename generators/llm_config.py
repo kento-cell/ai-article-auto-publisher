@@ -1,9 +1,8 @@
 """Task-specific LLM model selection.
 
 Centralises which Ollama model is used for each pipeline task.
-All defaults stay at ``gemma3:12b`` so this layer is a pure no-op
-unless an ``LLM_MODEL_*`` env var is set — making rollout/rollback
-trivial.
+The default is ``gemma4:e4b`` (2026-06-15); a per-task ``LLM_MODEL_*``
+env var overrides it, making rollout/rollback trivial.
 
 Tasks:
     writer      — main article body generation
@@ -29,9 +28,10 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Default model for every task. Keep this aligned with the existing
-# ``DEFAULT_MODEL`` in ``local_llm.py`` so behaviour is unchanged when
-# no env vars are set.
-_DEFAULT_MODEL = "gemma3:12b"
+# ``DEFAULT_MODEL`` in ``local_llm.py``. 2026-06-15: flipped to gemma4:e4b so
+# all five tasks (and any no-arg LocalLLM() bypass site) default to gemma4 —
+# the per-task LLM_MODEL_* env vars still override when set.
+_DEFAULT_MODEL = "gemma4:e4b"
 
 _TASK_MODELS: dict[str, str] = {
     "writer":      os.environ.get("LLM_MODEL_WRITER",      _DEFAULT_MODEL),
