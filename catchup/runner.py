@@ -17,9 +17,37 @@ from .summarizer import summarize
 
 logger = logging.getLogger(__name__)
 
-# Hard ceiling on items we send to Gemma3 — protects against a feed
+# Hard ceiling on items we send to the LLM — protects against a feed
 # explosion (e.g. arXiv RSS dropping 200 papers at midnight UTC).
-_MAX_TO_SUMMARISE = 18
+# Raised 18->22 (2026-06-16) to match the deeper per-tier caps.
+_MAX_TO_SUMMARISE = 22
+
+# Slack renders very long messages awkwardly and may truncate; split the
+# digest into chunks at item boundaries and post each as its own message.
+_SLACK_CHUNK_CHARS = 3500
+
+
+def _chunk(msg: str, limit: int = _SLACK_CHUNK_CHARS) -> list[str]:
+    """Split a digest into <=limit-char chunks at blank-line (item)
+    boundaries so no item is cut mid-way."""
+    blocks = msg.split("\n\n")
+    chunks: list[str] = []
+    cur = ""
+    for b in blocks:
+        piece = (cur + "\n\n" + b) if cur else b
+        if len(piece) <= limit:
+            cur = piece
+        else:
+            if cur:
+                chunks.append(cur)
+            # A single block longer than the limit (rare) gets hard-split.
+            while len(b) > limit:
+                chunks.append(b[:limit])
+                b = b[limit:]
+            cur = b
+    if cur:
+        chunks.append(cur)
+    return chunks or [msg]
 
 
 def _cap(items: list[dict]) -> list[dict]:
@@ -71,23 +99,35 @@ def run(dry_run: bool = False) -> dict:
             or os.environ.get("SLACK_WEBHOOK_URL")
         )
         notifier = SlackNotifier(webhook_url=catchup_webhook)
-        ok = notifier._send(  # noqa: SLF001 - intentional reuse
-            {
-                "text": msg,
-                "mrkdwn": True,
-                "unfurl_links": False,
-                "unfurl_media": False,
-            }
-        )
+        chunks = _chunk(msg)
+        ok = True
+        for i, chunk in enumerate(chunks, 1):
+            tag = f"  ({i}/{len(chunks)})" if len(chunks) > 1 else ""
+            sent_ok = notifier._send(  # noqa: SLF001 - intentional reuse
+                {
+                    "text": (chunk + tag) if tag else chunk,
+                    "mrkdwn": True,
+                    "unfurl_links": False,
+                    "unfurl_media": False,
+                }
+            )
+            ok = ok and sent_ok
+            if not sent_ok:
+                logger.error("catchup: slack chunk %d/%d FAILED", i, len(chunks))
+                break
         if ok:
             dedup.mark_sent(capped)
-            logger.info("catchup: posted %d items to Slack", len(capped))
+            logger.info(
+                "catchup: posted %d items in %d Slack message(s)",
+                len(capped), len(chunks),
+            )
         else:
             logger.error("catchup: slack post FAILED — items NOT marked as sent")
         return {
             "fetched": len(raw),
             "new": len(new),
             "sent": len(capped) if ok else 0,
+            "messages": len(chunks),
             "ok": ok,
         }
     finally:

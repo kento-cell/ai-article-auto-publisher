@@ -10,8 +10,10 @@ from datetime import datetime, timedelta, timezone
 
 _JST = timezone(timedelta(hours=9))
 
-# Cap per-tier so the message stays scrollable on mobile.
-_TIER_CAPS = {1: 8, 2: 6, 3: 4}
+# Per-tier item caps. Raised 2026-06-16 (8/6/4 -> 10/7/5) for a meatier
+# digest; the runner now chunks long output across multiple Slack messages
+# so we no longer have to fit everything in one mobile-sized message.
+_TIER_CAPS = {1: 10, 2: 7, 3: 5}
 _TIER_HEADER = {
     1: ":fire: *Tier1 公式ラボ*",
     2: ":mag: *Tier2 コミュニティ注目*",
@@ -32,16 +34,29 @@ def _by_tier(items: list[dict], tier: int) -> list[dict]:
     return out[: _TIER_CAPS.get(tier, 5)]
 
 
+def _fmt_time(it: dict) -> str:
+    pub = it.get("published_at")
+    if isinstance(pub, datetime):
+        try:
+            return pub.astimezone(_JST).strftime("%m/%d %H:%M")
+        except (ValueError, OSError):
+            return ""
+    return ""
+
+
 def _line(it: dict) -> str:
     title = it["title"].replace("\n", " ").strip()
     summary = (it.get("jp_summary") or "").strip()
     score = it.get("score")
     score_tag = f"  ♥{score}" if score else ""
-    body = (
-        f"*{title}*{score_tag}\n"
-        f"{summary}\n" if summary else f"*{title}*{score_tag}\n"
-    )
-    body += f"_{it['source']}_ — <{it['url']}|link>"
+    when = _fmt_time(it)
+    when_tag = f"  ·  _{when}_" if when else ""
+    body = f"*{title}*{score_tag}{when_tag}\n"
+    if summary:
+        # The summary is already multi-line (6-9 lines); keep the line
+        # breaks so each fact reads on its own row in Slack.
+        body += f"{summary}\n"
+    body += f"{it['source']} — <{it['url']}|原文を読む>"
     return body
 
 
