@@ -1197,43 +1197,29 @@ def _retrieve_hallucination_warnings(
             canonical,
             article_content[:600],
         ]
-        _use_rerank = os.environ.get(
-            "RAG_RERANKER", "true",
-        ).lower() in ("true", "1", "yes", "on")
-        # Empirical lesson 2026-05-14 evening: BGE-reranker is a
-        # *relevance* model, not a hallucination classifier. The
-        # description chunks in `hallucinations` collection are META
-        # text about past incidents (「## 13. AI が構成 footer 事象:
-        # 過去にXが起きた」) — the article itself reads like the
-        # incident («本記事はAIで生成しました»). Reranker scores those
-        # as "not relevant" because they're textually different in
-        # style, and meanwhile scores topic-matching but pattern-
-        # different chunks as 1.0 ("clean tech article" → 「回帰テスト」
-        # chunk). Net: reranker hurts hallu-guard precision AND recall.
-        # For *duplicate detection* on past_articles the reranker is
-        # exactly right — same topic = duplicate is the question. But
-        # for hallu-guard, keep multi-query for recall, drop rerank.
-        if _use_rerank:
-            hits = retriever.retrieve_multi_query(
-                queries=queries,
-                collection="hallucinations",
-                top_k=top_k,
-                candidate_k_per_query=10,
-                # Bi-encoder threshold matches the long-tuned 0.85
-                # cosine value (deliberately back where it was before
-                # this evening's rerank experiment — multi-query alone
-                # is the recall improvement, kept at the precision
-                # bar the regression suite trusts).
-                score_threshold=score_threshold,
-                use_rerank=False,
-            )
-        else:
-            hits = retriever.retrieve(
-                query=canonical,
-                collection="hallucinations",
-                top_k=top_k,
-                score_threshold=score_threshold,
-            )
+        # 2026-06-15: multi-query recall is INDEPENDENT of RAG_RERANKER.
+        # Previously both sat under the same flag, so RAG_RERANKER=false
+        # silently dropped hallu-guard back to single-query retrieval —
+        # undoing the 2026-05-14 recall fix. Multi-query now runs
+        # unconditionally; rerank stays OFF for hallu-guard regardless of
+        # the env, because BGE-reranker is a *relevance* model, not a
+        # hallucination classifier: the `hallucinations` chunks are META
+        # text about past incidents (「## 13. AI が構成 footer 事象」) while
+        # the article itself reads like the incident — the reranker scores
+        # those as "not relevant" and meanwhile rates topic-matching clean
+        # chunks at 1.0, hurting BOTH precision and recall here. (For
+        # past_articles duplicate detection the reranker is the right tool;
+        # that path still honours RAG_RERANKER.) Keep the regression-
+        # trusted 0.85 bi-encoder floor (score_threshold) so the deny
+        # suite's clean-tech=0-hits invariant holds.
+        hits = retriever.retrieve_multi_query(
+            queries=queries,
+            collection="hallucinations",
+            top_k=top_k,
+            candidate_k_per_query=10,
+            score_threshold=score_threshold,
+            use_rerank=False,
+        )
     except Exception as exc:  # noqa: BLE001
         logger.debug("hallucination retrieval failed: %s", exc)
         return []
@@ -1251,7 +1237,7 @@ def _retrieve_hallucination_warnings(
     if warnings:
         logger.info(
             "[hallu-guard] %d past incident(s) flagged for critic review "
-            "(top rerank=%.3f)",
+            "(top sim=%.3f)",
             len(warnings), warnings[0].get("score", 0.0),
         )
     return warnings
