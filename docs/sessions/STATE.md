@@ -11,6 +11,18 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-16: **catchup を rich 化 (`06ba988`) + `/routine` (二重実行ガードで publish-only)**。
+  ① **catchup ダイジェスト濃く**: user「内容が薄い」→ summarizer を 3-5行/250字 →
+  **6-9行/400-550字** に深化 (具体数字・モデル名・技術ポイント・差別化・含意を要求)。
+  **お断り文ガード**: 画像のみソースで gemma4 が「テキストをご提供ください」を出力する
+  事故を `_looks_textless`(title fallback)+`_REFUSAL_RE`(検出破棄)+プロンプト禁止で根絶。
+  digest cap 8/6/4→10/7/5、 **runner で長文を Slack 複数メッセージに分割送信**
+  (`_chunk` <=3500字)。 ⚠️ `run_catchup.py` は `--dry` フラグ使用 (env CATCHUP_DRY_RUN
+  無視で実投稿する罠、 初回薄い版が誤送信→dedup リセットして rich 再送)。 live 検証:
+  **22件/3メッセージ、 avg 440字 (旧~200)、 refusal 0件**。 ② **/routine**: 今日すでに
+  ~20分前に 6-16 朝フル稼働済み (下記6th=実は6-16早朝) → ガード通り generate せず
+  **未publish の アイメイク(K-beauty)を publish** (n6e1654b594d6 **¥0**、 can_read=true、
+  捏造deny=NONE)。 cadence 0件/日→残4 で公開。 membership 不要(¥0)
 - 6-15 (6th): **`/routine` 全改修フル適用の初回稼働**. learn (full-wipe reindex
   **591 chunks**、 per-example chunking + sentinel) → generate **7合格/0不合格**
   (全 B/A) → publish: **note 1本** 韓国カフェ (nac0669e0995d **¥0**、 live
