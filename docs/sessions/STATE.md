@@ -11,6 +11,17 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-15 (5th): **全生成タスクを gemma4:e4b に統一** (`4ddf24c`、 user「すべて gemma4」)。
+  Workflow 4並列監査で全モデル選択箇所を洗い出し (72 findings): default 2層
+  (`llm_config._DEFAULT_MODEL` / `local_llm.DEFAULT_MODEL` 両 gemma3:12b) +
+  .env が writer/scorer のみ gemma4 override。 残 3タスク (summarizer/hashtag/
+  regenerator) と no-arg `LocalLLM()` バイパス3箇所 (画像 distill / paid-note
+  script) が gemma3 のまま判明。 対応: **コード default 2箇所を gemma4:e4b に変更**
+  (移植可能=clone でも全 gemma4) + .env に 3タスク明示追加 (gitignore、 ローカル可視化)。
+  **据置**: e5-base embedding / bge-reranker (生成LLMでない)、 ab_test harness、
+  gemma4-era guards (C_RESCUE/scorer閾値)。 検証: 全5タスク+no-arg LocalLLM()=gemma4
+  解決、 ollama 在庫あり、 hashtag live 応答、 deny 42+7+8 PASS。 ⚠️ gemma4:e4b は
+  ~4B で 12b より小、 peripheral タスクの fidelity 低下可能性 (低stakes で許容)
 - 6-15 (4th): **RAG 自動チューニング全完了** (`bba85dd`、 user「すべてやって完璧に
   自動でチューニング」)。 ① **threshold 自動較正ハーネス** `calibrate_rag_thresholds.py`
   (正例/負例で Youden's J grid-search、 再現可能) → **0.825** 算出 (successes
