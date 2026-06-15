@@ -18,7 +18,10 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "gemma3:12b"
+# 2026-06-15: baseline flipped gemma3:12b -> gemma4:e4b so EVERY generation
+# task (incl. no-arg LocalLLM() bypass sites: image-subject distillation,
+# paid-note scripts) runs gemma4. Keep aligned with llm_config._DEFAULT_MODEL.
+DEFAULT_MODEL = "gemma4:e4b"
 DEFAULT_TIMEOUT = 900  # seconds — bumped 2026-05-01 from 300 because the
 # raised char-count target (5000-7000 chars) makes Gemma3 12B routinely take
 # 6-12 min per article on the user's hardware. The 300s ceiling killed every
