@@ -4299,6 +4299,12 @@ def publish_approved(
         # この主張は捏造。bracket list からは除去済みだが、LLM が
         # 自発的に書くケースの最終防衛線としてここでも deny する。
         _re.compile(r"\d+\s*人に(?:聞いた|訊いた|アンケート)"),
+        # 2026-06-17 「99%の人が知らない」 系の統計捏造 (no-source の
+        # 統計風煽り) — MacBook タッチ事件 (nc5d53fdebaf9) で公開 → 即修正。
+        # 99 / 95 / 9割 等の閾値はすべて「アンケート/調査」根拠が記事に
+        # 無く、 読者を煽る (= タイトル負け) ためだけに付く。
+        _re.compile(r"9[0-9]\s*[%％]\s*(?:が|の人(?:が|は)?)\s*知らない"),
+        _re.compile(r"[89]\s*割\s*(?:が|の人(?:が)?)\s*知らない"),
         _re.compile(r"氏の\s*(?:Bluesky|Threads|Mastodon)\s*投稿"),
         _re.compile(r"さんの\s*(?:Bluesky|Threads|Mastodon)\s*投稿"),
         _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿が話題"),

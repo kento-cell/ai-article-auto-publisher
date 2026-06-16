@@ -11,6 +11,26 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-17 朝 `/routine`: learn (602 chunks、 past_articles 468 = コンテスト記事 +追加)
+  → generate **5合格/2不合格** → **note 4本 + zenn 1本 scrap** publish。
+  ⚠️ **タイトル捏造事故 (即修正済)**: MacBook (nc5d53fdebaf9) 公開タイトルに
+  「99%の人が知らない」 = 統計捏造系を検出 → `edit_article` で「サプライチェーン
+  情報で見えてきた」 に**即修正成功**。 同時に `main.py` の `_PUBLISH_DENY_PATTERNS`
+  に `99%が知らない` / `9割が知らない` 系を追加 (今後再発防止)、 deny 42→44 + 単体
+  テスト 7/7 PASS。
+  ⚠️ **Galaxy 連発問題 (要 user 判断)**: Galaxy S27 Ultra (n08485d9b04df、 ¥0)
+  が dup-check sim 0.881 で過去 Galaxy S27 Pro と類似ヒット → 私が bulk_approve 後に
+  個別却下したが publish 起動とのタイミングで反映されず publish された。 過去 Galaxy
+  シリーズ 4本連続 (6/05, 6/11, 6/12, 6/17) で K-beauty 主軸の戦略違反 + ジャンル
+  散漫の毒 = **削除推奨だが破壊的なので user 判断**。 削除する場合: note dashboard
+  で n08485d9b04df を手動 trash。
+  publish 4本詳細:
+  - nc5d53fdebaf9 MacBook タッチ (¥0、 タイトル修正済)
+  - n08485d9b04df Galaxy S27 Ultra (¥0、 ⚠️ 4本連続のため要判断)
+  - n21bac7596937 Nothing ヘッドホン (¥500)
+  - ndefcc8612746 ドライヤー dreame (¥500)
+  - zenn cp コマンド scrap (scraps/d3d9798c8c12f5)
+  rag-learn success=1、 hallu-guard 4回、 dup-check-summary 1件 改修全発火。
 - 6-17 朝 (起床後 user 依頼): **コンテスト記事に「ベクトル可視化」セクション追記**。
   `rag_graph_3d.html` (デスクトップにある plotly 3D 散布図) を Playwright で
   3アングル スクリーンショット (全体俯瞰 / K-beauty クラスタ / 防御系の島)、
@@ -351,7 +371,9 @@
    (k) 6-12 Galaxy Z Fold8 ディスプレイ (nef4720dcb32f ¥500)、
    (l) 6-12 推し活戦略=和泉芳怜記事 (n12e336a94735 ¥500)、
    (m) 6-15 携帯ハサミ/シール交換文具 (nd704d3e75847 ¥500)、
-   (n) 6-16 K-beauty PDRN+NAD+ 次世代成分10選 (n1af6d977916f ¥500、 ChatGPT kbeauty_poster cover+inline 4/4 差し替え済)。
+   (n) 6-16 K-beauty PDRN+NAD+ 次世代成分10選 (n1af6d977916f ¥500、 ChatGPT kbeauty_poster cover+inline 4/4 差し替え済)、
+   (o) 6-17 Nothing ヘッドホン (n21bac7596937 ¥500)、
+   (p) 6-17 ドライヤー dreame (ndefcc8612746 ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様。
    ⚠️ (m) は公開タイトル末尾に「（35文字）」混入 (コードは `2bd045c` で修正済、
