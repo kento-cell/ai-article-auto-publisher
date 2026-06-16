@@ -11,6 +11,27 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-16 夜→6-17 深夜: **`#AIで遊ぼう` コンテストエントリー仕込み**
+  (note × AIフェスティバル 2026、 6/15-7/15、 グランプリ7万円+AIフェス賞3万円)。
+  ① **戦略 Workflow 8並列** (`wupf04wzz` 海外バズ + `w9esnec6q` note公式コンテスト
+  優勝作傾向 + 競合予測 + サードウェーブ文脈 + バズ機構)。 ② **空白地帯特定**:
+  他応募者は『AIで創作物を作った』型で被る (Suno/Midjourney/ペット擬人化/タロット)。
+  我々は『AIにnote運営を全部させた半年運用日誌』= 唯一無二の切り口。 深津CXO公式
+  優先順位『一次情報・体験記録 > AI構造化 > ユニークAI生成 > 量産AI生成』に対し、
+  commit log + image_usage.jsonl が一次情報そのもの。 ③ **本文 8545字** 書き上げ:
+  `data/custom_posts/2026-06-21_ai_de_asobou_body.md`。 タイトル
+  「【運用日誌】noteを半年AIに全部書かせた結果、 191本で♥0.90・今朝もNameErrorで
+  爆死した話 #AIで遊ぼう」。 AIフェスティバル言及 **9回** (賞条件5+クリア)、
+  191本/avg♥0.90/RAG 591chunks/閾値0.825/Brave CDP 9222/commit cb45a73→f23e191 全て
+  verbatim。 捏造系 deny 0件 clean。 ④ **spec 仕様化**:
+  `data/custom_posts/2026-06-21_ai_de_asobou.json` (price=0 無料公開必須、 tags に
+  AIで遊ぼう/AIフェスティバル 含む)。 ⑤ **CronCreate 仕込み**: `8ab171fe` 6-17 00:07
+  JST one-shot で `publish_custom_post.py` 起動。 publish + live API 検証 + STATE 記録
+  + memory + commit + push まで自走完遂指示済 (Brave CDP 9222 落下時の自動 launch
+  含む)。 ⚠️ CronCreate は session-only、 私のセッションが 22:08→00:07 維持できない場合
+  publish されない → 朝 user が `py scripts/publish_custom_post.py data/custom_posts/2026-06-21_ai_de_asobou.json`
+  で手動実行可能。 ⑥ **続編プラン**: 6-28(土) 無料『AI事件簿詳細編』、
+  7-5(土) ¥980 paid『自作 AI 工場の作り方』(メンバーシップ誘導)。
 - 6-16 (2nd): **海外バズリサーチ → kb_007/kc_004 inject → ChatGPT画像で publish**
   (user「learn してもらってバズを引いてください」)。 ① **海外バズリサーチ Workflow**
   (5並列 web search、 55 findings、 brief は `docs/strategy/2026-06-16_overseas_buzz_brief.raw.json`)。
