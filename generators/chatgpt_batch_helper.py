@@ -459,6 +459,20 @@ def _log_image_failure_incidents(
         logger.warning("  - (sim %.2f) %s", h.score, title[:90])
 
 
+# 2026-06-16: surface the chosen style_label + result counts from the last
+# batch so the article-store layer can persist them without changing this
+# function's tuple return shape (callers like main.py:5052 unpack 2-tuples
+# in many places). Read via get_last_batch_meta() right after the call.
+_LAST_BATCH_META: dict | None = None
+
+
+def get_last_batch_meta() -> dict | None:
+    """Return metadata about the most recent chatgpt_image_batch call —
+    {style_label, genre_hint, slug_hint, cover_ok, inline_ok, inline_requested}.
+    None when no batch has been run yet (or after a process restart)."""
+    return _LAST_BATCH_META
+
+
 def chatgpt_image_batch(
     title: str,
     content: str,
@@ -814,4 +828,31 @@ def chatgpt_image_batch(
             "Post-fallback: cover=%s, inline=%d/%d",
             bool(cover), len(inlines), inline_count,
         )
+
+    # Stamp the run meta + append a learner-friendly log so analyze_image_
+    # performance.py (planned) can join by url/slug with article_performance.
+    # Best-effort: never raise from a logging path.
+    global _LAST_BATCH_META
+    _LAST_BATCH_META = {
+        "style_label": style_label,
+        "genre_hint": genre_hint,
+        "slug_hint": slug_hint,
+        "title": title[:140],
+        "cover_ok": bool(cover),
+        "inline_ok": len(inlines),
+        "inline_requested": inline_count,
+    }
+    try:
+        import json as _json
+        from datetime import datetime as _dt
+        log_path = Path("data") / "image_usage.jsonl"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as _fh:
+            _fh.write(_json.dumps({
+                "ts": _dt.now().isoformat(timespec="seconds"),
+                **_LAST_BATCH_META,
+                "cover_path": str(cover) if cover else "",
+            }, ensure_ascii=False) + "\n")
+    except OSError as _exc:
+        logger.debug("image_usage log skipped (%s)", _exc)
     return cover, inlines

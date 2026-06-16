@@ -5046,6 +5046,7 @@ def _publish_note(
         try:
             from generators.chatgpt_batch_helper import (
                 chatgpt_image_batch,
+                get_last_batch_meta,
                 is_chatgpt_image_gen_enabled,
             )
             if is_chatgpt_image_gen_enabled():
@@ -5056,6 +5057,19 @@ def _publish_note(
                     slug_hint=re.sub(r"[^a-zA-Z0-9_-]", "_", title)[:40],
                     genre_hint=source or "general tech / lifestyle",
                 )
+                # Persist the chosen style + run meta on the article so the
+                # planned analyze_image_performance.py can join style_label
+                # with our own ♥ data (2026-06-16 image-learner labels).
+                _img_meta = get_last_batch_meta() or {}
+                if _img_meta:
+                    article["image_style"] = _img_meta.get("style_label")
+                    article["image_genre"] = _img_meta.get("genre_hint")
+                    article["image_meta"] = {
+                        "cover_ok": _img_meta.get("cover_ok"),
+                        "inline_ok": _img_meta.get("inline_ok"),
+                        "inline_requested": _img_meta.get("inline_requested"),
+                        "provider": "chatgpt" if cgpt_cover else "fallback",
+                    }
                 if cgpt_cover:
                     cover_path = cgpt_cover
                 # Use ChatGPT inline images when produced; if partial,
