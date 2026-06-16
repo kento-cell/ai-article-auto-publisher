@@ -11,6 +11,26 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-17 深夜 (cron 自走): **`#AIで遊ぼう` エントリー publish 完了**
+  (n444be2daa2ef、 https://note.com/<NOTE_USER>/n/n444be2daa2ef、 ¥0/can_read=True、
+  ChatGPT cover+inline 4/4、 文字数 8545、 AIフェス言及 9回)。
+  ① cron `8ab171fe` 6-17 00:07 fire → Brave CDP 落下→自動 launch ポーリング→UP→
+  `publish_custom_post.py` 実行。 ② ChatGPT 画像 全成功 (cover 2.5MB + inline 4枚)。
+  ③ Selenium publish 成功、 タイトル 「【運用日誌】noteを半年AIに全部書かせた結果、
+  191本で♥0.90・今朝もNameErrorで爆死した話 #AIで遊ぼう」 反映。
+  🚨 **タグ問題 (要 user 朝の手動対応 1分)**:
+  publish_article の `_input_tags` 呼び出しで Selenium タグ入力が silent skip
+  (publish ログに `_input_tags` 内ログ無し、 publish_settings 画面に遷移しなかった疑い)。
+  自動修正で `_add_tags_to_contest_entry.py` + `_swap_in_contest_tag.py` を投入し、
+  現在登録されているタグ: **#ChatGPT, #AI活用, #Claude, #AIフェスティバル** (4個)。
+  **コンテスト必須の `#AIで遊ぼう` がタグ field に未追加** (5/5 上限の hashtag UI で
+  「追加」ボタンが hashtag section 内に存在せず、 fill+Enter/click 全試行 fail)。
+  ⚠️ **朝の最初の手動対応**: note edit 画面 → 公開に進む → ハッシュタグ欄に
+  「AIで遊ぼう」 type → Enter → 更新する (5枠残 1個空きで slot あり)。
+  これでコンテスト応募タグが完成。 ④ 本文には「#AIで遊ぼう」が末尾と複数箇所に
+  あるので URL シェアでハッシュタグページから到達される副次ルートはある。
+  ⑤ 続編プラン: 6-28(土) 朝7時 無料 『AI事件簿詳細編』、 7-5(土) 朝7時 ¥980 paid
+  『自作 AI 工場の作り方』 (メンバーシップ誘導)。
 - 6-16 夜→6-17 深夜: **`#AIで遊ぼう` コンテストエントリー仕込み**
   (note × AIフェスティバル 2026、 6/15-7/15、 グランプリ7万円+AIフェス賞3万円)。
   ① **戦略 Workflow 8並列** (`wupf04wzz` 海外バズ + `w9esnec6q` note公式コンテスト
