@@ -5059,17 +5059,29 @@ def _publish_note(
                 )
                 # Persist the chosen style + run meta on the article so the
                 # planned analyze_image_performance.py can join style_label
-                # with our own ♥ data (2026-06-16 image-learner labels).
-                _img_meta = get_last_batch_meta() or {}
-                if _img_meta:
-                    article["image_style"] = _img_meta.get("style_label")
-                    article["image_genre"] = _img_meta.get("genre_hint")
-                    article["image_meta"] = {
-                        "cover_ok": _img_meta.get("cover_ok"),
-                        "inline_ok": _img_meta.get("inline_ok"),
-                        "inline_requested": _img_meta.get("inline_requested"),
-                        "provider": "chatgpt" if cgpt_cover else "fallback",
-                    }
+                # with our own ♥ data (2026-06-16 image-learner labels). In
+                # _publish_note the working dict is `stored` (the
+                # ArticleStore record); writing it here doesn't auto-flush —
+                # the post-publish update at main.py:4660-ish does — so we
+                # just stamp it. Wrapped in its own try so a label-write bug
+                # NEVER kills the ChatGPT image batch path (2026-06-16
+                # regression fix: the previous wording referenced a
+                # nonexistent `article` and crashed into Unsplash fallback).
+                try:
+                    _img_meta = get_last_batch_meta() or {}
+                    if _img_meta and isinstance(stored, dict):
+                        stored["image_style"] = _img_meta.get("style_label")
+                        stored["image_genre"] = _img_meta.get("genre_hint")
+                        stored["image_meta"] = {
+                            "cover_ok": _img_meta.get("cover_ok"),
+                            "inline_ok": _img_meta.get("inline_ok"),
+                            "inline_requested": _img_meta.get("inline_requested"),
+                            "provider": "chatgpt" if cgpt_cover else "fallback",
+                        }
+                except Exception as _lbl_exc:  # noqa: BLE001
+                    logger.warning(
+                        "image_style label persist failed (%s) — continuing", _lbl_exc,
+                    )
                 if cgpt_cover:
                     cover_path = cgpt_cover
                 # Use ChatGPT inline images when produced; if partial,
