@@ -1,0 +1,84 @@
+{
+  "summary": "Research the latest overseas (EN/KR) buzz patterns the user can actually own — K-beauty, Korean cafe, K-culture, K-drama side — and produce a brief the generator can ground on",
+  "agentCount": 6,
+  "logs": [],
+  "result": {
+    "raw_findings_count": 55,
+    "angle_summaries": [
+      "[K-beauty / 韓国コスメ — 2026年6月時点の最新ホット成分・処方（PDRN・エクソソーム・スピキュール以降の次世代アクティブ）] PDRN・エクソソーム・スピキュールが「2025年の主役」として定着した一方、2026年に入って英語圏（Vogue / Marie Claire / Refinery29 / Brit+Co / Grazia / NewBeauty）と韓国系メディア（Olive Young / K-Gallery / koreanskincarecoach）で台頭しているのは (1) NAD+/NMN系「longevity skincare」（numbuzin No.9, Derma Factory NMN 1%, BIOHEAL BOH, Haruharu Wonder 2% NAD+）、(2) plant/rose-derived PDRN（Mediheal「動物由来の250分の1サイズ」）、(3) PDRN×NAD+/Vitamin C/Caviar 等の「複合化」処方（SeoulCeuticals 2/15 launch, Biodance Caviar PDRN 69%）、(4) liposome / cicasome / spicule など「経皮デリバリー第二世代」、(5) 「Glass Skin → Bloom Skin」へのキーワードシフト。Olive Young 検索では PDRN が前年比 +90%、ニアシンアミド +26% と数字も明確。Marie Claire と Olive Young US 進出で具体的な USD 価格が拾える状況になっており、「成分名 + ppm + USD価格 + brandマトリックス」で記事化しやすい。",
+      "[2026年6月 ソウル新興カフェ・ロースタリー・ベーカリー（聖水洞・漢南洞・望遠洞・延禧洞）] 2026年春〜初夏のソウルカフェ市場は「Better Community（共同体回帰）」「Original Local（地域素材）」「Nature Forward（サステナ）」が三大トレンド。聖水洞では Jayeondo Salt Bread や Rain Report のような行列ベーカリーが SNS で爆発、漢南洞は Maha Hannam のような建築家プロデュース型ティーカフェが Vogue/Tatler 系媒体で頻出。望遠洞は Mangnidan-gil 一帯で住民比率7割の「素朴系」インディーが Beekend や Deep Blue Lake Coffee を旗手に台頭。延禧洞では Esquire Korea が2026年新規4軒（카페미곳・탄정・이너커피・스테이로우）を特集し、和韓融合の手作りデザートと予約制ティーセレモニーが鍵。「개인店オンリー、原文ママ住所、公式SNS確認済み」の証拠粒度で記事化可能。",
+      "[K-カルチャー（K-POP・K-drama・韓流ファンダム文化）2026年6月] 2026年6月のK-カルチャーは、BTS Busan復活公演（6/12-13、Asiad Stadium、3,800劇場ライブビューイング）とNetflix「Teach You a Lesson」の全世界43カ国1位という二大事件で完全に沸騰中。音楽はaespa『LEMONADE』がBillboard 200 #9・UK Singles初登場、BABYMONSTER「SUGAR HONEY ICE TEA」がGlobal YouTube Daily #1（26時間で2,000万再生）、SHINee『Atmos』・RIIZE『II』・MAMAMOO『4 Flowers』など主要グループのカムバが集中。ファンダム文化ではフォトカード二次流通市場が年間$500M超に成長、TikTokではKPop Demon Hunters由来「Golden」のグライドチャレンジが継続バズ。K-beautyはTirTir Mask Fit Cushion 40色展開とAI診断パーソナル化が次のフェーズ。日本のnote読者には「K-popカムバ大渋滞月」「BTS復活劇場ライブ」「Netflix学園アクションが日本1位」が刺さるトリガー。",
+      "[英語圏×韓国で並走するセルフケア/ライフスタイル発「K-wellness 2026新潮流」 — \"Bloom Skin\"、\"Whole Self / fullmoon\"、骨膜(경락)マッサージ、Foodologyとサプリ、植物性メラトニンの睡眠ケア、blueberry milk nails、underconsumptioncore × slow living、サムゲタン×보양식の夏ルーティン] 2026年6月時点で英語圏(Refinery29/Korea Herald/WWD)と韓国メディアが同時並行で押しているのは「whole self wellness」という統合テーマ。Glass Skinの後継\"Bloom Skin\"(肌バリアと自然な発光)、CJオリーブヤングの\"fullmoon\"8トレンド(early wellness/healthy pleasure/wellness-infused beauty 等)、TikTokで1月にKylie Jenner が1900万再生を稼いだFoodologyのcutting jelly、合成メラトニン規制ゆえに急伸した植物性メラトニン(GREEN MONSTER MELADAY/ピスタチオ・タルトチェリー由来)とGABA、Cclime/Kyung-lakのバイラル骨膜・経絡マッサージ(SOMI 等K-popアイドル系)が同時多発。一方で英語圏は\"Over-Optimization Backlash\"とunderconsumptioncore(no buy 2026)に揺り戻しが始まり、note向けには「韓国のwhole self流をミニマルに取り入れる日本人向け実践セルフケア」が刺さる構造になっている。",
+      "[note.com 2026年のバズパターン (タイトル型 / サムネ / 構成 / 有料化タイミング / シリーズ戦略)] 2026年のnoteは「AI時代の人間性回帰」が最上位テーマで、note公式の推しアルゴリズムが (1) 生の一次情報・体験記録、(2) 一次情報を素材にAI編集、(3) ユニークなAI生成、(4) 量産AI、の順で優先順位を明文化。売上面ではメンバーシップが前年比+81.3% (2025年11月)、有料記事ジャンルは「AI活用 +268.6%」「SNS/コンテンツ運用 +258.7%」「副業/在宅 +179.0%」が3強。バズる型は「なぜ◯◯なのか系の検証ブログ (例: のつの『トイレットペーパーはなぜ急に減るのか』)」と「現地レポ系の超具体ガイド (例: さおり『韓国現地のSNSで今話題のコスメ【2026年3月版】』)」の二極化。サムネは1280x670、左ビジュアル右テキストの高コントラスト型が依然強いが、トレンド逆張り (周囲がシンプルならポップ) が編集部目に止まる傾向。文字数と売上は相関ゼロで、実用ノウハウ系は無料ゾーンで価値説明→有料で手順、読み物系は有料ゾーン本体の質で課金させる二類型に明確分離。"
+    ],
+    "brief": {
+      "headline": "6月後半は「BTS釜山復活×K-popカムバ大渋滞」を初動の起爆剤に、K-beauty次世代成分(PDRN/NAD+/Bloom Skin)で保存版ストックを積み、ソウル新興カフェ・K-wellness逆張りで深掘り、最後は伏日(7/16)前のサムゲタン記事まで7日間で5本リリースする。",
+      "overall_summary": "2026年6月15-22日のnote公開戦略の中心はK-カルチャー時事(BTS釜山公演6/12-13・aespa LEMONADE Billboard #9・RIIZE初日91万枚)とK-beauty次世代成分(PDRN/NAD+/Bloom Skin)の二軸である。前者は今動かないと鮮度が消えるためトップに据え、後者はOlive Young US進出やSeoulCeuticals 2/15 launchなど英語圏Tier1メディア(Vogue/Marie Claire/Refinery29/Grazia)の権威付けが揃っているので保存版型の長尺有料記事で稼ぐ。ソウル新興カフェは延禧洞4軒(Esquire Korea特集)と聖水洞Jayeondo Salt Bread(Visit Seoul公認1日7,000個)を住所・営業時間まで verbatim 引用し、チェーン店NGの絶対ルールを徹底する。K-wellness系はRefinery29「Bloom Skin」とKorea Herald「fullmoon」を組み合わせた比較記事が刺さるが、Global Wellness Summit「Over-Optimization Backlash」の逆張りも同時バズしているので両論併記で差別化する。7日後半は伏日(7/16)前倒しの삼계탕記事で「Iyeol Chiyeol」フックを仕込み、夏ルーティン記事のシリーズ化につなげる。サムネは1280×670・左ビジュアル右テキスト・高コントラストを徹底し、タイトルは【保存版】【2026年6月版】【3分でわかる】を優先する。価格設定は実用ノウハウ系を¥980-1,980、読み物系K-カルチャー時事を無料または¥300で初動シェアを稼ぐ二類型運用。すべての記事で「USD価格・濃度ppm・住所・公式SNS URL」を verbatim 引用し、ハルシネーションを完全に潰す。",
+      "top_buzz_angles": [
+        {
+          "rank": 1,
+          "title_jp": "【保存版・2026年6月版】韓国コスメの主役が「PDRN+NAD+」に変わった ─ Olive Young検索+90%の次世代成分20種を価格付きで全部書く",
+          "genre": "K-beauty",
+          "why_buzz_jp": "Vogue/Marie Claire/Refinery29/Grazia/Korean Skincare Coachの5媒体が同時に「PDRN+NAD+」を2026の主役と名指し、Olive Young検索データ(+90%)で裏付けがある。日本のnoteでは「さおり【2026年3月版】」型のシリーズが既に成功実例として証明されており、USD価格・濃度ppmまで verbatim で書ける素材が揃っているため信頼性と検索流入を両取りできる。実用ノウハウ系は平均¥1,842で課金可能。",
+          "must_include_assets": "PDRN, NAD+, Olive Young検索+90%, ニアシンアミド+26%, Medicube PDRN Pink Cica Soothing Toner $33, Skin1004 Madagascar Centella Toner $22.99, Dr.nineteen PoreXsome V.Peptox Jelly Toner $39.95, numbuzin No.9 NAD Bio Lifting-sil Essence, Haruharu Wonder Black Rice 2% NAD+ Serum Mist, Derma Factory NMN 1% Renewing Serum, Sungboon Editor Green Tomato NMN 1,000 ppb, Biodance Caviar PDRN Liposome Bubble Booster $19.99 (69% caviar water), Anua Niacinamide 10 TXA 4 $23, Mediheal PDRN Lifting Pad £22 (plant rose PDRN 250x smaller), Dr.Reju-All All Advanced PDRN Cream 1,200 ppm £25.90, SeoulCeuticals PDRN+Vitamin C Serum 2026/2/15 launch (dermal density +8.67%, brightness +4.88%)",
+          "source_urls": "https://www.aol.com/lifestyle/pdrn-peptides-10-k-beauty-110000405.html, https://www.refinery29.com/en-au/korean-beauty-trends-shaping-2026-glass-bloom-skin, https://graziadaily.co.uk/beauty-hair/skin/best-pdrn-k-beauty-products/, https://www.koreanskincarecoach.com/blog/nad-in-skincare-what-it-really-does-and-what-korean-beauty-brands-are-getting-right, https://www.marieclaire.com/beauty/skincare/best-korean-beauty-products-olive-young/, https://www.barchart.com/story/news/52654/seoulceuticals-launches-industry-s-first-pdrn-vitamin-c-serum-as-bio-regenerative-actives-dominate-2026-k-beauty",
+          "image_style_hint": "kbeauty_poster"
+        },
+        {
+          "rank": 2,
+          "title_jp": "【3分でわかる】K-pop 6月カムバ大渋滞 ─ BTS釜山復活・aespa LEMONADE全米9位・RIIZE初日91万枚を全部1記事で整理",
+          "genre": "K-culture",
+          "why_buzz_jp": "BTS ARIRANG釜山公演(6/12-13、3,800劇場ライブビューイング)、aespa LEMONADE Billboard 200 #9、RIIZE『II』初日91万枚、BABYMONSTER YouTube Global #1、SHINee/MAMAMOO/Netflix『Teach You a Lesson』43カ国1位が同時多発。全部固有名詞・日付・数字で書けて、無料記事として初動シェアを稼げる。日本のARMY/MY/BRIIZE/MOOMOOが横断的に引用するため拡散係数が高い。",
+          "must_include_assets": "BTS ARIRANG World Tour, Busan Asiad Main Stadium, 6/12-13, 11万人, 3,800劇場80カ国, aespa LEMONADE Billboard 200 #9, UK Singles #95, iTunes #1 in 19 regions, BABYMONSTER SUGAR HONEY ICE TEA YouTube Global Daily #1 (20M views in 26h), SHINee Atmos 6/1 18:00 KST, RIIZE II 6/15 18:00 KST 910,000 copies day-1, MAMAMOO 4 Flowers 4WARD World Tour Olympic Hall 6/19-21, Netflix Teach You a Lesson 6/5配信 43カ国1位 Kim Mu-yeol/Lee Sung-min/Jin Ki-joo/P.O",
+          "source_urls": "https://respawn.outlookindia.com/pop-culture/pop-culture-news/bts-busan-concert-2026-arirang-world-tour, https://www.allkpop.com/article/2026/06/aespa-lands-no-9-on-billboard-200-with-lemonade-marks-third-top-10-entry, https://www.allkpop.com/article/2026/06/babymonster-tops-global-youtube-chart-with-sugar-honey-ice-tea, https://www.allkpop.com/article/2026/06/riize-reveals-candid-concept-photos-for-ii-gearing-up-for-an-exciting-comeback, https://screenrant.com/teach-you-a-lesson-netflix-streaming-success-june-2026/, https://www.soompi.com/article/1839780wpp/watch-shinee-announces-june-comeback-schedule-with-fun-teaser-film",
+          "image_style_hint": "infographic"
+        },
+        {
+          "rank": 3,
+          "title_jp": "【保存版】ソウル延禧洞の新店4軒+聖水洞の行列ベーカリー2軒 ─ 2026年6月最新、住所と営業時間そのまま書きます",
+          "genre": "K-cafe",
+          "why_buzz_jp": "Esquire Korea 2026特集の延禧洞4軒(카페미곳/탄정/이너커피/스테이로우)+Visit Seoul公認の聖水洞Jayeondo Salt Bread(1日7,000個)・Rain Report(15分ごとに人工降雨)を住所・営業時間・シグニチャー価格まで verbatim で記載可能。チェーン店NGルール完全クリア、個人店オンリー。Tatler Asia掲載の漢南洞Maha Hannamも追加。「観光客回避×現地ガイド」需要に直撃。",
+          "must_include_assets": "카페 미곳 (서울 서대문구 연희동 81-13, 수제 생강청 아이스라떼), 탄정 (서울 서대문구 연희동 129-6, 말차 한 상, 예약필수 Instagram DM), 이너커피 (서울 서대문구 연희동 194-30, 시나몬 라떼), 스테이로우 (서울 서대문구 연희동 126-2, 비건 브런치, 평일 7:00 오픈), Jayeondo Salt Bread 자연도 소금빵 (56-1 Yeonmujang-gil Seongdong-gu, 1日7,000個, 9/12:30/14/15:30/17/18:30焼成, ₩3,500), Rain Report Croissant (32 Seongsui-ro 16-gil, Rainbow Milk Cream Croissant ₩4,800), Maha Hannam 마하 한남 (85 Seobinggo-ro 91na-gil Yongsan, @maha.hannam, Donghyun Kim/Maha Architects)",
+          "source_urls": "https://www.esquirekorea.co.kr/article/1898749, https://english.visitseoul.net/area/saltbread-in-seaside/ENPxtexu0, https://danielfooddiary.com/2024/03/26/rainreportcroissant/, https://www.instagram.com/maha.hannam/, https://letseoul.com/en/articles/mangwon-dong-guide-2026",
+          "image_style_hint": "minimal_photo"
+        },
+        {
+          "rank": 4,
+          "title_jp": "【保存版】Glass Skinはもう終わった ─ 韓国美容の次は「Bloom Skin」、Refinery29とOlive Young公式の2026新キーワードを全部解読",
+          "genre": "K-beauty",
+          "why_buzz_jp": "Refinery29「Bloom Skin」とKorea Herald掲載のCJ Olive Young「fullmoon」8サブトレンド(early wellness/healthy pleasure/wellness-infused beauty等)が英語圏×韓国で並走中。「Glass Skinが終わった」という強いニュース性で日本の美容ヘビーユーザーに直撃。Sarah Chung Park(Landing International CEO)監修のSeoul最新7トレンドも組み込めて、有料¥980帯の保存版記事として完成度が出る。",
+          "must_include_assets": "Bloom Skin (Refinery29 April Brodie), CJ Olive Young 2026 Trend Keywords fullmoon, early wellness, healthy pleasure, wellness-infused beauty, skincare-focused makeup, ingredient-based evaluation, Gen Z experimental luxury, AI personalization, ages 15-24睡眠サプリ売上+300%, Medicube Azelaic Acid 16 Calming Serum, Bring Green Zinc Teca, Tamburins, Hetras, Shiro, Bioheal Priobioderm 3D sheet mask, Mixsoon PDRN Hydrating Collagen Gel Cream, TirTir Milk Skin Rice Toner, numbuzin No.9 Essence (NAD+ peptides), CNP PDRN+Tranexamic Acid Serum (spicule), Sarah Chung Park (Landing International CEO)",
+          "source_urls": "https://www.refinery29.com/en-au/korean-beauty-trends-shaping-2026-glass-bloom-skin, https://www.koreaherald.com/article/10640106, https://www.aol.com/articles/flew-6-000-miles-discover-184300862.html, https://beautymatter.com/articles/2026-k-beauty-forecast-top-7-data-backed-trends",
+          "image_style_hint": "kbeauty_poster"
+        },
+        {
+          "rank": 5,
+          "title_jp": "【警告】韓国の睡眠市場が10年で22倍 ─ 植物性メラトニン・GABA・Foodologyジェリーが日本に来る前に知っておくK-wellness 2026",
+          "genre": "self-care",
+          "why_buzz_jp": "WWD(3/24)Kylie Jenner Foodology投稿1900万再生、ana2.me韓国睡眠市場₩5000億→₩11兆(22倍)、Korea Herald「fullmoon」、Global Wellness Summit「Over-Optimization Backlash」という強い数値+権威ソースが揃う。「眠れない日本人」という普遍的課題と直結し、商品名・成分・価格帯まで具体的。両論併記(K-wellness最適化 vs underconsumptioncore逆張り)で二極バズを取れる。",
+          "must_include_assets": "Foodology cutting jelly sticks $24/10本, Kylie Jenner TikTok 1900万再生110万いいね, TikTok Shop US $500K (1月), Amazon月商$700K+, Esther Formula Liposomal Glutathione Strips $36.99/30, Lacto-fit, BB Lab, Sleeping Bottle, GREEN MONSTER MELADAY Plant Melatonin 1mg (tart cherry/pistachio), 정관장 Sleep Support GABA Complex 500mg, 韓国睡眠市場₩5000億→₩11兆(22倍), 1.35 million sleep disorder patients, Sarah Chung Park (Landing International CEO), Over-Optimization Backlash (Global Wellness Summit), underconsumptioncore, no buy 2026",
+          "source_urls": "https://wwd.com/beauty-industry-news/wellness/korean-wellness-foodology-k-beauty-supplements-viral-1238683447/, https://ana2-me.com/article/wellness/2026-05-06/korea-sleep-crisis, https://www.koreaherald.com/article/10640106, https://www.globalwellnesssummit.com/2026trends/",
+          "image_style_hint": "infographic"
+        },
+        {
+          "rank": 6,
+          "title_jp": "【3分でわかる】Netflix『Teach You a Lesson』なぜ日本で1位? ─ 韓国教育崩壊×体罰アクションのカタルシスを解剖",
+          "genre": "K-culture",
+          "why_buzz_jp": "6/5配信、6/15時点で世界43カ国Netflix非英語1位、日本でも1位。Webtoon原作(チェ・ヨンテク)、Kim Mu-yeol/Lee Sung-min/Jin Ki-joo/P.O主演。配信中盤の議論ピーク期で「なぜ日本でも1位なのか」分析記事が刺さる旬。社会派×アクションで賛否両論を煽れる。無料記事でSEO/検索流入を稼げる典型。",
+          "must_include_assets": "Teach You a Lesson, Netflix 6/5/2026配信, 全10話, 43カ国1位 (日本/台湾/ブラジル/サウジ), 米国#8/英国#9/豪#4, Kim Mu-yeol, Lee Sung-min, Jin Ki-joo, Block B P.O, 原作 Chae Yong Taek (Webtoon), 教育権利保護局, 校内暴力更生任務官",
+          "source_urls": "https://screenrant.com/teach-you-a-lesson-netflix-streaming-success-june-2026/",
+          "image_style_hint": "mood_board"
+        },
+        {
+          "rank": 7,
+          "title_jp": "【保存版】7月16日「伏日」までに揃える韓国の夏ケア ─ サムゲタン・以熱治熱・骨膜マッサージで日本人女性が試せるルーティン",
+          "genre": "K-wellness",
+          "why_buzz_jp": "伏日(Boknal, 2026/7/16前後)の前倒し記事として完璧な季節フック。삼계탕の Iyeol Chiyeol(以熱治熱)哲学、Cclime骨膜マッサージ(70-100分)、SOMI(K-popアイドル)セルフリンパ排液、2026 Geumsan Samgyetang Festival(7月開催)が揃う。「家でも真似できる」実用記事として価格設定¥300-980で売れる。チェーン店NGルール下でも個人店・伝統料理という枠組みでクリア。",
+          "must_include_assets": "삼계탕 samgyetang, 보양식 boyangsik, Iyeol Chiyeol 以熱治熱, 伏日 Boknal 2026/7/16, 2026 Geumsan Samgyetang Festival (July), 4-6年高麗人参, 50-60日齢若鶏, もち米, 大棗 jujube, Cclime (@cclime_official) Special Face/Body Muscle Massage Program 70-100min, YakSonMyeongga 骨膜massage, K-Cluster pop-up NYC 2025-09, 경락 meridian massage, SOMI face slimming massage, GREEN MONSTER MELADAY Plant Melatonin 1mg",
+          "source_urls": "https://kosmedi.co.kr/2026-geumsan-samgyetang-festival-july-korea-summer-food-guide/, https://www.tiktok.com/@oasisheadspa.brisbane/video/7530211737102978311, https://ana2-me.com/article/wellness/2026-05-06/korea-sleep-crisis",
+          "image_style_hint": "minimal_photo"
+        }
+      ]
+    }
+  }
+}
