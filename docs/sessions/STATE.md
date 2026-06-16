@@ -11,6 +11,18 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-17 朝 (起床後 user 依頼): **コンテスト記事に「ベクトル可視化」セクション追記**。
+  `rag_graph_3d.html` (デスクトップにある plotly 3D 散布図) を Playwright で
+  3アングル スクリーンショット (全体俯瞰 / K-beauty クラスタ / 防御系の島)、
+  `scripts/_screenshot_rag_3d_for_contest.py`。 本文に新 H2 **「## おまけ:
+  「ベクトル」を実際に見てみる」** を「## なぜ書くか」直前に挿入 (本文 8545→10182字、
+  +1637字)、 RAG/embedding/591chunks/768次元/t-SNE/7コレクション凡例/守り系の島
+  メカニズムを読者向けに説明。 `scripts/_inject_vector_viz_into_contest.py` で
+  `edit_article` 経由 update、 inline 3枚すべて note CDN にアップロード成功、
+  eyecatch も既存 ChatGPT kbeauty_poster で再アップ。 live 本文1220字反映確認、
+  H2 構造健全 (8 H2、 「ベクトル」セクション 「なぜ書くか」 直前に配置)、
+  捏造deny clean。 user が「実際にベクトルとはどういうものか見せてあげて」 と
+  ユニークな着想で、 コンテスト記事の最強差別化要素 (技術可視化 + 透明性) を強化
 - 6-17 深夜 (cron 自走): **`#AIで遊ぼう` エントリー publish 完了**
   (n444be2daa2ef、 https://note.com/kento_kanazawa/n/n444be2daa2ef、 ¥0/can_read=True、
   ChatGPT cover+inline 4/4、 文字数 8545、 AIフェス言及 9回)。
