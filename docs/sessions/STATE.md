@@ -11,6 +11,28 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-16 (2nd): **海外バズリサーチ → kb_007/kc_004 inject → ChatGPT画像で publish**
+  (user「learn してもらってバズを引いてください」)。 ① **海外バズリサーチ Workflow**
+  (5並列 web search、 55 findings、 brief は `docs/strategy/2026-06-16_overseas_buzz_brief.raw.json`)。
+  ② **knowledge_topics に2件 inject** (weight 99): kb_007 (PDRN+NAD+ 次世代成分、
+  Vogue/Marie Claire/Refinery29/Olive Young の verbatim 素材)、 kc_004 (延禧洞4軒+
+  聖水洞行列ベーカリー、 Esquire Korea/Visit Seoul)。 ③ **画像 learner ラベル
+  保存パッチ** (`cb45a73` + 修正 `f23e191`): `chatgpt_image_batch` 末尾で
+  `data/image_usage.jsonl` に style_label/cover_ok/inline_ok 追記、 `get_last_batch_meta`
+  で article json にも保存。 ⚠️ **私のリグレッション**: 初版で `article` 変数を参照
+  (`_publish_note` のスコープには無い、 正しくは `stored`) → publish 時に NameError
+  → ChatGPT 画像は出来ていたのに except で Unsplash fallback (41KB) → `f23e191` で
+  `stored` + 独立 try で隔離。 ④ **generate 4合格/3不合格**: kb_007 ✅ (公開タイトル
+  「【禁断】2026年コスメ業界を支配する『主役』次世代成分10選。PDRN後の全知識まとめ」)、
+  zenn 2本 ✅、 男性更年期障害は **オフブランドで ❌却下** (note主軸=K-beauty/K-cafe)。
+  kc_004 は今回 generate に未選択 (翌日再挑戦)。 ⑤ **publish**: note 1本 (kb_007
+  n1af6d977916f **¥500/paywall保持**)、 zenn 2本 scrap (scraps/d8d76f6c7cdb7c
+  + scraps/4a12cd7818392f)。 ⑥ **ChatGPT 画像差し替え**: `_regen_today_note_with_chatgpt`
+  に正しい slug `note-Vogue___Marie_Claire-54126286` で実行 → **cover+inline 4枚すべて
+  ChatGPT kbeauty_poster preset で生成・差し替え成功** (eyecatch 286025622→286030325 .png)、
+  image_usage.jsonl に `style=preset:kbeauty_poster cover_ok=True inline_ok=4/4` 記録。
+  ⑦ live API price=500/can_read=False 検証、 全3本 捏造deny=clean、 Brave CDP 9222 動作中。
+  **海外brief は明日以降の generate でも参照可能** (kc_004 残、 kb_007 cooldown 30 日)
 - 6-16: **catchup を rich 化 (`06ba988`) + `/routine` (二重実行ガードで publish-only)**。
   ① **catchup ダイジェスト濃く**: user「内容が薄い」→ summarizer を 3-5行/250字 →
   **6-9行/400-550字** に深化 (具体数字・モデル名・技術ポイント・差別化・含意を要求)。
@@ -275,7 +297,8 @@
    (j) 6-11 シャオミ激安スピーカー (n54cdce174d62 ¥500)、
    (k) 6-12 Galaxy Z Fold8 ディスプレイ (nef4720dcb32f ¥500)、
    (l) 6-12 推し活戦略=和泉芳怜記事 (n12e336a94735 ¥500)、
-   (m) 6-15 携帯ハサミ/シール交換文具 (nd704d3e75847 ¥500)。
+   (m) 6-15 携帯ハサミ/シール交換文具 (nd704d3e75847 ¥500)、
+   (n) 6-16 K-beauty PDRN+NAD+ 次世代成分10選 (n1af6d977916f ¥500、 ChatGPT kbeauty_poster cover+inline 4/4 差し替え済)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様。
    ⚠️ (m) は公開タイトル末尾に「（35文字）」混入 (コードは `2bd045c` で修正済、
