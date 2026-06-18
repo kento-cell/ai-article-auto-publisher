@@ -11,6 +11,20 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-18 朝 `/routine`: Brave CDP 落下→再起動→learn→generate **4合格/3不合格**
+  → **note 4本** publish (zenn 不合格1=「99%が知らない」 H1 で **昨日追加の deny pattern
+  が機能した実証**、 deny `9[0-9]%が知らない` が forbidden_phrases で検知して却下)。
+  publish 内訳:
+  - **nbcd46008985c 延禧洞カフェ** (¥0、 **kc_004 海外バズ brief 由来** = 6-16 仕込み
+    の K-culture 主軸トピックがついに採用、 タイトル「【禁断】【永久保存版】2026年
+    ソウルカフェ巡り！ローカルな隠れ家で見つけた『本気の心地よさ』6選」)
+  - n5edc482c8fe6 E-BIKE「APE RYDER」(¥0)
+  - n34739e03cbd7 SIXPAD Medical Core (¥500)
+  - neb29b095c5a6 印刷現場 (¥500)
+  改修発火: `[rag-learn:note] success=1` ×2、 `[hallu-guard]` 6回 (top sim 0.85-0.88)、
+  `[dup-check-summary] no near-duplicate this run`、 全タイトル捏造系 deny clean。
+  ⚠️ ジャンル散漫続行 (K-culture × 1 + E-BIKE + SIXPAD + 印刷) だが品質ゲート
+  通過の合格分は publish ルール通り。 membership backlog 追加: (q) SIXPAD、 (r) 印刷現場
 - 6-17 朝 `/routine`: learn (602 chunks、 past_articles 468 = コンテスト記事 +追加)
   → generate **5合格/2不合格** → **note 4本 + zenn 1本 scrap** publish。
   ⚠️ **タイトル捏造事故 (即修正済)**: MacBook (nc5d53fdebaf9) 公開タイトルに
@@ -373,7 +387,9 @@
    (m) 6-15 携帯ハサミ/シール交換文具 (nd704d3e75847 ¥500)、
    (n) 6-16 K-beauty PDRN+NAD+ 次世代成分10選 (n1af6d977916f ¥500、 ChatGPT kbeauty_poster cover+inline 4/4 差し替え済)、
    (o) 6-17 Nothing ヘッドホン (n21bac7596937 ¥500)、
-   (p) 6-17 ドライヤー dreame (ndefcc8612746 ¥500)。
+   (p) 6-17 ドライヤー dreame (ndefcc8612746 ¥500)、
+   (q) 6-18 SIXPAD Medical Core (n34739e03cbd7 ¥500)、
+   (r) 6-18 印刷現場 (neb29b095c5a6 ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様。
    ⚠️ (m) は公開タイトル末尾に「（35文字）」混入 (コードは `2bd045c` で修正済、
