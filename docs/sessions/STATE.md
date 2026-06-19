@@ -11,6 +11,21 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-19 夕方 `/routine`: learn→generate **4合格/3不合格** → publish (zenn 2 scrap +
+  note 2本)。 publish 内訳:
+  - nddb0f29b6a04 松島かのん等身大抱き枕 (¥0、 ChatGPT 画像失敗 → Unsplash fallback)
+  - ncd3ce0e3bf46 Shark扇風機 (¥0、 ChatGPT 画像失敗 → Unsplash fallback)
+  - zenn scraps/e4b421222030f6 JanusMesh 3D + scraps/4a00a00d933fc3 TimeProVe
+  改修発火: rag-learn=1、 hallu-guard 5回、 dup-check no near-duplicate、 タイトル捏造系
+  deny clean。 不合格 3件のうち K-beauty 韓国ファッション (KIRSH title_fulfillment)。
+  ⚠️ **2 つの問題検出 + 1件即修正**:
+  ① **私のリグレッション** (`f23e191` の修正が間違った関数に入っていた): `_publish_note`
+  は `stored` 引数を持たない関数なのに `isinstance(stored, dict)` を呼んでいて 毎 publish
+  で NameError ログノイズ → image_style label persist は冗長 (chatgpt_image_batch が
+  data/image_usage.jsonl で既に保存) なので **削除して clean に** (新 commit)。
+  ② **ChatGPT 画像 timeout/placeholder 連発**: cover=False inline=1/3、 Brave CDP は
+  alive だが ChatGPT 側 UI selector drift (ops_incidents #15 と同症状) →
+  両 note とも Unsplash fallback 41KB。 user 起床後に regen 候補
 - 6-18 朝 `/routine`: Brave CDP 落下→再起動→learn→generate **4合格/3不合格**
   → **note 4本** publish (zenn 不合格1=「99%が知らない」 H1 で **昨日追加の deny pattern
   が機能した実証**、 deny `9[0-9]%が知らない` が forbidden_phrases で検知して却下)。

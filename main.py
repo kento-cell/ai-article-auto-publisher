@@ -5067,27 +5067,16 @@ def _publish_note(
                 # planned analyze_image_performance.py can join style_label
                 # with our own ♥ data (2026-06-16 image-learner labels). In
                 # _publish_note the working dict is `stored` (the
-                # ArticleStore record); writing it here doesn't auto-flush —
-                # the post-publish update at main.py:4660-ish does — so we
-                # just stamp it. Wrapped in its own try so a label-write bug
-                # NEVER kills the ChatGPT image batch path (2026-06-16
-                # regression fix: the previous wording referenced a
-                # nonexistent `article` and crashed into Unsplash fallback).
-                try:
-                    _img_meta = get_last_batch_meta() or {}
-                    if _img_meta and isinstance(stored, dict):
-                        stored["image_style"] = _img_meta.get("style_label")
-                        stored["image_genre"] = _img_meta.get("genre_hint")
-                        stored["image_meta"] = {
-                            "cover_ok": _img_meta.get("cover_ok"),
-                            "inline_ok": _img_meta.get("inline_ok"),
-                            "inline_requested": _img_meta.get("inline_requested"),
-                            "provider": "chatgpt" if cgpt_cover else "fallback",
-                        }
-                except Exception as _lbl_exc:  # noqa: BLE001
-                    logger.warning(
-                        "image_style label persist failed (%s) — continuing", _lbl_exc,
-                    )
+                # 2026-06-19: removed the article-dict label write here.
+                # _publish_note has no `stored` in scope (its signature is
+                # title/content/config/source/price — the ArticleStore record
+                # lives in publish_approved one frame up, not here). The
+                # previous wrapped try produced a NameError every publish run
+                # which became log noise. The same metadata is already
+                # persisted by chatgpt_image_batch into data/image_usage.jsonl
+                # (one line per run, keyed by ts + slug_hint + title + cover
+                # path), which is what the planned image learner reads anyway
+                # — the article-dict copy was redundant.
                 if cgpt_cover:
                     cover_path = cgpt_cover
                 # Use ChatGPT inline images when produced; if partial,
