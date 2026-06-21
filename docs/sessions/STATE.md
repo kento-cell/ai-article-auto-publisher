@@ -11,6 +11,18 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-21 夜 `/loop` 再起動 (iter4-5、 bias-free 22件追加): user の bias 指摘以降
+  全 prompt を中立化、 既存 105 を avoid に渡して 2 イテレーションで +22 件:
+  - **iter4 (+10)**: br_001 ビジネス書独立横断、 ck_001 Vermicular vs Staub、
+    pr_001 Cubo Ai vs VAVA ベビーモニター、 sl_005 Oura vs Whoop、 fj_001
+    Margaret Howell、 fn_001 新NISA 高配当ETF、 pd_001 日本語ポッドキャスト、
+    gd_001 北欧スマート水耕、 mn_001 ミニマリズム、 tj_001 関東マイクロツーリズム
+  - **iter5 (+12)**: ck_002 ホットクック vs Instant Pot、 ck_003 山口祐加自炊本、
+    pr_002 抱っこ紐3社、 sl_006 マットレス3社、 pd_002 英語ポッドキャスト5本、
+    gd_002, tj_002, pet_002, mc_002, wc_002, cr_002, rn_001 (running 新カテゴリ)
+  **K比率 39%→32%** (37/117)。 累計 6 イテレーション +49 件 (68→117)、
+  32 カテゴリ。 ScheduleWakeup 省略でループ停止、 PushNotification 送信。
+
 - 6-21 夕方 (bias 是正 追加): user「すべて韓国？？バイアスかからないようにして
   ほしい、 リサーチしているはずだよバズのロジック」 の指摘で、 私が既存データ
   (K-beauty avg♥1.15) と memory (K-beauty 主軸計画) を**バイアスとして適用**して

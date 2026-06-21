@@ -2177,6 +2177,424 @@
         "『100均はダメ』『プロは絶対ハマナカ』など断定禁止 / 完成所要時間は『個人差あり』を明記、 一般化しない / 競合(クロバー/Tulip)を貶めない / 韓国の編み物ブランド(ぼっこハンドメイド等)と接続しない"
       ],
       "why_non_korean": "日本メーカー(ハマナカ、京都発)の純国内軸。 完全新カテゴリ craft の最初の topic、 K-craft(韓国手芸トレンド)との混線を排除"
+    },
+    {
+      "id": "br_001",
+      "category": "book_review",
+      "persona": "2026年上半期のビジネス書ランキングを追う30-40代ナレッジワーカー、本屋大賞/Honya Club/紀伊國屋ベストセラーで気になる本があるが、レビュー記事はステマ疑念があり、複数書店の独立ランキング横断で選びたい層",
+      "pain": "ビジネス書ランキング記事は単一書店(Amazonのみ等)依拠が多く、本屋大賞や紀伊國屋・丸善・honto の独立ランキングを横断した比較が少ない。2026年上半期のリアルな『複数書店で1位』本が分からない",
+      "promise": "2026年上半期(1-6月)のビジネス書を、honto/紀伊國屋/丸善ジュンク堂/本屋大賞ノミネートの4独立ランキングで横断比較し、複数書店で1位になった真の『2026上半期ベスト3』を確定させる【保存版】",
+      "outline": "導入(ベストセラー記事のステマ問題と独立横断の意義) / honto 2026上半期ビジネス書ランキング / 紀伊國屋書店 2026上半期ビジネス書ランキング / 丸善ジュンク堂 ビジネス書ランキング / 本屋大賞2026 ノンフィクション部門 / 4ランキング横断で複数書店上位の3冊(タイトル/著者/出版社/ISBN/価格 verbatim) / 各3冊の中身要約(各章タイトルレベルまで) / 購入順序の提案 / まとめ",
+      "must_include_assets": "honto 上半期ビジネス書ランキング (https://honto.jp/ranking.html) / 紀伊國屋書店 ベストセラー (https://www.kinokuniya.co.jp/disp/CSfBestSellerList.jsp) / 丸善ジュンク堂 ビジネス書ランキング (https://www.junkudo.co.jp/ranking/) / 本屋大賞 2026 ノミネート (https://www.hontai.or.jp/) / 各書籍の出版社公式ページURL + ISBN13 + 価格(2026年6月確認日 verbatim)",
+      "evidence_required": [
+        "4書店ランキングのスクショ日付 verbatim / 各書籍 ISBN13・著者名・出版社・価格は出版社公式または書店公式ページ典拠 / 『複数書店で1位』判定は4ランキング横断表で根拠提示"
+      ],
+      "affiliate_family": "books_business",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『この1冊で人生変わる』等の煽り禁止 / 著者の個人的批判禁止 / 自己啓発書を『科学的に効果あり』と断言しない / 韓国のビジネス書ブーム(『嫌われる勇気』等の韓国輸入文脈)と接続しない / Amazon ランキング単独依拠禁止"
+      ],
+      "neutrality_check": "日本の独立系書店4社の横断ランキングという軸。 地域prefix(K-/J-等)強制ではなく『独立横断』が骨子。 br_*=book_review として完全新カテゴリ、 韓国翻訳本ブーム文脈とは明示分離"
+    },
+    {
+      "id": "ck_001",
+      "category": "cooking_home",
+      "persona": "Vermicular か Staub かで2年悩んでいる30-40代共働き、無水調理 or 鋳物ホーロー鍋を1台買うなら長く使えるものを選びたい層、価格レンジ¥30,000-¥60,000のため失敗したくない",
+      "pain": "Vermicular(愛知県発、無水調理特化)と Staub(フランス、鋳物ホーロー)の比較記事は『どっちも良い』結論ばかりで、具体的な料理ジャンル別(煮込み/炊飯/焼き)の向き不向きが言語化されていない。サイズ選定も曖昧",
+      "promise": "Vermicular Oven Pot Round 22cm と Staub Picot Cocotte 22cm を、公式仕様+料理ジャンル別性能+価格 verbatim で並べ、独身/2人/4人世帯別の最適解を確定させる【保存版】",
+      "outline": "導入(鋳物ホーロー鍋市場と国内2強比較ニーズ) / Vermicular Oven Pot Round 22cm(愛知ドビー、 ¥36,300、 1.5mm精密鋳造、 無水調理特化) / Staub Picot Cocotte 22cm(フランス、 ¥39,600-¥44,000、 ピコ突起で対流促進) / 料理ジャンル別比較(無水カレー→Vermicular、 ブイヤベース→Staub、 炊飯→両者対応、 ローストチキン→Staub) / 世帯別サイズ選定(独身18cm、 2人22cm、 4人24cm) / IH/ガス対応/オーブン耐熱温度 / 手入れと寿命 / まとめ",
+      "must_include_assets": "Vermicular 公式 Oven Pot Round 22cm (https://www.vermicular.jp/products/ovenpotround/) / Staub 公式 Picot Cocotte (https://www.zwilling.com/jp/staub/ピコ・ココット-ラウンド/) / Vermicular 製品仕様PDF / Staub サイズ別容量表(公式) / 価格.com Vermicular 22cm 価格推移 (https://kakaku.com/) / 価格.com Staub 22cm 価格推移 / 各製品 IH/ガス/オーブン対応表(公式)",
+      "evidence_required": [
+        "両製品の公式URL / 価格は公式ストアもしくは価格.com 2026年6月確認日 verbatim / 製造国(Vermicular=愛知県、 Staub=フランス)・素材厚みは公式説明文典拠 / オーブン耐熱温度は取扱説明書典拠"
+      ],
+      "affiliate_family": "kitchen_cookware",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『料理の腕が上がる』等の効能保証禁止 / どちらか一方を貶める比較禁止 / 鋳物ホーロー全般を『万能』と言わない / 韓国ホーロー鍋ブランド(Neoflam等)と接続しない / 100均鍋を否定的に比較しない"
+      ],
+      "neutrality_check": "日本(愛知)×フランス の鋳物ホーロー鍋比較。 地域prefix強制なし、 製品ジャンル(無水調理可能な鋳物鍋)が軸。 K-cookware と分離明示"
+    },
+    {
+      "id": "pr_001",
+      "category": "parenting",
+      "persona": "0-1歳児を育てる30代共働き、 ベビーモニターを買おうとして Amazon で星4以上を10件比較したが中華製ノーブランドが多く絞れない、 アプリ画質+日本語サポート+セキュリティで選びたい層",
+      "pain": "ベビーモニター比較記事は中華製白ラベル品が大量に並び、 アプリ言語/データ送信先/暗号化方式の比較が不十分。 Cubo Ai と VAVA という日本で評価の高い2ブランドの公式仕様比較が見当たらない",
+      "promise": "Cubo Ai Plus(台湾発)と VAVA Baby Monitor(米国発)を、 公式仕様+アプリ機能+データ管理ポリシー+価格 verbatim で並べ、 0-1歳児世帯の最適解を3分で確定させる【保存版】",
+      "outline": "導入(ベビーモニター市場とノーブランド乱立) / Cubo Ai Plus(¥32,800、 AI寝相検知、 顔覆い警告、 鼻と口の検知、 米国小児科学会推奨距離適合) / VAVA Baby Monitor(¥19,999、 WiFi非依存型、 5インチ親機ディスプレイ、 暗号化通信) / WiFi接続型(Cubo)vs WiFi非依存型(VAVA)の使い分け / アプリ機能比較(複数家族共有/泣き声検出/睡眠分析) / データ送信先と暗号化(プライバシーポリシー典拠) / 設置と1ヶ月使用の感想 / まとめ",
+      "must_include_assets": "Cubo Ai 公式 Plus (https://jp.getcubo.com/) / VAVA Baby Monitor 公式 (https://www.vava.com/products/baby-monitor) / Cubo Ai プライバシーポリシー / VAVA セキュリティ仕様書 / マイベスト ベビーモニター比較 2026年版 (https://my-best.com/) / Cubo Ai 米国小児科学会推奨睡眠安全ガイドライン適合説明(公式)",
+      "evidence_required": [
+        "両製品公式URL / 価格は公式ストア 2026年6月確認日 verbatim / AI機能(寝相検知/顔覆い警告)の動作仕様は公式FAQ典拠 / プライバシーポリシーURLと送信先国を併記"
+      ],
+      "affiliate_family": "baby_gear",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "SIDS(乳幼児突然死症候群)を予防できると断言しない / 医療機器ではないことを明示 / 中華ノーブランド製品を『安かろう悪かろう』と煽らない / 韓国ベビーグッズ(Doombuck等)と接続しない / 親の睡眠不足を煽って購買誘導しない"
+      ],
+      "neutrality_check": "台湾(Cubo Ai)× 米国(VAVA)のベビーテック比較。 完全新カテゴリ parenting の最初の topic。 韓国ベビー用品/育児文脈とは明示分離、 K-prefix なし"
+    },
+    {
+      "id": "sl_005",
+      "category": "sleep",
+      "persona": "睡眠スコアを Apple Watch で測っているが浅い眠りが多く改善したい30-40代、 Oura Ring Gen4 か Whoop 5.0 のどちらが自分の用途に合うか2ヶ月悩んでいる、 月額制(Whoop)と買い切り(Oura)の差で止まっている層",
+      "pain": "睡眠トラッカー比較記事は Apple Watch / Fitbit / Oura の3点比較が多く、 Whoop 5.0(2025年5月発売の新世代)を含む最新比較がない。 月額¥3,000(Whoop)vs ¥49,800買い切り+任意月額¥899(Oura)の総コスト試算が曖昧",
+      "promise": "Oura Ring Gen4 と Whoop 5.0 を、 公式仕様+1年/3年総コスト+睡眠ステージ精度+バッテリーで並べ、 24時間装着で苦にならない方を確定させる【保存版】2026年版睡眠トラッカー",
+      "outline": "導入(2026年の睡眠トラッカー市場、 Oura Gen4 と Whoop 5.0 の世代交代) / Oura Ring Gen4(¥49,800買い切り、 月額¥899任意、 8日バッテリー、 心拍/SpO2/体温/睡眠ステージ) / Whoop 5.0(2025年5月発売、 月額¥3,000、 バンド無料更新、 14日バッテリー、 ストレイン/リカバリー) / 1年総コスト(Oura ¥60,588 vs Whoop ¥36,000) / 3年総コスト(Oura ¥82,164 vs Whoop ¥108,000) / 睡眠ステージ精度(両者ポリソムノグラフィ比較論文典拠) / 装着感(指輪 vs 腕バンド) / まとめ",
+      "must_include_assets": "Oura Ring Gen4 公式 (https://ouraring.com/jp) / Whoop 5.0 公式 (https://www.whoop.com/) / Oura メンバーシップ料金ページ / Whoop 月額プラン詳細 / Oura Gen4 睡眠ステージ精度 論文 (PubMed) / Whoop 5.0 発表記事(2025-05-08 公式ブログ)",
+      "evidence_required": [
+        "両製品公式URL / 価格は公式ストア 2026年6月確認日 verbatim / バッテリー持続時間は公式仕様書典拠 / 睡眠ステージ精度は査読論文(PubMed/DOI)典拠、 メーカー自称は使わない"
+      ],
+      "affiliate_family": "sleep_wearables",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これで不眠症が治る』等の医療効能禁止 / Apple Watch ユーザーを貶めない / 月額制を『搾取』と煽らない / 韓国の睡眠ガジェット(LookSee等)と接続しない / 睡眠不足を煽って購買誘導しない"
+      ],
+      "neutrality_check": "フィンランド(Oura)× 米国(Whoop)の睡眠ウェアラブル比較。 sl_001-004 は朝活/季節/手帳/ミニマルで物質ベース睡眠トラッカー比較は欠落。 K-sleep 文脈と分離"
+    },
+    {
+      "id": "fj_001",
+      "category": "fashion_jp",
+      "persona": "30-40代男性/女性、 UNIQLO+ZARAの安価軸を10年続けて飽きた層、 日本のドメスティック・ハイブランドに移行したいが Margaret Howell / 45R / MHL. のラインの違いが分からず購入前に2年止まっている",
+      "pain": "Margaret Howell 関連レビュー記事は『良いブランド』と漠然と語るだけで、 メインライン(Margaret Howell)/MHL.(セカンドライン)/Margaret Howell HOUSEHOLD GOODS の価格・素材・対象顧客の違いが言語化されていない",
+      "promise": "Margaret Howell(英国本国)と日本のライセンス展開(MHL.含む)を、 公式情報のみで価格レンジ・素材・取扱店で並べ、 最初の1着で何を買うべきか確定させる【保存版】Margaret Howell 入門",
+      "outline": "導入(ドメブラ離れ層のMargaret Howell ニーズ) / Margaret Howell プロフィール(1970年ロンドン創業、 1981年メンズ、 1996年MHL.誕生) / メインライン Margaret Howell(英国生産中心、 ¥30,000-¥150,000) / MHL.(日本企画・生産、 ¥10,000-¥40,000、 ワークウェアモチーフ) / Margaret Howell HOUSEHOLD GOODS(雑貨ライン) / 取扱店(銀座本店/南青山/伊勢丹) / 最初の1着推奨(MHL. リネンシャツ ¥18,700 等) / セールタイミング / まとめ",
+      "must_include_assets": "Margaret Howell 日本公式 (https://www.margarethowell.jp/) / MHL. オンラインストア (https://www.margarethowell.jp/SHOP/mhl) / Margaret Howell 南青山店 (公式店舗ページ) / Margaret Howell 銀座店 / WWD ジャパン Margaret Howell 関連記事 (https://www.wwdjapan.com/)",
+      "evidence_required": [
+        "公式URL / 価格は公式ストア 2026年6月確認日 verbatim / メインラインvs MHL. の生産地(英国/日本)・対象顧客は公式about ページ典拠 / 創業年(1970)・MHL.発足年(1996)は公式ヒストリー典拠"
+      ],
+      "affiliate_family": "fashion_japan",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "UNIQLOやZARAを貶めない / 『これを着ればモテる』等の煽り禁止 / Margaret Howell本人の私生活に踏み込まない / 韓国ドメブラ(Andersson Bell等)と接続しない / 偽物/並行輸入品の推奨禁止"
+      ],
+      "neutrality_check": "英国ブランドの日本ライセンス展開という軸。 完全新カテゴリ fashion_jp の最初の topic、 日本国内取扱店で実購入可能なラインに限定。 K-fashion と明示分離"
+    },
+    {
+      "id": "fn_001",
+      "category": "finance_jp",
+      "persona": "新NISA成長投資枠を1年間放置している30-40代会社員、 つみたて投資枠は eMAXIS Slim S&P500 で埋めたが成長投資枠(年¥240万)の使い方が決まらない、 高配当ETF vs グロース株 vs インフラファンドで止まっている層",
+      "pain": "新NISA成長投資枠の使い方記事は『S&P500一本でOK』結論が多く、 高配当ETF(2026年6月時点で利回り3.5%超)や J-REIT・インフラファンドという別軸の選択肢の整理がない。 配当課税の非課税メリット最大化視点が抜けている",
+      "promise": "新NISA成長投資枠 年¥240万を、 高配当ETF(VYM/HDV/SPYD)+ 国内高配当ETF(1489)+ J-REIT で組み立てる『配当課税非課税化』戦略を、 金融庁データ+各ETF公式目論見書で確定させる【保存版】",
+      "outline": "導入(つみたて枠は終わり、 成長投資枠が残る現実) / 配当課税の構造(通常20.315%、 NISA口座で0%) / VYM(¥18,000、 利回り2.9%、 経費0.06%、 米国大型バリュー) / HDV(¥20,000、 利回り3.5%、 経費0.08%) / SPYD(¥6,500、 利回り4.2%、 経費0.07%) / 国内 NEXT FUNDS 日経平均高配当株50指数 ETF(1489、 利回り3.6%) / J-REIT 東証REIT指数連動(1343、 利回り4.5%) / 配分例(40%VYM+30%HDV+20%1489+10%J-REIT) / 為替リスクと対応 / まとめ",
+      "must_include_assets": "金融庁 NISA 制度解説 (https://www.fsa.go.jp/policy/nisa2/about/nisa2024/index.html) / バンガード VYM 公式目論見書 / iShares HDV 公式 / SPYD 公式 / 野村アセットマネジメント NEXT FUNDS 1489 公式 / 東証REIT指数 1343 公式 / 各ETF直近12ヶ月分配金実績(各運用会社公式)",
+      "evidence_required": [
+        "各ETF公式URL / 利回り・経費率・基準価額は運用会社公式ページ 2026年6月確認日 verbatim / 配当課税率(20.315%)は国税庁公式典拠 / NISA 制度詳細は金融庁公式典拠"
+      ],
+      "affiliate_family": "finance_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "個別株推奨は禁止 / 『絶対儲かる』等の保証禁止 / 投資助言業の領域に踏み込まない(『一般論+公式情報』止まり) / 暗号資産を絡めない / 韓国 KOSPI ETF やコリア REIT と接続しない / 詐欺的高利回り商品を取り上げない"
+      ],
+      "neutrality_check": "日本の新NISA制度(日本居住者前提)+米国/日本ETFという軸。 完全新カテゴリ finance_jp の最初の topic、 K-finance(韓国株/ウォン建て商品)とは明示分離"
+    },
+    {
+      "id": "pd_001",
+      "category": "podcast",
+      "persona": "通勤30分+家事1時間でポッドキャストを聞く30-40代、 日本語の知的ポッドキャストを探しているが COTEN RADIO 以外の選択肢が分からない層、 Spotify/Apple Podcasts ランキングは芸能寄りで知的好奇心に合わない",
+      "pain": "日本語ポッドキャスト推薦記事は COTEN RADIO/ゆる言語学ラジオ の2強紹介で止まる。 2026年に注目すべき新興日本語ポッドキャスト(科学/経済/書評系)の体系紹介がない。 配信頻度・1エピソード長さ・公式URLが整理されていない",
+      "promise": "2026年6月時点で Spotify/Apple Podcasts 日本『教育』『科学』『ビジネス』カテゴリの上位から、 COTEN RADIO 以外で配信継続中の知的ポッドキャスト5本を公式情報で確定させる【保存版】",
+      "outline": "導入(知的ポッドキャストの需要と COTEN 以外の選択肢不足) / ゆる言語学ラジオ(2021年7月開始、 水野太貴+堀元見、 週2-3本、 1本60分) / 一月万冊(清水有高、 ビジネス書解説、 月20本前後) / 経済学者シンクタンク フィンランドの森(経済学/週1、 1本40分) / 哲学の楽屋(伊藤雅彦+松井美樹、 哲学入門、 隔週、 1本50分) / Rebuild.fm(宮川達彦、 テック、 月2-3本、 1本90分) / 5本の配信プラットフォーム/Patreon有無/聞き始めお勧めエピソード / まとめ",
+      "must_include_assets": "ゆる言語学ラジオ公式 (https://yurugengo.com/) / 一月万冊 YouTube/ポッドキャスト公式 / Rebuild.fm 公式 (https://rebuild.fm/) / Spotify Japan ポッドキャストランキング (https://podcastcharts.byspotify.com/jp) / Apple Podcasts 教育カテゴリ ランキング / 各番組 SoundCloud / Apple Podcasts ページURL",
+      "evidence_required": [
+        "各番組公式URL / 配信開始年・配信頻度・1エピソード長さは公式説明文または最新10エピソード平均典拠 / ホスト名は公式about ページ典拠 / 『2026年6月時点のランキング』はスクショ日付 verbatim"
+      ],
+      "affiliate_family": "podcast_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "番組ホストの個人攻撃禁止 / 『これを聞けば賢くなる』等の煽り禁止 / 配信終了番組を現役と誤記しない / 韓国語ポッドキャスト(K-pop音声系)と接続しない / 政治系ポッドキャストには踏み込まない"
+      ],
+      "neutrality_check": "日本語ポッドキャスト軸で日本居住リスナー向け。 完全新カテゴリ podcast の最初の topic、 K-podcast や K-pop音声番組とは明示分離"
+    },
+    {
+      "id": "gd_001",
+      "category": "gardening",
+      "persona": "ベランダで観葉植物を3鉢育てている30-40代、 室内ハーブ(バジル/ローズマリー/ミント)を料理に使いたいが室内栽培の失敗(徒長/虫/水やり過多)で2回挫折、 LED水耕栽培キットを検討中の層",
+      "pain": "室内ハーブ栽培記事は『土+鉢でOK』と『LED水耕が正解』で分裂し、 IKEA KRYDDA / Click and Grow / AeroGarden という3大選択肢の比較がない。 初期費用・電気代・収穫量・対応植物の整理が欲しい",
+      "promise": "室内 LED 水耕栽培キット Click and Grow Smart Garden 3(エストニア)と IKEA VÄXER シリーズ(スウェーデン)を、 初期費用+月電気代+対応ハーブ+補充ポッド価格 verbatim で並べ、 最初に買うべき1台を確定させる【保存版】",
+      "outline": "導入(室内ハーブ栽培の挫折パターンと LED 水耕の解) / Click and Grow Smart Garden 3(エストニア発、 ¥18,150、 3ポッド、 月電気代約¥200、 8W LED) / IKEA VÄXER 水耕栽培シリーズ(¥3,499からのスターターセット、 拡張可能、 屋内園芸ラック対応) / 対応ハーブ比較(両者バジル/ローズマリー/ミント対応、 Click and Grow はトマトミニ品種も) / 補充ポッド/種子コスト(Click and Grow ¥1,490/3ポッド、 IKEA は通常種使用可) / 1年総コスト試算 / 初心者の最初1台はどちらか / まとめ",
+      "must_include_assets": "Click and Grow Smart Garden 3 日本公式 (https://www.clickandgrow.com/) / IKEA VÄXER 水耕栽培 (https://www.ikea.com/jp/ja/cat/vaxer-46389/) / Click and Grow 補充ポッド公式ストア / IKEA VÄXER スターターキット製品ページ / 各製品消費電力 仕様書PDF",
+      "evidence_required": [
+        "両製品公式URL / 価格は公式ストア 2026年6月確認日 verbatim / 消費電力(W)は公式仕様書典拠 / 月電気代は『消費電力 × 16h/日 × 30日 × 31円/kWh』で計算式併記"
+      ],
+      "affiliate_family": "gardening_indoor",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『無農薬だから絶対安全』等の煽り禁止 / 食品衛生上の医学的助言禁止 / 100均水耕キットを貶めない / 韓国スマートファーム(Kreon等)と接続しない / 室内農薬使用を推奨しない"
+      ],
+      "neutrality_check": "エストニア(Click and Grow)× スウェーデン(IKEA VÄXER)の北欧スマート水耕。 完全新カテゴリ gardening の最初の topic、 K-smart farming とは明示分離"
+    },
+    {
+      "id": "mn_001",
+      "category": "minimalism",
+      "persona": "ミニマリスト本を5冊読んだ20-40代、 『1年使わないものは捨てる』ルールを知っているが実際に何を捨てて何を残すか具体例で迷う層、 やましたひでこ/佐々木典士の本を読んでも自宅に当てはめにくい",
+      "pain": "ミニマリズム入門記事は『精神論』か『極端な事例(持ち物100個)』に二分し、 普通の30-40代会社員世帯の『1年使わないものリスト』の具体カテゴリ整理がない。 捨てる順序・売却ルート・心理的ハードルの整理欠如",
+      "promise": "佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に、 普通の世帯で『1年使わない確率が高い7カテゴリ』+ 売却ルート(メルカリ/ブランディア/Buy王)+ 価格相場を確定させる【保存版】",
+      "outline": "導入(ミニマリズム本の精神論ばかりの実情) / 佐々木典士『ぼくたちに、もうモノは必要ない。』(ワニブックス、 累計32万部、 ¥1,540) / やましたひでこ『新・片づけ術 断捨離』(マガジンハウス、 ¥1,540) / 1年使わない確率が高い7カテゴリ(古い充電ケーブル/予備のバスタオル/結婚式引出物食器/旅行ガイドブック/古いセール服/趣味未着手用具/景品ノベルティ) / 売却ルート別の向き不向き(メルカリ=本/服、 ブランディア=ブランド服、 Buy王=ガジェット) / 月1の捨てる日ルーティン / 売却して得たお金の使い道3案 / まとめ",
+      "must_include_assets": "佐々木典士『ぼくたちに、もうモノは必要ない。』 (Amazon https://www.amazon.co.jp/ぼくたちに、もうモノは必要ない。-佐々木-典士/dp/4847093712, ISBN 978-4847093715) / やましたひでこ『新・片づけ術 断捨離』(Amazon ISBN付き) / メルカリ公式 (https://jp.mercari.com/) / ブランディア公式 (https://brandear.jp/) / Buy王公式 (https://www.buyking.com/)",
+      "evidence_required": [
+        "書籍はISBN/著者/出版社/価格(出版社公式 or Amazon 2026年6月確認日)verbatim / 累計部数は出版社プレスリリース典拠 / 売却プラットフォーム手数料は各公式ヘルプページ典拠"
+      ],
+      "affiliate_family": "minimalism_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『モノを捨てれば幸せになる』等の煽り禁止 / 趣味のコレクションを否定しない / メルカリ転売を煽らない / 韓国ミニマリズム(미니멀라이프)と接続しない / 大量廃棄を推奨しない(売却/寄付優先)"
+      ],
+      "neutrality_check": "日本人著者2冊+日本国内売却プラットフォーム軸。 完全新カテゴリ minimalism の最初の topic、 K-minimalism(韓国인플루언서系)と分離"
+    },
+    {
+      "id": "tj_001",
+      "category": "travel_jp",
+      "persona": "都内在住の30-40代、 月1で1泊2日マイクロツーリズム(電車2-3時間圏内)に行く層、 個人経営の温泉宿+地元朝市の組み合わせを探しているが、 じゃらん/楽天トラベルの大手宿一覧では発見できない",
+      "pain": "国内温泉個人宿の紹介記事はチェーン宿(大江戸温泉物語/伊東園ホテルズ)が混入することが多く、 純粋な個人経営+10室以下の小規模宿+朝市セットの提案がない。 群馬・栃木・神奈川の関東圏に絞った深掘りが欠落",
+      "promise": "関東圏(神奈川/群馬/栃木)で、 客室10室以下の完全個人経営温泉宿3軒+その近隣朝市/ファーマーズマーケットを、 各宿公式サイト+自治体観光協会情報で確定させる【保存版】1泊2日プラン",
+      "outline": "導入(チェーン宿混入問題と個人宿+朝市の魅力) / 神奈川箱根 仙石原『箱根 強羅 白檀』(全25室はやや大きめなので除外し、 代替で小さい宿を選定) / 群馬 四万温泉『湯元 四萬館』(全16室、 大正創業、 公式 https://www.shimakan.com/) / 栃木 那須湯本『松川屋 那須高原ホテル』 / 朝市1: 箱根町宮城野『大涌谷くろたまご館 隣接朝市』 / 朝市2: 四万温泉『四万温泉協会朝市』(毎週日曜) / 朝市3: 那須『那須朝市』(土曜開催、 那須町観光協会) / 各宿の1泊2食価格レンジ・予約方法 / アクセス(電車+バス) / まとめ",
+      "must_include_assets": "湯元 四萬館 公式 (https://www.shimakan.com/) / 四万温泉協会 公式 (https://shimaonsen.com/) / 那須町観光協会 公式 (https://www.nasukogen.org/) / 那須朝市 開催情報(那須町公式) / 箱根町観光協会 (https://www.hakone.or.jp/) / じゃらん/楽天トラベル該当宿ページ(価格確認用)",
+      "evidence_required": [
+        "各宿公式URL / 客室数・創業年は宿公式about ページ典拠 / 朝市開催日時は自治体観光協会公式典拠 / 価格は宿公式 or 大手予約サイト 2026年6月確認日 verbatim / チェーン宿でないことは運営会社情報で確認"
+      ],
+      "affiliate_family": "travel_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "チェーン宿(大江戸温泉物語/伊東園/湯快リゾート等)を含めない / 宿のスタッフ個人を特定しない / 価格を旧情報のまま転載しない(必ず確認日付き) / 韓国温泉(찜질방)文化と接続しない / 朝市の出店者を実名で批判しない"
+      ],
+      "neutrality_check": "日本国内関東圏のマイクロツーリズム軸。 完全新カテゴリ travel_jp の最初の topic、 K-tourism(韓国旅行)とは明示分離、 個人宿縛りでチェーン店ルール厳守"
+    },
+    {
+      "id": "ck_002",
+      "category": "cooking_home",
+      "persona": "平日19-22時の3時間で夕食+翌日弁当+片付けまで終わらせたい共働き30-40代、 ホットクック(SHARP)とインスタントポット(米国Instant Brands)で2ヶ月悩んでいる層、 ¥40,000帯の自動調理鍋を1台に絞れない",
+      "pain": "自動調理鍋比較記事は『ホットクックは無水』『インスタポは圧力』と説明止まりで、 平日30分料理ルーティンに当てはめた献立例(月-金各日)と消費電力・1食コスト換算がない。 容量(2.4L vs 5.7L)で家族構成別の最適解が言語化されていない",
+      "promise": "SHARP ヘルシオ ホットクック KN-HW24G(2.4L)と Instant Pot Duo Plus 60 V3(5.7L)を、 公式仕様+平日5日分の自動調理レシピ+消費電力+価格 verbatim で並べ、 2-4人世帯の最適解を確定させる【保存版】",
+      "outline": "導入(平日30分料理の壁と自動調理鍋2強) / SHARP ホットクック KN-HW24G(2.4L、 ¥64,800、 国内製、 公式無水カレー/肉じゃが内蔵レシピ150種) / Instant Pot Duo Plus 60 V3(5.7L、 ¥17,800、 米国、 圧力/スロー/ヨーグルト9機能) / 平日5日献立(月:無水カレー/火:肉じゃが/水:角煮/木:ポトフ/金:鶏ハム)+ 各所要時間 / 消費電力(ホットクック800W/Instant Pot 1000W) × 月電気代試算 / 2人世帯=Instant Pot 5.7L、 3-4人=ホットクック2.4L の判定 / 手入れ・パッキン交換頻度 / まとめ",
+      "must_include_assets": "SHARP ヘルシオ ホットクック KN-HW24G 公式 (https://jp.sharp/hotcook/products/knhw24g/) / SHARP COCORO KITCHEN 内蔵レシピ一覧 (https://cocorokitchen.jp/) / Instant Pot Duo Plus 60 V3 公式 (https://instantpot.com/products/duo-plus-6-quart) / Instant Brands 日本正規代理店 (https://instantpot.jp/) / 価格.com ホットクック価格推移 (https://kakaku.com/) / 経済産業省 家庭電気料金単価(2026年6月確認)",
+      "evidence_required": [
+        "両製品公式URL / 価格は公式ストアもしくは価格.com 2026年6月確認日 verbatim / 内蔵レシピ数は公式COCORO KITCHEN または取扱説明書典拠 / 消費電力は公式仕様書典拠 / 電気代計算は『消費電力×使用時間×31円/kWh』で計算式併記"
+      ],
+      "affiliate_family": "kitchen_cookware",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これで料理が苦手卒業』等の効能保証禁止 / どちらかを貶める比較禁止 / 自動調理鍋を『手抜き』と煽る/煽られる構図禁止 / 韓国の調理家電(Cuckoo電気圧力鍋等)と接続しない / レシピ本の丸写しを推奨しない"
+      ],
+      "neutrality_check": "日本(SHARP)× 米国(Instant Brands)の自動調理鍋比較。 ck_001 は鋳物鍋(Vermicular vs Staub)だったので電気自動調理鍋軸を補強。 K-cookware と明示分離"
+    },
+    {
+      "id": "ck_003",
+      "category": "cooking_home",
+      "persona": "1人暮らし2-5年目の20-30代、 外食/コンビニ依存から自炊週3回に移行したいが『1人分の食材使い切り』と『冷凍ストック設計』で挫折を3回経験している層、 包丁1本まな板1枚で始めたい",
+      "pain": "1人暮らし自炊本は『時短』『節約』『健康』軸で乱立し、 冷凍ストック設計(肉/野菜/作り置きおかず)を1週間サイクルで体系化した記事が少ない。 山口祐加・有元葉子・コウケンテツ系の入門本の差分が見えない",
+      "promise": "山口祐加『自炊。何にしようか』(¥1,650) を軸に、 1週間冷凍ストックサイクル(土曜90分仕込み→月-金10分仕上げ)を、 著者公式レシピ+楽天市場食材価格 verbatim で組み立てる【保存版】1人暮らし自炊",
+      "outline": "導入(1人暮らし自炊の3つの挫折点) / 山口祐加プロフィール(自炊料理家、 著書多数、 NHKきょうの料理講師) / 『自炊。何にしようか』(晶文社、 ¥1,650、 ISBN 978-4794973931) / 土曜90分仕込み献立(豚こま500g下味冷凍3種/玉ねぎ千切り冷凍/ほうれん草茹で冷凍) / 月-金10分仕上げ(月:豚こま炒め/火:豚汁/水:オムレツ/木:回鍋肉/金:豚野菜炒め) / 冷凍保存容器3選(ジップロックフリーザーバッグ ¥698/野田琺瑯White Series ¥2,310/iwaki耐熱ガラス ¥1,210) / 1週間食材費試算(¥3,500前後) / まとめ",
+      "must_include_assets": "山口祐加『自炊。何にしようか』(晶文社、 Amazon https://www.amazon.co.jp/自炊。何にしようか-山口-祐加/dp/4794973934, ISBN 978-4794973931) / 山口祐加公式noteアカウント (https://note.com/yukayamaguchi_) / 旭化成ジップロックフリーザーバッグ公式 (https://www.asahi-kasei.co.jp/saran/ziploc/) / 野田琺瑯White Series公式 (https://www.nodahoro.com/) / iwaki耐熱ガラス保存容器公式 (https://igc.co.jp/) / 楽天市場 食材価格2026年6月確認",
+      "evidence_required": [
+        "書籍ISBN/著者/出版社/価格 verbatim / 著者プロフィールは公式noteまたは著書奥付典拠 / 保存容器価格は各メーカー公式ストア 2026年6月確認日 verbatim / 食材価格は楽天市場/イオン/西友いずれかの店頭価格確認日付き"
+      ],
+      "affiliate_family": "cookbooks_solo",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『自炊すれば必ず痩せる』等の医療効能禁止 / 外食/コンビニ食を貶めない / 100均保存容器を否定的に比較しない / 韓国1人暮らしYouTube(혼밥)文化と接続しない / 食材コスト計算を地域差(都心/地方)を無視して断言しない"
+      ],
+      "neutrality_check": "日本人著者(山口祐加)+ 日本国内流通の保存容器メーカー(旭化成/野田琺瑯/iwaki)軸。 ck_001-002 が鋳物鍋/自動調理鍋だったので料理本+冷凍ストック設計軸を補強。 K-mukbang/혼밥 と分離"
+    },
+    {
+      "id": "pr_002",
+      "category": "parenting",
+      "persona": "0-3歳児を抱える共働き30代、 抱っこ紐をエルゴ(Ergobaby)とコニー(Konny)とベビービョルン(BabyBjörn)の3社で1ヶ月悩んでいる層、 新生児期と1-2歳期で買い替えるべきか判断できない",
+      "pain": "抱っこ紐比較記事は『エルゴが定番』結論が多く、 新生児期(0-4ヶ月)に向くスリング型(コニー)vs 構造型(エルゴ/ベビービョルン)の使い分けと、 2台体制 vs 1台買い替えのコスト試算がない",
+      "promise": "Ergobaby OMNI Breeze(米国)と Konny SUMMER(韓国系だが日本展開済の本軸はスリング技術)と BabyBjörn Harmony(スウェーデン)を、 公式仕様+対応月齢+価格 verbatim で並べ、 0-3歳3年間の最小コスト構成を確定させる【保存版】",
+      "outline": "導入(抱っこ紐3年で必要な台数は?) / Ergobaby OMNI Breeze(¥31,900、 新生児-体重20.4kg、 4抱き方、 米国/カリフォルニア発) / BabyBjörn Harmony(¥41,800、 0ヶ月-3歳、 メッシュ素材、 スウェーデン/ストックホルム発) / Konny SUMMER ELASTECH(¥9,900、 新生児-20kg、 韓国発だが世界40カ国展開) / 月齢別使い分け表(0-4ヶ月=Konny、 4ヶ月-3歳=Ergobaby/BabyBjörn) / 2台体制(Konny+Ergobaby ¥41,800)vs 1台買い替え(Ergobaby単独)コスト試算 / 洗濯/メンテナンス頻度 / まとめ",
+      "must_include_assets": "Ergobaby OMNI Breeze 公式 (https://ergobaby.jp/) / BabyBjörn Harmony 公式 (https://www.babybjorn.jp/baby-carrier/baby-carrier-harmony/) / Konny SUMMER ELASTECH 公式 (https://konny.jp/) / 各製品取扱説明書PDF(対応月齢/体重) / マイベスト抱っこ紐比較 2026年版 (https://my-best.com/) / 日本小児科学会 抱っこ紐安全使用ガイドライン",
+      "evidence_required": [
+        "3製品公式URL / 価格は公式ストア 2026年6月確認日 verbatim / 対応月齢・体重は取扱説明書典拠 / 製造国は公式about ページ典拠 / 安全基準は日本小児科学会 or ASTM国際安全規格典拠"
+      ],
+      "affiliate_family": "baby_gear",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『抱っこ紐で発達が促進』等の医療効能禁止 / 親の腰痛予防を断定しない(個人差) / 韓国発ブランド(Konny)を K-parenting 文脈で持ち上げない、 機能比較のみで扱う / 中華ノーブランド製品を煽らない / 抱っこ紐選びを『母親の責任』に矮小化しない"
+      ],
+      "neutrality_check": "米国(Ergobaby)× スウェーデン(BabyBjörn)× 韓国発だが日本展開ブランド(Konny)を機能比較。 Konny は韓国発だが pain/promise/outline の軸は『抱っこ紐3年最小コスト構成』で K-prefix 強制ではない。 pr_001 はベビーモニターだったので抱っこ紐軸を補強"
+    },
+    {
+      "id": "sl_006",
+      "category": "sleep",
+      "persona": "マットレスを10年以上使い続けている30-40代、 朝起きると腰が痛い、 西川/エアウィーヴ/コアラマットレスの3社で1年悩んでいる層、 ¥80,000-¥150,000の中価格帯で買い替え1回失敗したくない",
+      "pain": "マットレス比較記事は『高反発が腰に良い』『低反発はNG』結論が多く、 日本人骨格データに基づく硬さ選定(N値/ニュートン)の根拠が乏しい。 西川 AiR / エアウィーヴ S4 / コアラ オリジナル のスペック横並びと10年保証条件の整理がない",
+      "promise": "西川 AiR SI(¥143,000)と エアウィーヴ S4(¥99,000)と コアラ オリジナル コアラマットレス(¥88,000)を、 N値(硬さ)+ 厚み+ 保証年数+ 返品ポリシー verbatim で並べ、 体重別・腰痛タイプ別の最適解を確定させる【保存版】",
+      "outline": "導入(マットレス10年買い替えサイクルと腰痛改善ニーズ) / 西川 AiR SI(¥143,000、 厚み14cm、 N値100-180、 1.5年保証、 国内製造) / エアウィーヴ S4(¥99,000、 厚み9cm、 エアファイバー、 3年保証、 ホテルオークラ等採用) / コアラ オリジナル コアラマットレス(¥88,000、 厚み23cm、 3層構造、 10年保証、 120日トライアル豪州ブランド) / 体重別硬さ判定表(50kg未満=ソフト/50-70kg=ミディアム/70kg超=ハード) / 腰痛タイプ別(反り腰=高反発/猫背=中反発) / 返品ポリシー比較(コアラ120日返金保証あり、 他社なし) / まとめ",
+      "must_include_assets": "西川 AiR SI 公式 (https://www.nishikawa1566.com/store/air/) / エアウィーヴ S4 公式 (https://airweave.jp/products/series/s4/) / コアラマットレス オリジナル 公式 (https://koala.com/ja-jp/products/koala-mattress) / 西川産業 会社概要(1566年創業) / エアウィーヴ ホテル採用一覧 / コアラスリープ 120日トライアル規約 / マイベスト マットレス比較 2026年版",
+      "evidence_required": [
+        "3製品公式URL / 価格は公式ストア 2026年6月確認日 verbatim / N値・厚み・素材は公式仕様書典拠 / 保証年数・返品ポリシーは公式利用規約典拠 / 採用ホテル一覧は公式プレスリリース典拠"
+      ],
+      "affiliate_family": "sleep_bedding",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これで腰痛が完治』等の医療効能禁止 / 低反発マットレスを全否定しない / 整形外科を否定しない / 韓国寝具ブランド(JAJU/Kazmi等)と接続しない / 個人体験談を一般化しない / 古いマットレスを『不衛生』と煽らない"
+      ],
+      "neutrality_check": "日本(西川 1566年創業/エアウィーヴ)× 豪州(コアラ)のマットレス比較。 sl_001-005 が朝活/季節/手帳/ミニマル/睡眠トラッカーだったのでマットレス物質軸を補強。 K-sleep と分離"
+    },
+    {
+      "id": "pd_002",
+      "category": "podcast",
+      "persona": "TOEIC 700-850点、 海外英語ポッドキャストで実用英語を維持/伸ばしたい30-40代、 通勤30分+ジム1時間で聞く、 BBCニュースは固いし AJ Hoge は古いと感じている層、 2026年現役の教育系英語ポッドキャストが分からない",
+      "pain": "英語ポッドキャスト推薦記事は10年前の定番(EnglishClass101/Voice of America Learning English)で止まり、 2024-2026年に伸びている現役番組(All Ears English/The English We Speak/Plain English)の体系紹介がない。 配信頻度・1エピソード長さ・難易度の整理が欲しい",
+      "promise": "2026年6月時点で Apple Podcasts 米国/英国『Language Learning』カテゴリ上位から、 中級者(TOEIC 700-850)向けに継続更新中の英語学習ポッドキャスト5本を公式情報で確定させる【保存版】",
+      "outline": "導入(英語ポッドキャスト学習の中級者の壁) / All Ears English(米国、 Lindsay+Michelle、 月20本前後、 1本15分、 ビジネス英語/カジュアル混合) / The English We Speak(BBC Learning English、 週1、 1本3-4分、 イディオム特化) / Plain English Podcast(JR、 月2-3本、 1本30分、 ニュース×解説、 トランスクリプト無料) / Luke's English Podcast(英国Luke Thompson、 月4-6本、 1本60-90分、 雑談ベース) / 6 Minute English(BBC Learning English、 週1、 1本6分、 ニュース語彙) / 5本の難易度(CEFR B1-B2)/ 配信プラットフォーム/トランスクリプト有無 / 1日30分の組み合わせ例 / まとめ",
+      "must_include_assets": "All Ears English 公式 (https://www.allearsenglish.com/) / BBC Learning English The English We Speak (https://www.bbc.co.uk/learningenglish/english/features/the-english-we-speak) / Plain English Podcast 公式 (https://plainenglish.com/) / Luke's English Podcast 公式 (https://teacherluke.co.uk/) / BBC 6 Minute English (https://www.bbc.co.uk/learningenglish/english/features/6-minute-english_2024) / Apple Podcasts 米国 Language Learning ランキング (2026年6月確認)",
+      "evidence_required": [
+        "各番組公式URL / 配信開始年・配信頻度・1エピソード長さは公式説明文または最新10エピソード平均典拠 / ホスト名は公式about ページ典拠 / CEFR レベルは番組公式または各種学習者レビュー集約典拠 / 『2026年6月時点のランキング』はスクショ日付 verbatim"
+      ],
+      "affiliate_family": "language_learning_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これで TOEIC 900点』等の点数保証禁止 / ネイティブ信仰を強化しない(非ネイティブ講師も対等扱い) / 番組ホストの個人攻撃禁止 / 配信終了番組を現役と誤記しない / 韓国系英語ポッドキャスト(EBS英語等)と接続しない / 政治系番組には踏み込まない"
+      ],
+      "neutrality_check": "米国(All Ears English/Plain English)+ 英国(BBC/Luke's)の英語学習ポッドキャスト軸。 pd_001 は日本語ポッドキャストだったので海外英語軸を補強。 K-podcast と分離"
+    },
+    {
+      "id": "gd_002",
+      "category": "gardening",
+      "persona": "ベランダ5平米で植物を育てたい20-40代、 観葉植物入門で『枯らさない品種』『耐陰性』を知りたいが、 ガジュマル/モンステラ/サンスベリアの違いと光量別の選び方が言語化されていない層",
+      "pain": "観葉植物入門記事は『初心者向け10選』羅列で終わり、 室内光量(ルクス値)別の品種マッチングと、 大手2社(プロトリーフ/花ごころ)の培養土選びの根拠がない。 ¥3,000の鉢でなぜ枯れるか分からない",
+      "promise": "観葉植物入門の3品種(ガジュマル/サンスベリア・ゼラニカ/ポトス・ゴールデン)を、 ルクス値+水やり頻度+培養土+鉢サイズで並べ、 ベランダ/室内窓際/廊下別の最適解を確定させる【保存版】枯らさない観葉植物入門",
+      "outline": "導入(観葉植物の枯死原因TOP3は光量・水・培養土) / ルクス値の基礎(直射1万-10万 / 窓際1,000-5,000 / 室内中央100-500) / ガジュマル(必要ルクス500-3,000、 水やり週1、 価格¥1,500-¥3,000) / サンスベリア・ゼラニカ(必要ルクス100-2,000、 水やり月2、 価格¥1,800-¥4,000) / ポトス・ゴールデン(必要ルクス300-2,000、 水やり週1、 価格¥800-¥2,500) / 培養土選び(プロトリーフ室内向け観葉植物の土 ¥1,408 / 花ごころ室内園芸の土 ¥898) / 鉢サイズ(苗5号→6号→8号と1サイズずつ) / 月1メンテナンス / まとめ",
+      "must_include_assets": "プロトリーフ 室内向け観葉植物の土 公式 (https://www.protoleaf.jp/products/) / 花ごころ 室内園芸の土 公式 (https://www.hanagokoro.co.jp/) / 観葉植物専門店 PRIMA GARDEN 公式 (https://primagarden.jp/) / HitoHana 観葉植物販売 (https://hitohana.tokyo/) / 照度測定アプリ Lux Light Meter Pro(iOS/Android) / 日本花卉園芸新聞 観葉植物市場データ",
+      "evidence_required": [
+        "培養土製品公式URL / 価格は公式または楽天/Amazon 2026年6月確認日 verbatim / 各品種の必要ルクス値は園芸書(NHK出版『観葉植物の育て方』 or 日本フラワーデザイナー協会資料)典拠 / 水やり頻度は各販売店公式ガイド典拠"
+      ],
+      "affiliate_family": "gardening_indoor",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『空気清浄効果がある』等の医療/環境効能を断言しない(NASAクリーン空気研究は誤解多い) / 100均観葉植物を貶めない / 価格を旧情報のまま転載しない / 韓国観葉植物トレンド(K-plants)と接続しない / 動物有毒性(猫がポトスを食べると中毒)を明記する"
+      ],
+      "neutrality_check": "日本国内培養土メーカー(プロトリーフ/花ごころ)+ 国内園芸書典拠軸。 gd_001 は北欧スマート水耕だったので普通の鉢植え観葉植物軸を補強。 K-plants と分離"
+    },
+    {
+      "id": "tj_002",
+      "category": "travel_jp",
+      "persona": "都内/関東在住の30-40代、 関西エリア(京都/大阪/兵庫/奈良)で2泊3日マイクロツーリズム+食べ物+町歩き+古い建築を組み合わせたい層、 京都の有名観光地(清水寺/嵐山)は混雑で避けたい",
+      "pain": "関西旅行記事は王道観光地(清水寺/嵐山/USJ)に集中し、 京都市内の『観光客密度が低い区(西陣/伏見/吉田)+ 個人町家+ 個人カフェ』の組み合わせ提案がない。 2泊3日で歩きやすい1日プランの設計が欠落",
+      "promise": "京都西陣・伏見の2泊3日プランを、 西陣個人町家宿1軒+ 伏見個人カフェ2軒+ 西陣織会館 を、 各施設公式サイト+京都市観光協会情報で確定させる【保存版】混雑回避の京都裏ルート",
+      "outline": "導入(オーバーツーリズム回避ニーズと京都裏ルートの魅力) / 西陣エリア概要(京都市上京区、 西陣織発祥地、 観光客密度が東山区の1/3) / 1日目: 京都駅→西陣 町家宿『そわか』(全11室、 公式 https://sowaka.com/) / 西陣織会館(京都市上京区堀川通、 公式 https://nishijin.or.jp/) / 2日目: 伏見エリア(京阪伏見桃山駅、 月桂冠大倉記念館 https://www.gekkeikan.co.jp/kinenkan/) / 伏見個人カフェ『カフェ ファブリック』(伏見区桃山、 公式 SNS確認後) / 3日目: 帰路+ 駅近 京都市京セラ美術館 / 京都市公共交通(市バス1日券¥700) / 2泊3日合計予算¥45,000前後 / まとめ",
+      "must_include_assets": "京都町家宿 そわか 公式 (https://sowaka.com/) / 西陣織会館 公式 (https://nishijin.or.jp/) / 月桂冠大倉記念館 公式 (https://www.gekkeikan.co.jp/kinenkan/) / 京都市京セラ美術館 公式 (https://kyotocity-kyocera.museum/) / 京都市観光協会 (https://ja.kyoto.travel/) / 京都市交通局 市バス1日券 (https://www2.city.kyoto.lg.jp/kotsu/dayticket/)",
+      "evidence_required": [
+        "各施設公式URL / 客室数・創業年は宿公式about ページ典拠 / 入館料・営業時間は施設公式 2026年6月確認日 verbatim / 観光客密度データは京都市観光協会 観光統計典拠 / チェーン宿でないことは運営会社情報で確認"
+      ],
+      "affiliate_family": "travel_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "チェーン宿(京都センチュリーホテル/ホテルグランヴィア京都等大手)を含めない / 個人カフェの店員を実名で批判しない / 西陣織を『絶滅寸前』など過剰演出しない / 韓国旅行ブログ風の『盛り写真』演出を煽らない / 価格を旧情報のまま転載しない"
+      ],
+      "neutrality_check": "日本国内関西圏(京都西陣/伏見)のマイクロツーリズム軸。 tj_001 が関東(神奈川/群馬/栃木)だったので関西軸を補強。 個人宿/個人カフェ縛りでチェーン店ルール厳守、 K-tourism と分離"
+    },
+    {
+      "id": "pet_002",
+      "category": "pet_life",
+      "persona": "成犬(柴犬/トイプードル等小-中型犬)を飼って3-5年の30-40代、 散歩中の引っ張り癖が治らず、 ハーネス vs 首輪で2ヶ月悩んでいる層、 Julius-K9(ハンガリー)とEzyDog(豪州)とPerfect Fit(英国)で絞れない",
+      "pain": "犬のハーネス比較記事は『首輪より安全』結論が多く、 引っ張り癖矯正用 H型 vs Y型 vs Front-Clip 構造の使い分けと、 小型犬(3-7kg)/中型犬(7-15kg)別の最適モデルが言語化されていない",
+      "promise": "Julius-K9 IDC Powerharness(ハンガリー)と EzyDog Convert Trail-Ready Harness(豪州)と Perfect Fit Harness(英国)を、 公式仕様+構造タイプ+価格 verbatim で並べ、 小型/中型犬・引っ張り癖の強度別の最適解を確定させる【保存版】",
+      "outline": "導入(犬のハーネス選びと引っ張り癖矯正ニーズ) / 構造分類(H型=背中Dリング/Y型=胸前Dリング/Front-Clip=胸前+背中2リング) / Julius-K9 IDC Powerharness(¥6,900-¥9,800、 H型、 7サイズ、 ハンガリー製、 警察犬採用) / EzyDog Convert Trail-Ready Harness(¥7,480-¥10,780、 Y型+背中Dリング、 6サイズ、 豪州発) / Perfect Fit Harness(¥8,500前後、 3パーツ独立サイズ調整、 英国発、 救助犬向け設計) / サイズ別判定(チワワ/トイプードル=Perfect Fit XSサイズ、 柴犬=EzyDog M、 ボーダーコリー=Julius-K9 1サイズ) / 引っ張り癖矯正は Front-Clip 構造優位の根拠(米国動物行動学会) / 装着3分以内が習慣化のカギ / まとめ",
+      "must_include_assets": "Julius-K9 IDC Powerharness 日本公式 (https://www.julius-k9.jp/) / EzyDog Convert Harness 公式 (https://www.ezydog.com/jp/products/convert-harness) / Perfect Fit Harness UK 公式 (https://www.dog-games-shop.co.uk/perfect-fit-harness/) / Perfect Fit 日本輸入代理店(BARK Premium 等) / マイベスト 犬用ハーネス比較 2026年版 / 米国動物行動学会(AVSAB)ハーネス推奨ガイドライン",
+      "evidence_required": [
+        "3製品公式URL / 価格は公式ストアまたは正規輸入代理店 2026年6月確認日 verbatim / 構造タイプ(H型/Y型/Front-Clip)・サイズ展開は公式仕様書典拠 / 警察犬/救助犬採用は公式about典拠 / 引っ張り癖矯正効果は AVSAB or 査読論文典拠"
+      ],
+      "affiliate_family": "pet_supplies",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これで吠え癖も治る』等の効能拡大解釈禁止 / 首輪を全否定しない(犬種・状況による) / プロトレーナーを否定しない / 韓国ペット用品(BarkSpot等)と接続しない / 個別犬の体験談を一般化しない / チョークチェーン/プロングカラーを煽らない(動物福祉観点)"
+      ],
+      "neutrality_check": "ハンガリー(Julius-K9)× 豪州(EzyDog)× 英国(Perfect Fit)の犬用ハーネス比較。 pet_001 は自動給餌器だったので犬軸+ハーネス軸を補強。 K-pet と分離"
+    },
+    {
+      "id": "mc_002",
+      "category": "mental_care",
+      "persona": "認知行動療法(CBT)に関心がある20-40代、 不安/抑うつ/対人緊張で心療内科行く一歩手前、 セルフCBTワークブックを始めたいが大野裕/伊藤絵美/坂野雄二の入門本3冊で2ヶ月悩んでいる層",
+      "pain": "認知行動療法入門本は専門家(精神科医/臨床心理士)監修書が多数あるが、 大野裕『こころが晴れるノート』(創元社、 ¥1,540)/伊藤絵美『セルフケアの道具箱』(晶文社、 ¥1,760)/坂野雄二『認知行動療法の基礎』の対象読者・内容深度・併用順序の整理がない",
+      "promise": "大野裕『こころが晴れるノート』(累計30万部、 ¥1,540)と 伊藤絵美『セルフケアの道具箱』(累計40万部、 ¥1,760)を軸に、 セルフCBT入門の8週間ワーク順序と、 心療内科に行くべきラインを公式情報+学会ガイドラインで確定させる【保存版】",
+      "outline": "導入(CBT入門本乱立と『どの1冊から』問題) / 大野裕プロフィール(慶應義塾大学医学部精神神経科教室卒、 認知行動療法研修開発センター理事長) / 『こころが晴れるノート』(創元社、 ¥1,540、 ISBN 978-4422112374、 累計30万部、 5週間ワーク) / 伊藤絵美プロフィール(洗足ストレスコーピング・サポートオフィス所長、 公認心理師) / 『セルフケアの道具箱』(晶文社、 ¥1,760、 ISBN 978-4794971913、 ストレスコーピング100種) / 8週間順序(1-5週=大野ワーク→6-8週=伊藤道具箱) / 心療内科に行くべきライン(日本うつ病学会ガイドライン典拠の3指標)/ オンラインCBT(認知行動療法研修開発センター監修)/ まとめ",
+      "must_include_assets": "大野裕『こころが晴れるノート』(創元社、 Amazon https://www.amazon.co.jp/こころが晴れるノート-大野-裕/dp/4422112376) / 伊藤絵美『セルフケアの道具箱』(晶文社、 Amazon https://www.amazon.co.jp/セルフケアの道具箱-伊藤絵美/dp/4794971915) / 一般社団法人 認知行動療法研修開発センター 公式 (https://cbtt.jp/) / 日本うつ病学会 治療ガイドライン (https://www.secretariat.ne.jp/jsmd/) / 洗足ストレスコーピング・サポートオフィス 公式 (https://www.senzoku-stress.com/)",
+      "evidence_required": [
+        "書籍ISBN/著者/出版社/価格 verbatim / 累計部数は出版社プレスリリース or 公式典拠 / 著者プロフィール(所属/専門資格)は公式 about ページ典拠 / 心療内科受診ラインは日本うつ病学会公式ガイドライン典拠、 個人体験で線引きしない"
+      ],
+      "affiliate_family": "books_mental",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『CBTで必ず治る』等の治療効能禁止 / 抗うつ薬を一律否定/推奨どちらも禁止 / 精神科医療を否定しない / 韓国メンタルケア(BTS Vメンバー言及等)と接続しない / 自己診断でラベル貼りを煽らない / 自殺念慮への踏み込みは公式ガイドラインに従う"
+      ],
+      "neutrality_check": "日本人著者(大野裕/伊藤絵美)+ 日本うつ病学会/認知行動療法研修開発センター軸。 mc_001 が HSP/繊細さんだったので CBT 治療法軸を補強。 K-mental と分離"
+    },
+    {
+      "id": "wc_002",
+      "category": "women_career",
+      "persona": "30代女性、 SIer/メーカー/小売の総合職5-10年目、 転職を1年検討しているがエージェントの圧で消耗、 リブズ/Wantedly/LIBZ Career(女性特化)とビズリーチ/JACリクルートメント(総合)の使い分けが分からない層",
+      "pain": "女性転職記事は『リブズが良い』結論で止まり、 女性特化エージェント(LIBZ Career/Waris/エンウィメンズワーク)と 総合エージェント(ビズリーチ/JAC/doda)の年収レンジ・求人傾向・面談頻度の比較が体系化されていない",
+      "promise": "30代女性転職で使うべき5サービス(LIBZ Career/Waris/エンウィメンズワーク/ビズリーチ/JACリクルートメント)を、 公式の対象年収・求人数・登録条件 verbatim で並べ、 業界別の最適組み合わせを確定させる【保存版】",
+      "outline": "導入(女性30代転職で消耗するエージェント問題) / LIBZ Career(女性特化、 年収400万円以上対象、 公式 https://career.prismy.jp/) / Waris(プロフェッショナル女性向け、 業務委託も扱う、 公式 https://waris.co.jp/) / エンウィメンズワーク(エン・ジャパン運営、 公式 https://employment.en-japan.com/womens-work/) / ビズリーチ(年収600万円以上推奨、 ヘッドハンター制、 公式 https://www.bizreach.jp/) / JACリクルートメント(年収600万円以上、 外資系強い、 公式 https://www.jac-recruitment.jp/) / 業界別組み合わせ(IT総合職=LIBZ+ビズリーチ / コンサル=JAC+ビズリーチ / メーカー専門職=エンウィメンズ+JAC) / 面談頻度の調整法 / 退職交渉サポート有無 / まとめ",
+      "must_include_assets": "LIBZ Career 公式 (https://career.prismy.jp/) / Waris 公式 (https://waris.co.jp/) / エンウィメンズワーク 公式 (https://employment.en-japan.com/womens-work/) / ビズリーチ 公式 (https://www.bizreach.jp/) / JACリクルートメント 公式 (https://www.jac-recruitment.jp/) / 厚生労働省 一般職業紹介状況2026年(https://www.mhlw.go.jp/)",
+      "evidence_required": [
+        "5サービス公式URL / 対象年収・求人数・登録条件は各サービス公式 2026年6月確認日 verbatim / 業界別求人傾向は各社プレスリリースまたは公開求人検索結果典拠 / 女性転職市場全体の統計は厚生労働省典拠"
+      ],
+      "affiliate_family": "career_services",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『この1社で内定』等の保証禁止 / 既存の職場を貶める構図禁止 / 男性総合エージェントを『女性に冷たい』と断定しない / 韓国の女性キャリア事情(出生率/4B運動等)と接続しない / 退職代行を強く推奨しない / 副業/独立を強く誘導しない(転職軸)"
+      ],
+      "neutrality_check": "日本国内の女性向け+総合転職エージェント5社軸。 wc_001 が育休復帰だったので転職軸を補強。 K-feminism や 4B 文脈とは明示分離"
+    },
+    {
+      "id": "cr_002",
+      "category": "craft",
+      "persona": "革小物(カードケース/小銭入れ)を自作したい20-40代、 YouTube動画で見て興味を持ったが必要工具・革・型紙のセット内容が分からず、 レザークラフトキット3社(クラフト社/協進エル/SEIWA)で2ヶ月悩んでいる層",
+      "pain": "レザークラフト入門記事は『100均キット vs 専門メーカー』論争で止まり、 国内3大メーカー(クラフト社/協進エル/SEIWA)の入門キット・革質・型紙ライセンスの整理がない。 ¥3,000-¥8,000帯のキットで何が違うか不明",
+      "promise": "国内レザークラフト3大メーカーのカードケース入門キットを、 公式仕様+革種類(ヌメ革/オイルレザー)+ 工具内容 verbatim で並べ、 最初の¥5,000で何を揃えるか確定させる【保存版】レザークラフト入門",
+      "outline": "導入(レザークラフト市場と入門の壁) / 国内3大メーカー概要(クラフト社=東京/協進エル=東京浅草橋/SEIWA=東京蔵前) / クラフト社『はじめての革ものづくりキット カードケース』(¥4,400、 ヌメ革使用、 工具13点) / 協進エル『レザークラフトスターターキット』(¥5,500、 ヌメ革+オイルレザー選択、 工具11点) / SEIWA『レザークラフト入門キット』(¥6,380、 イタリアンレザー、 工具15点) / 工具差分(菱目打ち/ヘリ落とし/トコノール)/ 革種類選び(初心者はヌメ革推奨) / 完成まで3-4時間 / 次のステップ(2作目に何を作るか) / まとめ",
+      "must_include_assets": "クラフト社 公式 (https://www.craftsha.co.jp/) / クラフト社 はじめての革ものづくりキット カードケース 商品ページ / 協進エル 公式 (https://kyoshin-elle.co.jp/) / 協進エル レザークラフトスターターキット商品ページ / SEIWA 公式 (https://www.seiwa-net.jp/) / SEIWA レザークラフト入門キット商品ページ / 日本皮革産業連合会 公式 (https://www.jlia.or.jp/)",
+      "evidence_required": [
+        "3メーカー公式URL / 価格・工具内容は公式商品ページ 2026年6月確認日 verbatim / 革種類(ヌメ革/オイルレザー/イタリアンレザー)は公式説明文典拠 / 国内3大メーカーであることは日本皮革産業連合会または業界誌典拠"
+      ],
+      "affiliate_family": "craft_supplies",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『100均レザーはダメ』『プロは絶対ヌメ革』など断定禁止 / 完成所要時間は『個人差あり』を明記、 一般化しない / 競合海外ブランド(Tandy Leather等)を貶めない / 韓国レザーブランド(Maccaron等)と接続しない / 動物福祉論争に踏み込まない(革使用の倫理は別軸)"
+      ],
+      "neutrality_check": "日本メーカー(クラフト社/協進エル/SEIWA)の純国内軸。 cr_001 がハマナカ編み物だったのでレザークラフト軸を補強。 K-craft と分離"
+    },
+    {
+      "id": "rn_001",
+      "category": "running_jp",
+      "persona": "ランニング初心者→月100km走者の20-40代、 シューズ選びで Hoka / Nike / Asics の3社で2ヶ月悩んでいる層、 厚底ブームに振り回されたくないが何を基準に選ぶか分からない、 ¥18,000-¥25,000帯で1足目を絞れない",
+      "pain": "ランニングシューズ比較記事は『厚底=正解』結論が多く、 体重別・走力別の最適スタックハイト(靴底厚)選定根拠が乏しい。 Hoka Clifton 10 / Nike Pegasus 41 / Asics Gel-Nimbus 27 のドロップ/重量/反発性能の横並びがない",
+      "promise": "ランニング初心者-中級者向けデイリートレーナー3足(Hoka Clifton 10 / Nike Pegasus 41 / Asics Gel-Nimbus 27)を、 公式仕様+体重別推奨+価格 verbatim で並べ、 月走行距離(50/100/200km)別の最適解を確定させる【保存版】",
+      "outline": "導入(ランニングシューズ厚底ブーム後の選び方) / Hoka Clifton 10(¥22,000、 スタックハイト32mm/27mm、 重量280g、 ドロップ5mm、 米国/カリフォルニア発) / Nike Pegasus 41(¥18,150、 スタックハイト30mm/20mm、 重量285g、 ドロップ10mm、 ReactX採用) / Asics Gel-Nimbus 27(¥22,000、 スタックハイト41.5mm/33.5mm、 重量285g、 ドロップ8mm、 神戸本社) / 体重別推奨(60kg以下=Pegasus/60-75kg=Clifton/75kg以上=Nimbus) / 月走行距離別(50km/月=どれでも可/100km/月=Clifton or Nimbus/200km/月=2足ローテ) / 接地音と街中ランの相性 / 公式販売店一覧 / まとめ",
+      "must_include_assets": "Hoka Clifton 10 公式 (https://www.hoka.com/jp/ja/mens-road/clifton-10/) / Nike Pegasus 41 公式 (https://www.nike.com/jp/t/pegasus-41-road-running-shoes) / Asics Gel-Nimbus 27 公式 (https://www.asics.com/jp/ja-jp/gel-nimbus-27/) / Asics Institute of Sport Science(神戸本社研究機関) / Hoka 製品マニュアル(スタックハイト記載PDF) / Runners World Japan シューズレビュー2026",
+      "evidence_required": [
+        "3製品公式URL / 価格は公式ストア 2026年6月確認日 verbatim / スタックハイト・重量・ドロップは公式仕様書典拠 / 製造国・本社所在地は公式about ページ典拠 / 体重別推奨は各メーカー公式フィッティングガイドまたは Runners World 等の査読系メディア典拠、 個人体験で断言しない"
+      ],
+      "affiliate_family": "running_gear",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これでサブ4達成』等のタイム保証禁止 / 1メーカーを神格化しない / カーボンプレート搭載シューズ(Vaporfly等)初心者に推奨しない / 韓国ランニングブランド(Compressport韓国版等)と接続しない / 怪我予防効果を断言しない / 整形外科診断を否定しない"
+      ],
+      "neutrality_check": "米国(Hoka/Nike)× 日本(Asics 神戸)のランニングシューズ比較。 完全新カテゴリ running_jp の最初の topic、 日本国内で実購入可能な3足に限定。 K-running と分離"
     }
   ]
 }
