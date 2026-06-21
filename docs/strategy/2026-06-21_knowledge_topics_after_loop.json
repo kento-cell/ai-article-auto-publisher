@@ -2595,6 +2595,202 @@
         "『これでサブ4達成』等のタイム保証禁止 / 1メーカーを神格化しない / カーボンプレート搭載シューズ(Vaporfly等)初心者に推奨しない / 韓国ランニングブランド(Compressport韓国版等)と接続しない / 怪我予防効果を断言しない / 整形外科診断を否定しない"
       ],
       "neutrality_check": "米国(Hoka/Nike)× 日本(Asics 神戸)のランニングシューズ比較。 完全新カテゴリ running_jp の最初の topic、 日本国内で実購入可能な3足に限定。 K-running と分離"
+    },
+    {
+      "id": "eyw_001",
+      "category": "eyewear",
+      "persona": "30-40代社会人男女、 在宅 + 出社のハイブリッド勤務で1日10時間以上モニタを見るが、 既製レンズの度数違和感と価格透明性のなさに辟易している",
+      "pain": "JINS / Zoff / OWNDAYS のどれが結局安いのか、 強度近視は薄型追加料金で価格逆転しないか、 ブルーライトカット・遠近両用・PC専用は本当に必要かが横並びで比較されていない",
+      "promise": "2026年6月時点の3社のフレーム最安価格・薄型レンズ追加料金・保証期間を verbatim 表で示し、 度数別 (-3.00D / -6.00D / 遠近両用) の最終支払い額シミュレーションと、 PC作業特化レンズの皮膚科・眼科エビデンスを提示",
+      "outline": "導入 (ハイブリッド勤務での眼精疲労 厚労省データ) / 3社の最安フレーム価格表 (Zoff 5,500円・OWNDAYS 5,478円・JINS 6,600円) / 薄型レンズ追加料金の罠 (Zoffは度数で加算 / JINS・OWNDAYS 無料) / 度数別シミュレーション (-3.00D / -6.00D / 遠近両用) / 保証期間比較 (OWNDAYS 1年フレーム+レンズ / JINS 6ヶ月 / Zoff 6ヶ月) / 用途別おすすめ (PC作業 / 運転 / 室内読書) / オーダーメイドレンズ専門店の選択肢 (元麻布スピカ等) / まとめ",
+      "evidence_required": [
+        "JINS公式 https://www.jins.com/jp/",
+        "Zoff公式 https://www.zoff.co.jp/",
+        "OWNDAYS公式 https://www.owndays.com/jp/ja",
+        "厚労省 VDT作業ガイドライン",
+        "価格.com メガネ・コンタクトレンズランキング",
+        "日本眼科学会の公式コラム"
+      ],
+      "must_include_assets": "JINS最安フレーム¥6,600 (税込) / Zoff最安¥5,500 (税込) / OWNDAYS最安¥5,478 (税込) , 公式URL 3つすべて verbatim, 薄型レンズ追加料金の出典スクショURL (Zoff価格表), 遠近両用最安価格 (JINS¥5,500追加 / Zoff¥11,000追加 / OWNDAYS¥4,400追加 を出典URL付で), 厚労省 VDT作業ガイドライン URL, 元麻布スピカ公式 URL (オーダーメイド比較対照群)",
+      "affiliate_family": "lifestyle_general",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "ブルーライトカットの効果を断定 (米国眼科学会は限定的見解) / 個人ブログ価格を一次ソース扱い / 期間限定セール価格を通常価格として記載 / OWNDAYSの社長個人エピソードを記事の核に据えない (商品比較に集中)"
+      ],
+      "neutrality_check": "K-prefix なし: 韓国要素ゼロ (3社とも日本本社 OR 日本市場価格を扱う) / 完全新カテゴリ: 既存117トピックの fashion_jp 1件は『国内アパレル全般』であり眼鏡フレーム比較は未開拓、 self_improvement / minimalism にも該当なし"
+    },
+    {
+      "id": "orc_001",
+      "category": "oral_care",
+      "persona": "30-50代社会人、 歯石・着色・歯周ポケットが気になり始めたが、 ¥3万円超の電動歯ブラシに躊躇している実利志向層",
+      "pain": "Philips Sonicare 9900 Prestige と Oral-B iO シリーズの上位機種、 どちらが自分の症状 (歯周ケア中心 / ステイン除去中心) に合うか、 替えブラシのランニングコストはどちらが安いかが、 比較記事でも結論が分かれていて選べない",
+      "promise": "2026年6月時点の最上位2機種 (Sonicare 9900 Prestige HX9992/21 と Oral-B iO10) を、 価格・替えブラシ年間コスト・クリニカルエビデンス・バッテリー実測・トラベルケース可否で並列比較し、 症状別 (歯周 / 着色 / 矯正中) のおすすめを提示",
+      "outline": "導入 (日本歯周病学会 国民の8割が歯周病) / 機種1 Sonicare 9900 Prestige スペック+価格 / 機種2 Oral-B iO10 スペック+価格 / 替えブラシ年間コスト試算 (Sonicare A3 Premium 約¥2,400×4本/年 vs Oral-B iO Ultimate Clean) / クリニカル比較 (MedGrade メタ分析) / バッテリー実測 (Sonicare 24日 / Oral-B 8-10日) / 症状別おすすめ (歯周ケア=Sonicare / 着色除去=Oral-B / 矯正中=Sonicare) / マウスウォッシュ+フロス併用の歯科医見解 / まとめ",
+      "evidence_required": [
+        "Philips公式 https://www.philips.co.jp/c-m-pe/electric-toothbrushes/sonicare/prestige-9900",
+        "Oral-B公式日本 https://oralb.jp/",
+        "価格.com 電動歯ブラシランキング https://kakaku.com/kaden/tooth-brush-electric/",
+        "MedGrade Clinical Comparison https://medgrade.org/compare/",
+        "日本歯周病学会公式ガイドライン"
+      ],
+      "must_include_assets": "Sonicare 9900 Prestige HX9992/21 公式 URL + 国内実勢価格 (価格.com 2026年6月時点 verbatim), Oral-B iO Series 10 公式 URL + 国内実勢価格, Sonicare MSRP $399.99 (US) と国内価格の差異 出典URL, Sonicare A3 Premium 替えブラシ価格 (Philips公式), Oral-B iO Ultimate Clean 替えブラシ価格 (Oral-B公式), MedGrade clinical comparison URL, 日本歯周病学会 https://www.perio.jp/ URL",
+      "affiliate_family": "health_wellness",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "Sonicare/Oral-B のどちらかを『歯周病が治る』と断定 (機器は補助、 治療は歯科医) / 並行輸入品を正規品と同等保証として推奨 (Philips Japan は並行輸入修理対象外) / 替えブラシ互換非純正品を推奨 (PMDA 医療機器分類のため)"
+      ],
+      "neutrality_check": "K-prefix なし: 韓国ブランド (LG / Samsung 電動歯ブラシ) を主軸にしない / 完全新カテゴリ: 117トピック中 oral_care カテゴリは 0件、 self_improvement / mental_care / sleep にも該当なし"
+    },
+    {
+      "id": "jwn_001",
+      "category": "japan_wine",
+      "persona": "30-40代ワイン中級者、 フランス・イタリア中堅クラス (¥3,000-6,000) を普段飲みするが、 ふるさと納税や年末年始の家族集まりで『日本のワインも興味がある』段階の層",
+      "pain": "日本ワイン=甲州ばかりが推され、 ココファーム vs 勝沼醸造 vs 中央葡萄酒 (グレイス) のどれが今買うべきか、 国際コンクール実績や品種特性で並列比較された情報が薄い",
+      "promise": "2026年時点で公式オンラインで定価購入できる日本ワイン代表3ワイナリーから、 国際コンクール受賞歴と価格帯で並列に並べ、 マスカット・ベーリーA / 甲州 / 国産メルロー の3品種で各¥3,000-6,000 帯の具体ボトルを推薦",
+      "outline": "導入 (日本ワインの定義 国税庁告示 2018) / ワイナリー1 ココ・ファーム (栃木 足利・野生酵母・農民ロッソ¥) / ワイナリー2 勝沼醸造 (山梨・甲州特化・アルガブランカ クラレーザ) / ワイナリー3 中央葡萄酒 (グレイスワイン・茅ヶ岳メルロー・キュヴェ三澤) / 品種別おすすめ ¥3,000-6,000 帯 (甲州/MBA/メルロー 各2本) / サミット使用実績 (ココファーム 2000沖縄+2008洞爺湖+2019ローマ法王庁) / 公式オンラインの送料・最低注文・到着日数 / 試飲できる現地ワイナリーツアー情報 (個人運営のみ) / まとめ",
+      "evidence_required": [
+        "ココ・ファーム・ワイナリー公式 https://cocowine.com/",
+        "公式オンラインショップ https://cocowineshop.com/",
+        "勝沼醸造公式 https://www.katsunuma-winery.com/",
+        "中央葡萄酒グレイスワイン公式 https://www.grace-wine.com/",
+        "国税庁『日本ワイン』表示告示 2018",
+        "Japan Wine Competition 公式結果ページ",
+        "Decanter World Wine Awards 公式結果"
+      ],
+      "must_include_assets": "農民ロッソ 750ml カベルネ・ソーヴィニョン アルコール12% 価格 verbatim (cocowineshop URL), 農民ドライ 750ml アルコール12% 価格 (cocowineshop URL), 第二楽章 750ml マスカット・ベーリーA アルコール11% (cocowineshop URL), 勝沼醸造アルガブランカ クラレーザ 公式URL+価格, グレイス キュヴェ三澤 明野メルロー 公式URL+価格, 2000沖縄サミット / 2008洞爺湖サミット / 2019ローマ法王庁大使館 使用実績の出典URL (cocowine公式), 国税庁 日本ワイン定義告示 URL",
+      "affiliate_family": "lifestyle_food",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『日本ワインは欧州ワインより上』のような優劣断定 / 個人ブログ・SNS のテイスティングコメントを公式評価扱い / 並行品・転売品 (メルカリ等) を推奨 / 妊娠中・授乳中の飲酒を擁護する文脈"
+      ],
+      "neutrality_check": "K-prefix なし: 韓国マッコリ・果実酒に触れない / 完全新カテゴリ: 117トピック中 japan_wine 0件、 hidden_gourmet (個人飲食店) や cooking_home (自宅料理) ともテーマが独立"
+    },
+    {
+      "id": "jsk_001",
+      "category": "japan_sake",
+      "persona": "20-30代日本酒入門者、 獺祭・八海山は飲んだことがあるが、 居酒屋で『新政』『而今』『十四代』を見ても入手難易度・価格・特徴が分からず注文を諦めている層",
+      "pain": "幻の日本酒 (十四代・而今・新政) の定価と転売価格の乖離、 特約店リスト、 飲める都内バー (チェーン除外)、 そして同価格帯で代替できる小蔵元が体系化されていない",
+      "promise": "2026年時点で『定価で買える・飲める』をテーマに、 幻3銘柄の特約店リンク・都内取扱バー (個人店のみ)・代替推薦の小蔵元4蔵を並列に提示し、 CRAFT SAKE WEEK 2026 の130蔵参加情報と合わせて入門者の最適初手を案内",
+      "outline": "導入 (日本酒消費量推移 国税庁) / 銘柄1 新政 (秋田・特約店経由・No.6/Colors) / 銘柄2 而今 (三重 木屋正酒造・特約店) / 銘柄3 十四代 (山形 高木酒造・特約店) / 各銘柄の定価と転売相場の差 (sakemajin等 出典URL) / 都内で定価提供する個人バー2-3軒 (チェーン除外) / 代替小蔵元4蔵 (射美 / ソガペールエフィス / 飛露喜 / 花陽浴) / CRAFT SAKE WEEK 2026 開催情報 (六本木ヒルズアリーナ 4/17-29) / 自宅向け定価通販店 (はせがわ酒店等 個人系) / まとめ",
+      "evidence_required": [
+        "新政酒造公式 https://www.aramasashuzo.com/",
+        "木屋正酒造 (而今) 公式",
+        "高木酒造 (十四代) 公式",
+        "射美 杉原酒造公式",
+        "小布施ワイナリー ソガペールエフィス公式",
+        "CRAFT SAKE WEEK 2026 公式 PR TIMES https://prtimes.jp/main/html/rd/p/000000011.000044190.html",
+        "国税庁 酒類消費数量年報",
+        "SAKETIME ランキング https://www.saketime.jp/ranking/"
+      ],
+      "must_include_assets": "新政 No.6 公式特約店リストURL + 定価, 而今 純米吟醸 雄町 特約店URL + 定価, 十四代 本丸 特約店URL + 定価, 射美 (年間20石・家族経営) 出典URL, ソガペールエフィス 小布施ワイナリー公式URL, CRAFT SAKE WEEK 2026 期間 2026/4/17-29 130蔵参加 六本木ヒルズアリーナ (PR TIMES URL verbatim), 国税庁 日本酒消費数量データURL, SAKETIME 全国ランキングURL",
+      "affiliate_family": "lifestyle_food",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "メルカリ・ヤフオク等の転売価格を推奨 (公式特約店優先) / 居酒屋チェーン (日本酒原価酒蔵等) を推薦店として紹介 (チェーン店ブラックリスト適用) / 蔵元への直接訪問購入を煽る (基本一般販売なし) / 未成年飲酒・妊娠中飲酒を肯定する文脈"
+      ],
+      "neutrality_check": "K-prefix なし: 韓国マッコリ・焼酎との比較を主軸にしない / 完全新カテゴリ: 117トピック中 japan_sake 0件、 hidden_gourmet (個人飲食店) とは商材軸が独立、 k_culture とは産地・歴史軸が完全に別"
+    },
+    {
+      "id": "cbr_001",
+      "category": "craft_beer_jp",
+      "persona": "20-40代会社員、 大手プレミアム (プレモル・エビス) から一歩踏み込みたいが、 クラフトビールは敷居が高く値段も読めないと感じている初級層",
+      "pain": "国内クラフトビールブルワリー (ヤッホー / COEDO / Far Yeast / 志賀高原 / うちゅう) の銘柄ラインナップ・購入経路・1本あたり単価が体系化されておらず、 ピルスナー以外のスタイル (IPA / セゾン / スタウト) の選び方が分からない",
+      "promise": "2026年時点で公式オンラインまたは個人酒販店で定価購入できる国内主要4ブルワリー (ヤッホー / COEDO / Far Yeast / 志賀高原) の代表銘柄を、 スタイル別・単価別に整理し、 ニッポンクラフトビアフェスティバル 2026 in いたばし参加銘柄から初心者向け4本を選定",
+      "outline": "導入 (国産クラフトビール市場規模 国税庁 + 全国地ビール醸造者協議会) / ブルワリー1 ヤッホーブルーイング (軽井沢1997創業・よなよなエール・インドの青鬼) / ブルワリー2 COEDO (川越・伽羅Kyara・瑠璃Ruri) / ブルワリー3 Far Yeast (山梨小菅村・東京ホワイト・馨和Kagua) / ブルワリー4 志賀高原ビール (玉村本店) / スタイル別おすすめ (IPA / セゾン / スタウト / フルーツ系) / ブルワリーオープンデー 2026/4/4 COEDO / ニッポンクラフトビアフェスティバル 2026 in いたばし参加銘柄 / 個人酒販店の通販リスト / まとめ",
+      "evidence_required": [
+        "COEDO公式 https://coedobrewery.com/en",
+        "ヤッホーブルーイング公式 https://yonasato.com/",
+        "Far Yeast Brewing公式 https://faryeast.com/",
+        "志賀高原ビール公式 https://www.tamamura-honten.co.jp/",
+        "ニッポンクラフトビアフェスティバル 2026 in いたばし https://0423craft.beer/event/5113/",
+        "国税庁 ビール酒税統計",
+        "全国地ビール醸造者協議会公式"
+      ],
+      "must_include_assets": "よなよなエール 350ml 価格 verbatim (yonasato URL), インドの青鬼 350ml IPA 価格 (yonasato URL), COEDO 伽羅Kyara IPL + 瑠璃Ruri ピルスナー 価格 (coedobrewery URL), Far Yeast 東京ホワイト + 馨和Kagua セゾン 価格 (faryeast URL), 志賀高原 IPA 価格, ブルワリーオープンデー 2026/4/4 COEDO 開催 (公式URL), ニッポンクラフトビアフェスティバル 2026 in いたばし 20社以上40銘柄以上 (公式URL), 国税庁 ビール酒税統計 URL",
+      "affiliate_family": "lifestyle_food",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "発泡酒・第三のビールを『クラフトビール』として混同 / コンビニ大手チェーンのPBクラフトを推薦 (チェーン店ブラックリスト+独立性原則) / 並行輸入の海外クラフトを国内ブルワリーと混在で並べる / 未成年飲酒・妊娠中飲酒を肯定する文脈"
+      ],
+      "neutrality_check": "K-prefix なし: 韓国クラフトビール (Magpie等) を主軸にしない / 完全新カテゴリ: 117トピック中 craft_beer_jp 0件、 japan_sake / japan_wine とも醸造法・市場軸が独立、 hidden_gourmet とも商材軸が別"
+    },
+    {
+      "id": "cmp_001",
+      "category": "camera_photography",
+      "persona": "30-40代写真趣味層、 スマホからステップアップしたいが APS-C / フルサイズ / レンジファインダー型コンパクト で迷っており、 1台30万円前後の本気の1台を選ぼうとしている",
+      "pain": "富士フイルム X100VI は爆発的人気で入手困難、 ソニー α7CR はフルサイズだが大きい、 リコー GR IIIx は安いがズーム不可、 など軸がバラバラで比較記事が結論を出していない",
+      "promise": "2026年6月時点で在庫がある (新品 OR 中古並品) 3機種 (FUJIFILM X100VI / Sony α7CR / Ricoh GR IIIx) を、 価格・センサーサイズ・焦点距離・手ぶれ補正・動画性能で並列比較し、 用途別 (スナップ街撮り / 旅行 / ポートレート) のおすすめを提示",
+      "outline": "導入 (高級コンパクト・小型ミラーレス市場の2026年動向) / 機種1 FUJIFILM X100VI (4020万画素 APS-C 35mm相当 IBIS搭載 2024/3/28発売) / 機種2 Sony α7CR (6100万画素 フルサイズ 小型ボディ) / 機種3 Ricoh GR IIIx (40mm相当 ポケットサイズ) / 価格比較 (価格.com 2026年6月時点) / 入手難易度 (X100VI 抽選 / α7CR 在庫あり / GR IIIx 在庫あり) / 用途別おすすめ / レンズ・アクセサリ初期投資 (ND filter / 予備バッテリー / SDカード) / 中古並品の信頼購入先 (マップカメラ / 三宝カメラ 個人系) / まとめ",
+      "evidence_required": [
+        "FUJIFILM X100VI公式 https://fujifilm-x.com/ja-jp/products/cameras/x100vi/",
+        "Sony α7CR公式 https://www.sony.jp/ichigan/products/ILCE-7CR/",
+        "Ricoh GR IIIx公式 https://www.ricoh-imaging.co.jp/japan/products/gr-iiix/",
+        "価格.com 高級コンパクトデジタルカメラランキング https://kakaku.com/item/J0000044026/",
+        "CIPA カメラ映像機器工業会 出荷統計",
+        "富士フイルム公式 抽選販売告知"
+      ],
+      "must_include_assets": "FUJIFILM X100VI 価格.com 最安価格 ¥298,000 (税込) 2026年6月時点 verbatim + 出典URL https://kakaku.com/item/J0000044026/, X100VI ボディ内手ブレ補正搭載 + 4020万画素 APS-C 出典URL, Sony α7CR (ILCE-7CR) 公式URL + 国内実勢価格 verbatim, Ricoh GR IIIx 公式URL + 国内実勢価格, X100VI 抽選販売の富士フイルム公式告知URL, マップカメラ + 三宝カメラ 公式中古URL (個人系・チェーン非該当の根拠)",
+      "affiliate_family": "lifestyle_general",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "X100VIの転売価格 (¥50万超) を相場として記載 (定価ベース) / 並行輸入品を国内保証対象として紹介 / 未発表の後継機 (X100VII / X-T6 等) を確定情報として記載 (リーク非公式) / 個人ブログ作例を公式作例扱い"
+      ],
+      "neutrality_check": "K-prefix なし: Samsung NX / LG カメラに触れない / 完全新カテゴリ: 117トピック中 camera_photography 0件、 fashion_jp / lifestyle 系とは商材軸が独立、 ai_literacy (生成AI画像) とは創作手段が別"
+    },
+    {
+      "id": "out_001",
+      "category": "outdoor_camp",
+      "persona": "30-40代会社員、 ソロキャンプ・低山ハイクをはじめたい初級者、 ギアの軽量化と耐久性のバランスで mont-bell / Snow Peak / Helinox のどれをどう買うかで迷っている",
+      "pain": "2026年新作で『神アプデ』と評される mont-bell シームレス ダウンハガー800、 Snow Peak × Helinox 初コラボの『ノガチェア』『ノガテーブル』、 mont-bell O.D.アンブレラ カーボン60 (125g) の本当の価値が、 メーカーPR記事ばかりで第三者比較されていない",
+      "promise": "2026年6月時点で公式オンライン購入可能な mont-bell / Snow Peak の新作9点を、 重量・価格・対応シーズン (R値・耐風) で並列比較し、 ソロキャンプ初心者向けに『最初の5万円で揃える4点セット』を提示",
+      "outline": "導入 (ソロキャンプ市場規模 矢野経済研究所) / mont-bell 2026新作9選 (シームレス ダウンハガー800 ¥29,500 値下げ / 軽量マット / 超軽量チェア / O.D.アンブレラ カーボン60 125g) / Snow Peak 2026新作 (Helinox 初コラボ ノガチェア・ノガテーブル) / R値・対応シーズンの読み方 / 初心者向け5万円4点セット (テント / マット / シュラフ / チェア) / 低山ハイク用ザックの mont-bell vs Patagonia 比較 / 中古市場 (個人系メルカリ / ヤマップ等) の罠 / まとめ",
+      "evidence_required": [
+        "mont-bell公式 https://webshop.montbell.jp/goods/list.php?category=2821940",
+        "Snow Peak公式 https://www.snowpeak.co.jp/",
+        "Helinox公式 https://helinox.co.jp/",
+        "矢野経済研究所 アウトドア用品市場レポート",
+        "CAMP HACK https://camphack.nap-camp.com/",
+        "OneCamper https://one-camp.net/snow-peak-new-release-2026/"
+      ],
+      "must_include_assets": "mont-bell シームレス ダウンハガー800 値下げ後価格 ¥29,500 (6,800円ダウン) 出典URL https://happycamper.jp/20058107/ , mont-bell O.D.アンブレラ カーボン60 直径103cm 125g 出典URL, Snow Peak × Helinox ノガチェア + ノガテーブル 2026モデル 出典URL https://camphack.nap-camp.com/12879 , Snow Peak 2026新作テント・シェルター一覧URL https://one-camp.net/snow-peak-new-release-2026/ , mont-bell 公式 2026春夏新商品URL, 矢野経済研究所 アウトドア市場レポート URL",
+      "affiliate_family": "lifestyle_general",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "ワークマン等のチェーン店を主力推薦 (チェーン店ブラックリスト適用) / 並行輸入Helinox・コピー品を本物と混在で紹介 / 高所登山ギア (8000m峰用) を低山初心者に推薦 / 個人YouTuberの体感レビューを物理性能 (R値・耐風) の根拠扱い"
+      ],
+      "neutrality_check": "K-prefix なし: KOVEA / KZM 等の韓国アウトドアブランドに触れない / 完全新カテゴリ: 117トピック中 outdoor_camp 0件、 slow_living (室内・コーヒー軸) や travel_jp (国内旅行・宿) とは活動軸が独立、 self_improvement とも目的軸が別"
+    },
+    {
+      "id": "bag_001",
+      "category": "leather_bag_jp",
+      "persona": "30-40代会社員、 ノートPC通勤用に量産ナイロンバッグから卒業したいが、 GANZO / 土屋鞄 / 万双 / HERZ / ココマイスター の価格帯と耐久性が見比べられず決められない",
+      "pain": "国内革鞄ブランドの長財布・トートバッグ・ブリーフケースが、 オイルヌメ革・双鞣和地・コードバン等の素材違いと、 1-3万円台 / 3-10万円台 / 10万円超 の3レンジで体系化されておらず、 5年使う前提のコスパが見えない",
+      "promise": "2026年時点で公式オンライン購入可能な4ブランド (土屋鞄 / 万双 / HERZ / GANZO) を、 ノートPCトート・ブリーフケース・長財布の3カテゴリで価格・素材・修理体制で並列比較し、 5年使用前提の年あたりコストを試算",
+      "outline": "導入 (国産革鞄市場と海外ブランド・ファストファッションとの差) / ブランド1 土屋鞄 (Tone OILNUME・オイルヌメ革) / ブランド2 万双 (双鞣和地・国産牛皮約8年開発) / ブランド3 HERZ (1973創業・500型以上・武骨スタイル / 2026新作 シロガネリュック) / ブランド4 GANZO (コードバン・ブライドル) / カテゴリ別比較 (ノートPCトート / ブリーフケース / 長財布) / 修理体制と保証期間 / 5年使用時の年あたりコスト試算 / オーダーメイド・パーソナライズ可否 / まとめ",
+      "evidence_required": [
+        "土屋鞄公式 https://tsuchiya-kaban.jp/",
+        "万双公式 https://www.mansaw.net/",
+        "HERZ公式 https://www.herz-bag.jp/",
+        "GANZO公式 https://www.ganzo.ne.jp/",
+        "各ブランド公式オンラインショップ 価格表 (2026年6月時点 verbatim)",
+        "経済産業省 革製品出荷統計",
+        "日本皮革産業連合会公式"
+      ],
+      "must_include_assets": "土屋鞄 Tone OILNUME シリーズ公式URL + ブリーフケース価格 verbatim, 万双『双鞣和地』長財布 公式URL + 価格, HERZ シロガネリュック (2026新作 あったらいいな2026) 公式URL + 価格, GANZO コードバン長財布 公式URL + 価格, 土屋鞄長財布レンジ ¥3-4万円台 / HERZ長財布 ¥1-3万円台 (出典 leatherstory URL), 各ブランドの修理体制ページURL, 日本皮革産業連合会公式 URL",
+      "affiliate_family": "lifestyle_general",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "中国製ブランド品・コピー品を本物と混在で並べる / 質屋・転売品 (メルカリ等) を主推薦経路に / 大手百貨店PBや量産チェーン (無印・ユニクロのレザー風) を国産専門ブランドと並列比較 / 個人ブログ『何年使えた』の主観体験を耐久年数の根拠扱い"
+      ],
+      "neutrality_check": "K-prefix なし: 韓国レザーブランドに触れない / 完全新カテゴリ: 117トピック中 leather_bag_jp 0件、 fashion_jp 1件は『アパレル全般』であり革製品単体は未開拓、 minimalism (持ち物削減) とは資産軸が逆"
     }
   ]
 }
