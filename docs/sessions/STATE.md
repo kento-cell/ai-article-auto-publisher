@@ -6,10 +6,22 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-21 15:26 JST
+2026-06-22 06:24 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
+
+- 6-22 朝 `/routine` (新 topics 効果検証):
+  learn(280 samples/621 chunks) → generate **6 合格/1 不合格** (Cellbn エクソソーム
+  rejected) → bulk_approve → publish:
+  - **note 4件**: ¥0 nefaac1f92068 歯ブラシ Sonicare vs Oral-B (**orc_001 採用**),
+    ¥0 nab66e3931782 韓国ウェルネス汗蒸幕 vs 瞑想 (**kw_001 採用**),
+    ¥500 n2bda7c2f23e3 Galaxy Watch Ultra 2 バッテリー, ¥500 ne303807ab7f8 Jackery
+    ポタ電 (⚠️ membership modal 失敗 → 手動追加リスト)
+  - **zenn 2件 scrap fallback**: Windows I/O 高速化、 GitHub Copilot コスト管理
+  タイトル deny pattern 全件 clean (「N人に聞いた」「99%系」 無し)。
+  bias 是正後の新 topics (orc_001 oral_care, kw_001 k_wellness) が早速採用
+  された = 152 topic catalog の rotation 効果実証。
 
 - 6-21 夜 `/loop` 再起動 (iter4-5、 bias-free 22件追加): user の bias 指摘以降
   全 prompt を中立化、 既存 105 を avoid に渡して 2 イテレーションで +22 件:
@@ -512,7 +524,11 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - 7f096e4 fix(image): remove redundant stored[] label write from _publish_note (NameError noise)
+  - ac148f0 ops(topics): /loop iter10 FINAL +5 (147→152, K 24%, 62 cats) — agent declared exhaustion
+  - 48bb2ab ops(topics): /loop iter9 +7 seasonal-ROI + resegment (140→147, K 25%, 59 cats)
+  - 43e7ee5 ops(topics): /loop iter8 +7 super-super-niche (133→140, K 27%, 55 cats)
+  - c3932e6 ops(topics): /loop iter7 +8 super-niche persona/super-local (125→133, K 30%→28%, 48 cats)
+  - a5ccf84 ops(topics): /loop iter6 final +8 virgin categories (117→125, K 32%→30%, 40 categories)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
