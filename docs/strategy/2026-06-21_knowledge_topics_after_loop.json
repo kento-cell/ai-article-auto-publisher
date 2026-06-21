@@ -3232,6 +3232,71 @@
         "『この自動トイレで猫の健康が改善する』の医療的断定禁止 / 並行輸入品を 正規品扱いしない / Amazon マケプレ第三者出品価格を 公式価格として書かない / 子猫(2kg未満)への 安全性を保証しない(メーカー記載に従う) / 多頭飼育の頭数推奨は メーカー記載値のみ"
       ],
       "neutrality_check": "PETKIT vs Litter-Robot vs CATLINK は『中価格×日本代理店 vs 高価格×米国本家 vs 中価格×台湾本社』として価格-サポート軸で並列。手動トイレ(花王 ニャンとも清潔トイレ ¥4,980)も最低1点並列で『自動化が必要か』の判断軸を提示。Litter-Robot 4 を 絶対王者として書かない"
+    },
+    {
+      "id": "sh_001",
+      "category": "smart_home",
+      "persona": "30-40代共働き、賃貸でも置けるスマートホームを揃えたいが Matter / Apple Home / Google Home / SwitchBot がバラバラで混乱",
+      "pain": "Matter 1.2 対応と謳う製品が増えたが、 実際 iPhone と Android 両方の家族で使えるエコシステム選定が判断できない",
+      "promise": "Matter 1.2 公式仕様 (CSA-IoT) を引いて、 SwitchBot Hub 2 / Aqara M3 / Apple HomePod mini / Nature Remo の 4 ハブを賃貸 OK な配線で比較し、 iOS+Android 混在世帯の最適解を提示",
+      "outline": "導入(2026 Matter 普及状況) / Matter 1.2 が解決する課題 (CSA-IoT 公式) / 4 ハブの認証バッジ・対応プロファイル比較 / 賃貸で取り付け可能なセンサ・スイッチ / iOS+Android 混在の落とし穴 / 月¥5,000 で揃える初期 8 デバイス / よくある接続不良 / まとめ",
+      "must_include_assets": "CSA-IoT (Connectivity Standards Alliance) Matter 1.2 公式仕様書 URL / SwitchBot Hub 2 公式製品ページ + 技術仕様 / Aqara M3 公式 spec / Apple HomePod mini 仕様 (apple.com/jp) / Nature Remo 公式技術ドキュメント / 各製品の Matter 認証バッジ画像 (公式配布素材)",
+      "affiliate_family": "smart_home",
+      "rotation_weight": 7,
+      "cooldown_days": 30,
+      "novelty_justification": "既存 147 に smart_home / Matter / SwitchBot 関連は 1 件も無い。 k_tech_gadget は韓国 IT 限定、 ai_literacy は LLM / agent 中心で家電 IoT は範囲外。 hi_income_salary や minimalism と persona も pain も異なる (共働き世帯の家電統合という具体課題)。"
+    },
+    {
+      "id": "wfh_001",
+      "category": "wfh_ergonomics",
+      "persona": "30-50代フルリモートワーカー、 椅子に¥20万出すか迷っているが Herman Miller・Steelcase・オカムラ・イトーキの差分が分からない",
+      "pain": "Aeron / Leap V2 / コンテッサ II / バロン の 4 強で、 自分の体型・座り方・予算 (中古含む) でどれが ROI 最大か判断できない",
+      "promise": "BIFMA X5.1 規格と各社公式技術資料を引き、 体型 (身長 / 体重 / 座高) × 用途 (キー入力中心 / 会議中心 / 仮眠あり) のマトリクスで 4 椅子をマッピングし、 新品 / 中古 / リファービッシュの価格帯別推奨を提示",
+      "outline": "導入(リモート 5 年目の腰痛統計 — 厚労省 業務上疾病) / BIFMA X5.1 と JIS S 1032 の違い / Aeron Remastered 公式仕様分解 / Leap V2 LiveBack の特許構造 / コンテッサ II アジャストアーム機構 / バロン エクストラハイバック / 体型別おすすめ / 中古市場 (オフィスバスターズ等) の見極め方 / 産業医学的に推奨される座り方 / まとめ",
+      "must_include_assets": "BIFMA X5.1-2017 公式概要 (bifma.org) / Herman Miller Aeron Remastered 公式仕様 PDF / Steelcase Leap V2 公式技術資料 / オカムラ コンテッサ II 公式 spec (okamura.co.jp) / イトーキ バロン 公式 spec / 厚生労働省『情報機器作業における労働衛生管理のためのガイドライン』 (令和元年基発 0712 第 3 号) / 日本人間工学会 関連論文 1 本以上",
+      "affiliate_family": "wfh_furniture",
+      "rotation_weight": 6,
+      "cooldown_days": 45,
+      "novelty_justification": "既存 147 に WFH 家具 / オフィスチェア / 人間工学 (ergonomics) topic はゼロ。 minimalism は持たない主義、 hi_income_salary は資産形成、 women_career はキャリア論で物理環境を扱わない。 BIFMA 規格 + 厚労省ガイドラインという公的 tier1 asset が確定で揃うため hallucination リスクが構造的に低い。"
+    },
+    {
+      "id": "dp_001",
+      "category": "disaster_prep_household",
+      "persona": "30-40代単身〜核家族、 2024 能登半島地震以降『そろそろ備えなきゃ』 と思っているが何から始めればいいか分からない",
+      "pain": "防災グッズが SNS や雑誌で大量に紹介されるが、 内閣府・消防庁が実際に推奨する『最低限の 1 週間備蓄』 を満たす具体的買い物リストが断片的でしか手に入らない",
+      "promise": "内閣府防災・消防庁・首相官邸『災害に対するご家庭での備え』 を一次ソースに、 単身 / 2 人 / 4 人世帯別の 7 日分備蓄リストを ¥ ベースで算出し、 ローリングストック実践法と保管場所の指針まで提示",
+      "outline": "導入(2024-2026 国内地震・水害サマリ — 気象庁) / 内閣府防災が定義する『最低 3 日 推奨 7 日』 の根拠 / 単身世帯 7 日分リスト (水 21L 食料 21 食) / 2 人世帯版 / 4 人世帯版 / ローリングストック方式 (農水省ガイド) / 在宅避難 vs 避難所判断 / 簡易トイレと水 (消防庁推奨基準) / 家具固定 (東京消防庁 地震 10 訓) / まとめ",
+      "must_include_assets": "内閣府防災情報のページ『災害被害を軽減する国民運動』 URL / 首相官邸『災害に対するご家庭での備え』 公式 page / 消防庁『防災マニュアル — 震災対策啓発資料』 / 農林水産省『災害時に備えた食品ストックガイド』 / 気象庁 過去 2 年地震データ / 東京消防庁『地震 その時 10 のポイント』 / 各自治体 (東京都・大阪府) ハザードマップ URL 例",
+      "affiliate_family": "disaster_prep",
+      "rotation_weight": 8.5,
+      "cooldown_days": 60,
+      "novelty_justification": "既存 147 に防災 / 地震対策 / 備蓄 topic は完全にゼロ。 minimalism は『持たない』 で逆方向、 senior_endlife は終活で生前備えとは別軸、 parenting / single_parent_jp も防災を直接扱っていない。 内閣府・消防庁・農水省・気象庁という官公庁 tier1 のみで本文が成立するため evidence 強度は今 pool 内で最高クラス。 季節性も低く evergreen。"
+    },
+    {
+      "id": "pet_004",
+      "category": "pet_breed_dog",
+      "persona": "30-40代、 初めて犬を迎える検討中、 トイプー / 柴 / フレブル / コーギー / ミニチュアダックスのどれが自分のライフスタイルに合うか判断したい",
+      "pain": "ペットショップやブリーダーの説明が美点に偏り、 実際の医療費・寿命・遺伝疾患の客観データを横断比較できない",
+      "promise": "JKC (ジャパンケネルクラブ) 公式犬種標準 + アニコム『家庭どうぶつ白書 2025』 のデータで、 人気 5 犬種の医療費・寿命・遺伝疾患・運動量・吠え傾向を表で比較し、 賃貸 / 戸建て / 共働き別の適性スコアを提示",
+      "outline": "導入(2025 ペット飼育頭数推移 — 一般社団法人ペットフード協会) / JKC 犬種標準とは / トイプードル 詳細データ / 柴犬 詳細データ / フレンチブルドッグ 詳細データ / コーギー 詳細データ / ミニチュアダックスフンド 詳細データ / 平均生涯医療費 (アニコム白書) / 遺伝疾患リスク比較 / ライフスタイル別適性マトリクス / 迎える前のチェックリスト / まとめ",
+      "must_include_assets": "ジャパンケネルクラブ (JKC) 公式犬種標準ページ URL × 5 犬種 / アニコム損害保険『家庭どうぶつ白書 2025』 PDF 該当ページ / 一般社団法人ペットフード協会『全国犬猫飼育実態調査 2025』 / 環境省『動物愛護管理法』 関連 page / 各犬種の主要遺伝疾患について 査読論文 (J-STAGE 獣医学分野) 最低 1 本",
+      "affiliate_family": "pet_supplies",
+      "rotation_weight": 6.5,
+      "cooldown_days": 45,
+      "novelty_justification": "既存 pet_life カテゴリは 1 件のみで犬種別深掘りは無い。 JKC・アニコム白書・ペットフード協会という業界 tier1 が確定で揃うので fabrication リスクが構造的に低い。 ペット関連アフィリ (Amazon / 楽天 / 専門 EC) は k_beauty / グルメと別系統で rotation 多様化に貢献。"
+    },
+    {
+      "id": "pet_004",
+      "category": "pet_breed_cat",
+      "persona": "30-50代、 マンション住まいで猫を迎えたい、 ロシアンブルー / アメショ / スコティッシュ / ノルウェージャン / 雑種保護猫 の適性を比較したい",
+      "pain": "猫種解説は外見と性格テンプレートばかりで、 鳴き声音量・遺伝疾患・抜け毛量・必要運動空間といった『マンション暮らしで本当に効く指標』 のデータが少ない",
+      "promise": "TICA / CFA / JKC 系猫種標準と、 アニコム『家庭どうぶつ白書 2025』 猫種別データ、 環境省『住宅密集地における猫の適正飼養ガイドライン』 を引き、 マンション飼育適性スコアと保護猫 (雑種) を選ぶ意義を提示",
+      "outline": "導入(2025 猫飼育頭数が犬を上回り続ける構造 — ペットフード協会) / 猫種標準ソース解説 (TICA・CFA) / ロシアンブルー データ / アメリカンショートヘア データ / スコティッシュフォールド の骨軟骨異形成リスク (査読論文) / ノルウェージャンフォレストキャット データ / 雑種・保護猫を選ぶ場合の心構え / アニコム平均医療費比較 / マンション適性スコア / 必要グッズ最小セット / まとめ",
+      "must_include_assets": "TICA 公式猫種 page URL / CFA 公式 breed standard / アニコム『家庭どうぶつ白書 2025』 猫種別データ / 一般社団法人ペットフード協会『全国犬猫飼育実態調査 2025』 / 環境省『住宅密集地における猫の適正飼養ガイドライン』 / スコティッシュフォールド骨軟骨異形成に関する査読論文 (例 Vet Surg / J-STAGE 日本獣医学雑誌) 最低 1 本 / 保護猫団体 (公益財団法人どうぶつ基金 等) 公式 URL",
+      "affiliate_family": "pet_supplies",
+      "rotation_weight": 6.5,
+      "cooldown_days": 45,
+      "novelty_justification": "既存 pet_life 1 件は猫種別深掘り無し。 既存 147 中 猫飼育専用 topic はゼロ。 TICA・CFA・アニコム白書・環境省ガイドライン・査読論文という重層 tier1/2 が揃い、 スコティッシュ遺伝疾患のような社会的に重要な事実を一次ソースで扱える点で記事価値が高い。 pet_breed_dog と並ぶことでペット系 2 本立てになり rotation を厚くできる。"
     }
   ]
 }
