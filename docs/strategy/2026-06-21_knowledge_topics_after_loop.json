@@ -1987,6 +1987,196 @@
       "rotation_weight": 2,
       "cooldown_days": 14,
       "affiliate_family": "k_tech_gadget"
+    },
+    {
+      "id": "hg_009",
+      "category": "hidden_gourmet",
+      "persona": "京都リピーター30-40代、観光地化した祇園/錦市場に飽きて『地元の50-60代が朝に通う現役の老舗喫茶』を探している層 (雑誌Pen/Casa Brutus読者)",
+      "pain": "京都の喫茶店記事は同じ20店が回し記事化されて深掘りがない。営業時間/モーニング有無/座席キャパ/混雑回避時間帯の verbatim 情報が散乱して半日プランに組めない",
+      "promise": "京都市内の創業40年以上・現役自家焙煎の老舗喫茶3軒を、午前訪問順で営業時間/モーニング有無/シグニチャー一杯/混雑回避時間帯まで実用レベルで【保存版】",
+      "outline": "導入(なぜ現役の老舗か) / 7:00入店組(イノダコーヒ本店、7:00-18:00、烏丸御池) / 8:30入店組(六曜社1階、8:30開店、河原町三条、創業1950年) / 12:00入店組(六曜社地下、12:00開店、修さんと薫平さんの飲み比べ) / 半日プランの組み方(徒歩動線) / 撮影マナーと混雑回避 / まとめ",
+      "must_include_assets": "イノダコーヒ本店 (営業7:00-18:00 年中無休, 公式 https://www.inoda-coffee.co.jp/shop/honten/) / 六曜社 (1階 8:30開店 / 地下 12:00開店, 河原町三条, 創業1950年, 京都市公式観光Navi https://ja.kyoto.travel/tourism/article/asakanko-yorukanko/post/single.php?id=471) / イノダコーヒ三条店 (10:00-19:00, https://www.inoda-coffee.co.jp/)",
+      "evidence_required": [
+        "各店公式URL+営業時間verbatim+京都市公式観光Naviの一次情報引用"
+      ],
+      "affiliate_family": "gourmet",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "チェーン店(スタバ/ドトール/コメダ)は触れない / 創業年や店主名を伝聞で書かない、公式記載のみ / 『京都人なら誰でも知っている』など主語が大きい煽りは禁止"
+      ],
+      "why_non_korean": "京都市内の日本国内ローカル老舗喫茶のみ。韓国/K-prefix要素ゼロ。hidden_gourmet(hg_005 までは赤羽他、hg_007-008が韓国だったので国内ローカルで bias 是正)"
+    },
+    {
+      "id": "hg_010",
+      "category": "hidden_gourmet",
+      "persona": "福岡出張/旅行で初めて中洲屋台に行く30-40代、ガイドブックのチェーン化した有名店ではなく『現役店主が長年仕込みをやっている個人屋台』のラーメンを夜遅くに啜りたい層",
+      "pain": "中洲屋台は怖い/ぼったくり不安/どこが個人店でどこが法人チェーン展開か区別がつかない。営業時間が18:30-翌2:00と幅広く、何時に行けば席があって締めに丁度いいかが分からない",
+      "promise": "中洲清流公園エリアで個人店として営業を続ける屋台ラーメン1-2軒に絞り、営業時間/住所/締めの一杯としての所要時間まで verbatim で【3分でわかる】中洲屋台ナビ",
+      "outline": "導入(中洲屋台の今と個人店の見分け方) / 屋台街の地理(清流公園/那珂川沿い) / 個人屋台『小島商店』詳細(住所/営業時間/シグニチャー) / 締めに行くべき時間帯(21時 vs 24時の混雑差) / 福岡市公式情報サイト『よかたい』の使い方 / 注意点とマナー / まとめ",
+      "must_include_assets": "小島商店 (福岡市博多区中洲1-8 清流公園内, 営業18:30〜翌2:30前後, 博多豚骨ラーメン, 旅色掲載 https://tabiiro.jp/gourmet/s/314434-fukuoka-nakasunoyataikojimashouten/) / 福岡市公式観光情報サイト『よかなび』(https://yokanavi.com/features/260529) / 福岡屋台情報サイト『よかたい』(https://yatai-yokatai.com/) / 中洲屋台街営業時間目安(18時頃〜翌2時頃)",
+      "evidence_required": [
+        "福岡市公式観光情報サイト『よかなび』もしくは『よかたい』の一次情報URL / 各屋台の住所と営業時間 verbatim / 法人チェーン屋台(一竜系等)と個人屋台の区別根拠"
+      ],
+      "affiliate_family": "gourmet",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "チェーン展開している屋台ブランド(一竜/一番一竜等)は『個人店』として紹介しない / 値段や所要時間を伝聞で書かず公式情報のみ / 『博多っ子なら』『地元民が』など主語の大きい煽り禁止 / 韓国/K要素は持ち込まない"
+      ],
+      "why_non_korean": "福岡県内日本国内ローカルの個人屋台のみ。hg_007 (益善洞) が韓国寄りだったので日本国内軸で bias 是正"
+    },
+    {
+      "id": "cb_005",
+      "category": "coffee_barista",
+      "persona": "自宅カフェに月¥10,000以上使う30代、ハンドドリップは飽きてエスプレッソに移行したいが、業務用Linea Miniは買えない・100均カプセルマシンには戻れない『中間層』",
+      "pain": "家庭用エスプレッソマシンの記事は¥5万-¥20万の選択肢が混在し、抽出温度/プリインフュージョン/スチーム性能の差分が言語化されていない。Breville/Delonghi/Rancilio のどれを選ぶかで2週間悩む",
+      "promise": "家庭用エスプレッソマシンの中核1台『Breville Bambino Plus』を軸に、ThermoJet 3秒予熱/オートスチームの実用差を、価格別の代替候補と並べて【保存版】比較",
+      "outline": "導入(なぜ¥5万-¥10万帯がスイートスポットか) / Breville Bambino Plus 仕様(ThermoJet 3秒予熱/オートスチーム/価格レンジ) / 比較対象(Delonghi Dedica 等の下位互換、Rancilio Silvia等の上位互換) / 必須グラインダー(別買い必須の理由) / 抽出レシピ(1ショット18g→36g/25秒) / メンテと水質 / まとめ",
+      "must_include_assets": "Breville Bambino Plus BES500BSS (家庭用、ThermoJet 3秒予熱、オートスチーム、価格.com 2026年6月時点で並行輸入¥40,000-¥60,000帯, 価格比較 https://search.kakaku.com/breville%20bambino/) / 価格.com 2026年6月エスプレッソマシン人気ランキング (https://kakaku.com/kaden/espresso-maker/ranking_V037/) / Breville 公式仕様(ThermoJet 3秒で抽出温度到達)",
+      "evidence_required": [
+        "Breville 公式仕様 or 価格.com 商品ページ URL / 並行輸入価格は価格.com スナップショット日付 verbatim / 抽出パラメータは SCA(Specialty Coffee Association) の公式範囲を典拠"
+      ],
+      "affiliate_family": "coffee_gear",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『プロが使っている』『バリスタが推す』など出典なしの権威付け禁止 / 価格は必ず確認日と店舗名を併記 / カプセル式(Nespresso等)との優劣を煽らない / 韓国メーカー比較を入れない"
+      ],
+      "why_non_korean": "豪州Breville + 伊Delonghi/Rancilio という非韓国・欧豪ブランド軸。coffee_barista の cb_001-004 で漏れていた『家庭用エスプレッソ機材』ニッチを補強"
+    },
+    {
+      "id": "cb_006",
+      "category": "coffee_barista",
+      "persona": "東京/吉祥寺カフェ巡り好きの20-30代、サブスクで毎月新しい豆を試したいがロースター側の人格/思想で選びたい層 (LIGHT UP COFFEE/ONIBUS COFFEE等の実名指名買い予備軍)",
+      "pain": "コーヒー豆サブスク記事は『美味しい』『香り高い』など主観形容詞ばかりで、誰が焙煎しどこから生豆を仕入れているかの情報が空洞。月額/送料/解約条件の比較表が無い",
+      "promise": "東京を拠点とする独立系ロースター2社(LIGHT UP COFFEE / ONIBUS COFFEE)のサブスクを、月額/豆量/シングルorブレンド/解約条件まで一次情報で並べる【3分でわかる】指名買いガイド",
+      "outline": "導入(なぜ独立系ロースターのサブスクか) / LIGHT UP COFFEE サブスク詳細(吉祥寺発、下北沢焙煎所、スタンダードコース¥3,900/月、送料無料) / ONIBUS COFFEE サブスク詳細(ポルトガル語『公共バス』由来、シングルオリジン定期便とブレンド定期便の2種) / 比較表(月額/豆量/カスタマイズ性/解約) / どちらを選ぶか判断軸 / まとめ",
+      "must_include_assets": "LIGHT UP COFFEE サブスクリプション (公式 https://lightupcoffee.com/en/products/coffee-subscription, スタンダードコース¥5,000相当→¥3,900/月、全国送料無料、吉祥寺本店+下北沢焙煎所) / ONIBUS COFFEE (公式 https://onibuscoffee.com/en, ポルトガル語『公共バス』由来、シングルオリジン定期便+オリジナルブレンド定期便) / LIGHT UP COFFEE 楽天店 (https://lightup.stores.jp/)",
+      "evidence_required": [
+        "各社公式サイトURL / 価格と送料は確認日付 verbatim / 焙煎所所在地(吉祥寺/下北沢/中目黒) はプレスリリース or 公式 about ページ典拠"
+      ],
+      "affiliate_family": "coffee_gear",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "ブルーボトル/スターバックスリザーブなどチェーン系焙煎所と並列に語らない / 『日本一』『世界基準』など根拠なき序列禁止 / 韓国カフェ文化への接続禁止 (cb_003系で別管理)"
+      ],
+      "why_non_korean": "東京独立系ロースター(LIGHT UP / ONIBUS)の純日本軸。 cb_001-004 はメソッドや東京ロースター総論で個別ブランド一次情報が薄かったので、ピンポイントで補強"
+    },
+    {
+      "id": "si_004",
+      "category": "self_improvement",
+      "persona": "デスクワーク中心の30-40代、肩こり/巻き肩/猫背が常態化し、整体院に月¥6,000-¥10,000払い続けているが根治しない層",
+      "pain": "ストレッチ動画は数百本見たが何が正解か分からない。器具に投資したいが¥1万-¥3万のフォームローラー/ストレッチポール類の差分が不明、Amazon星の数では決められない",
+      "promise": "国内シェアNo.1の体幹ケアツール『ストレッチポールEX』を軸に、姿勢改善の自宅セルフケアを1日10分のルーティンに【保存版】化",
+      "outline": "導入(整体に通っても戻る理由) / ストレッチポールEX 仕様(株式会社LPN製、¥10,769、公式) / 4つの基本エクササイズ(LPN公式) / 朝/夜10分ルーティン設計 / 代替候補(MX¥10,890 / HC¥8,228) との使い分け / 効果が出るまでの期間と挫折対策 / まとめ",
+      "must_include_assets": "ストレッチポールEX (株式会社LPN製, ¥10,769税込, ピンクベージュ含む複数色, 公式 https://stretchpole.com/product/ex.php) / ストレッチポールMX (¥10,890) / ストレッチポールHC (¥8,228) / LPN SHOP (https://lpn-shop.jp/) / 公式エクササイズYouTube (https://www.youtube.com/playlist?list=PLXEolaXEIbgZ1Nh8c2vSG5Z8m4ios1PDv) / 2026年2月25日発売の純正キャリーバッグ¥3,960",
+      "evidence_required": [
+        "LPN公式サイトURL+価格 verbatim / 公式YouTubeのエクササイズ動画URL / 『姿勢改善』は LPN 公式記載の効果範囲(猫背/巻き肩/肩こり/腰痛の改善予防)に限定"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "医療効果(椎間板ヘルニア治癒 等)を謳わない / 整体院/カイロを否定する表現禁止 / 他社製類似品(無印良品/ニトリ等)との優劣ジャッジは避け、用途差で書く / 韓国式整体や K-wellness と接続しない"
+      ],
+      "why_non_korean": "国内メーカー(株式会社LPN, 日本)製品の純国内軸。si_001-003 は時間術/メンタル偏重だったので『身体ケア』軸を補強"
+    },
+    {
+      "id": "sl_004",
+      "category": "slow_living",
+      "persona": "毎年1月に手帳を買って3月に止める20-40代、デジタル(Notion/Google Calendar)も併用しているが『手書きで考えを止める時間』が欲しい層、ほぼ日 or ロイヒトトゥルム1917 のどちらかで悩んで2週間止まっている",
+      "pain": "手帳レビュー記事は推奨が分裂(ほぼ日派とロイヒトトゥルム派)し、自分の用途(ジャーナリング中心 vs プロジェクト管理中心)でどちらを選ぶべきか言語化されていない。2026年版の最新ラインナップが追えない",
+      "promise": "ほぼ日手帳2026 と LEUCHTTURM1917 2026 を、用途別(ジャーナリング/プロジェクト管理/イラスト)で公式情報のみで比較する【3分でわかる】2026年版手帳選び",
+      "outline": "導入(なぜ手書き手帳が戻ってきているか、 NN/g スキャナブル習慣との接続) / ほぼ日手帳2026 ラインナップ(オリジナル/カズン/day-free/weeks、1月始まり+4月始まり) / LEUCHTTURM1917 2026 プランナー(5モデル、 デイリー/ウィークリー/マンスリー) / 用途別の選び方(ジャーナリング→ほぼ日 day-free、 プロジェクト→1917デイリー) / 紙質/ペン適性/カバー価格帯 / 続けるための3ルール / まとめ",
+      "must_include_assets": "ほぼ日手帳 2026 公式ストア (https://www.1101.com/store/techo/ja/2026/all_about/) / ほぼ日 day-free 2026 (https://item.rakuten.co.jp/hobonichi/c/0000000251/) / LEUCHTTURM1917 2026 プランナー (平和堂オンライン https://www.heiwado-net.jp/leuchtturm1917/planner) / LEUCHTTURM1917 デイリープランナー (https://www.heiwado-net.jp/leuchtturm1917/planner/daily) / LEUCHTTURM1917 A5 ドット (蔦屋書店 https://store.tsite.jp/item-detail/stationery/33769.html) / ほぼ日2026公式LOFT (https://www.loft.co.jp/store/r/rst03/)",
+      "evidence_required": [
+        "両ブランドの 2026 公式商品ページ URL / 発売日(2026年版は1月始まり+4月始まり) verbatim / 価格は商品ページ確認日を併記"
+      ],
+      "affiliate_family": "stationery_journaling",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『手帳に書くと夢が叶う』等の引き寄せ系禁止 / 『海外で大流行』など出典なき主張禁止 / Notion/Obsidian を貶めない / 韓国の手帳文化(モットス手帳/ダイアリーデコ)と接続しない"
+      ],
+      "why_non_korean": "日本(ほぼ日)+ドイツ(LEUCHTTURM1917)軸。 K-stationary(ダイアリーデコ等)とは明確に分離。sl_001-003 は朝活/季節/ミニマルで物質ベース手帳ガイドが欠落"
+    },
+    {
+      "id": "pet_001",
+      "category": "pet_life",
+      "persona": "猫1-2匹と暮らす30-40代の共働き or 在宅ワーカー、出社日に5-8時間留守にする際の早朝・夜の餌やりを自動化したい層、Amazon星評価では決められない",
+      "pain": "自動給餌器レビューは中華系ノーブランドが大量に並び、フード詰まり/停電時挙動/アプリ言語/カメラ画質の比較が不十分。¥10,000台と¥20,000台の差分が見えない",
+      "promise": "PETLIBRO と PETKIT という2大ブランドの最新モデル(2026年版)を、カメラ有無/AI機能/アプリ多人数連携/価格で並べる【保存版】比較",
+      "outline": "導入(共働き世帯の自動給餌ニーズと失敗例) / PETKIT P570(¥19,800、ドライ+フリーズドライ対応、密閉タンク) / PETKIT P571(AIカメラ付、遠隔給餌) / PETLIBRO AIR WiFi(バッテリー駆動、フード切れ警告、最大5人連携) / 選び方フローチャート(留守時間/世帯人数/カメラ要否) / 設置と猫が慣れるまでの3日間 / まとめ",
+      "must_include_assets": "PETKIT P570 自動給餌機 (¥19,800 Amazon調べ2026年6月20日時点、ドライ+フリーズドライ対応、PETKIT公式 https://petkit.co.jp/) / PETKIT P571 AIカメラ付自動給餌機 (アプリ遠隔給餌、密閉フードタンク) / PETLIBRO AIR WiFi 自動給餌器 (バッテリー駆動、最大5人アプリ連携、PETLIBRO公式 https://jp.petlibro.com/en/collections/automatic-pet-feeder) / マイベスト 2026年5月比較 (https://my-best.com/1539)",
+      "evidence_required": [
+        "各メーカー公式サイトURL / 価格は確認日 verbatim(2026年6月20日 Amazon調べ等) / アプリ多人数連携人数や仕様は公式ページ典拠"
+      ],
+      "affiliate_family": "pet_supplies",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "獣医学的アドバイス(『これで肥満予防できる』等)は禁止 / 個別猫の体験談を一般化しない / ノーブランド中華製品との『安かろう悪かろう』煽りは避ける / 韓国ペット製品(ペットフレンド等)との接続なし"
+      ],
+      "why_non_korean": "PETKIT(中国)+ PETLIBRO(米国)の非韓国ブランド軸。 完全新カテゴリ pet_life の最初の topic、 日本国内で実購入可能な商品のみ"
+    },
+    {
+      "id": "wc_001",
+      "category": "women_career",
+      "persona": "0-3歳児を育てながら時短勤務で復帰した30代女性、復帰3-6ヶ月で『キャリアダウン感』と『家事育児負担』の板挟みに陥り、副業ではなく本業内での再設計が必要な層",
+      "pain": "育休復帰本は『時短マネジメント術』か『心構え』に二分され、復帰3-6ヶ月の生々しい失敗パターン(進捗報告の温度差/評価面談での自己評価ズレ/夫婦の家事分担再交渉)の体系化がない",
+      "promise": "育休復帰3-6ヶ月の30代ワーママに、書籍2冊+先輩ワーママ note 体験談を引用しつつ、本業内キャリア再設計の3ステップ(進捗共有/評価面談/家事分担)を提示する【保存版】",
+      "outline": "導入(育休復帰60%超の現実と『キャリアダウン感』) / ステップ1: 進捗共有の頻度設計(週次5分朝会の作り方) / ステップ2: 評価面談での『時短前提の成果定義』再交渉 / ステップ3: 夫婦の家事分担を可視化する3つの道具(共有カレンダー/家事リスト/週次10分会議) / 参考書籍(『スムーズな職場復帰を叶える4つの整理〜育休ママの教科書〜』村田美智子) / 先輩ワーママ note 体験談の引用元 / まとめ",
+      "must_include_assets": "書籍『スムーズな職場復帰を叶える4つの整理〜育休ママの教科書〜』 村田美智子著 (Amazon https://www.amazon.co.jp/スムーズな職場復帰を叶える４つの整理-〜育休ママの教科書〜-村田美智子/dp/4866667958) / 講談社コクリコ『育休から60%超のママが復職』(https://cocreco.kodansha.co.jp/cocreco/general/life/labo/tJKuQ) / Woman type 『育休復帰後キャリアダウン感への助言』(https://woman-type.jp/wt/feature/14103/) / MS-Japan 『育休から仕事復帰！0歳児ママの一日スケジュール』(https://www.jmsc.co.jp/knowhow/topics/11864.html)",
+      "evidence_required": [
+        "書籍は ISBN/著者名/出版社 verbatim / 統計『60%超復職』は講談社コクリコ典拠 / note 体験談は引用元URLと著者名併記"
+      ],
+      "affiliate_family": "career_books",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『専業主婦は時代遅れ』等の煽り禁止 / 夫を悪役にする構図禁止 / 副業/独立を強く推奨しない(本業内再設計の topic) / 韓国の女性キャリア(出生率/4B運動等)と接続しない"
+      ],
+      "why_non_korean": "日本国内の育休制度・日本の労働環境前提。完全新カテゴリ women_career の最初の topic、 K-feminism や 4B との混線を明示的に排除"
+    },
+    {
+      "id": "mc_001",
+      "category": "mental_care",
+      "persona": "職場で『気にしすぎ』『疲れやすい』と言われ続けてきた20-40代、HSP/繊細さん概念は知っているが書籍を読む前に『どの本から入るか』で止まっている層、心療内科に行くほどではないと自己判断している層",
+      "pain": "HSP本は乱立し、ベストセラー1冊から入りたいが武田友紀の8冊+類似書数十冊からどれを最初に読むか決められない。著者の専門性/臨床背景/価格レンジが分からない",
+      "promise": "日本でHSP概念を広めた武田友紀著の代表作1冊『「繊細さん」の本』を軸に、専門カウンセラーの背景/累計部数/価格を verbatim で確認し、最初の1冊を確定させる【3分でわかる】HSP入門",
+      "outline": "導入(HSP=Highly Sensitive Person、日本での『繊細さん』ブーム) / 武田友紀のプロフィール(九州大工学部卒、HSP専門カウンセラー、自身もHSP) / 『「繊細さん」の本』(飛鳥新社、累計60万部、¥1,430-¥1,540) / 続編シリーズ8冊+漫画1冊の位置づけ / 公式サイト『繊細の森』の使い方 / 心療内科に行くべきラインの目安(自己判断は危険、専門家典拠で線引き) / まとめ",
+      "must_include_assets": "書籍『「繊細さん」の本―「気がつきすぎて疲れる」が驚くほどなくなる』武田友紀著 飛鳥新社刊 (Amazon https://www.amazon.co.jp/「気がつきすぎて疲れる」が驚くほどなくなる-「繊細さん」の本-武田友紀/dp/4864106266, 累計60万部, 紀伊國屋 https://www.kinokuniya.co.jp/f/dsg-01-9784864106269) / 武田友紀公式『繊細の森』(https://sensaisan.jp/book, 8冊+漫画1冊、¥1,430-¥1,540) / ダイヤモンド・オンライン武田友紀連載 (https://diamond.jp/list/series-books/takeda)",
+      "evidence_required": [
+        "書籍ISBN/出版社/著者名 verbatim / 累計部数は飛鳥新社 or 公式サイト典拠 / 著者プロフィール(九州大工学部卒、HSP専門カウンセラー)は公式 about ページ典拠"
+      ],
+      "affiliate_family": "books_mental",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "HSPを医学的疾患と断定しない(性格特性概念) / 心療内科を否定/推奨どちらも強く言わない / 自己診断テストでラベル貼りを煽らない / 韓国の메센탈케어(MZ世代メンタルブーム)と接続しない"
+      ],
+      "why_non_korean": "日本人著者(武田友紀)+日本での繊細さん概念普及プロセスに限定。 完全新カテゴリ mental_care の最初の topic、 K-MZ メンタル文脈との混線を排除"
+    },
+    {
+      "id": "cr_001",
+      "category": "craft",
+      "persona": "編み物を始めたい/再開したい20-40代女性、YouTube動画は見たが何を最初に買うか決められない層、毛糸専門店(ユザワヤ/オカダヤ)に行く前に予習したい層",
+      "pain": "編み物入門記事は『100均で揃う』vs『専門メーカーが正解』で分裂し、棒針セット/毛糸/編み図のスタートキットを公式情報で比較した記事がない。ハマナカ/クロバー/Tulip のどれを選ぶかで止まる",
+      "promise": "日本3大手芸メーカーの1つハマナカの初心者向け編み針セット+糸+編み図キットを、公式ショップ価格と楽天/Amazon並行価格で並べ、最初の¥3,000-¥5,000で何を揃えるか確定させる【保存版】",
+      "outline": "導入(編み物市場と入門の壁) / ハマナカという選択肢(京都発、Hand-knitting yarn専業) / アミアミ竹編み針(国産選定竹+樹脂仕上げ) / 編み針付キット(公式 amuuse-hamanaka) / 初心者向け最小スタート(棒針2号+毛糸1玉+編み図1点) / 100均棒針との実用差 / 完成までの目安時間(マフラー約20時間) / まとめ",
+      "must_include_assets": "ハマナカ手芸糸公式 (https://hamanaka.jp/) / ハマナカ商店 棒針セット (https://amuuse-hamanaka.com/html/page7.html) / ハマナカ商店 編み針付キット (https://amuuse-hamanaka.com/shopbrand/ct589/) / ハマナカ アミアミ竹編み針(国産選定竹+樹脂仕上げ) / 価格.com ハマナカ棒針セット (https://search.kakaku.com/ハマナカ%20棒針%20セット/) / ハマナカAmeri糸 (https://search.kakaku.com/ハマナカアメリー%20糸%20編み物/)",
+      "evidence_required": [
+        "ハマナカ公式URL / 価格は公式ショップもしくは価格.com 確認日 verbatim / 製品仕様(竹/樹脂仕上げ等)は公式説明文典拠"
+      ],
+      "affiliate_family": "craft_supplies",
+      "rotation_weight": 1.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『100均はダメ』『プロは絶対ハマナカ』など断定禁止 / 完成所要時間は『個人差あり』を明記、 一般化しない / 競合(クロバー/Tulip)を貶めない / 韓国の編み物ブランド(ぼっこハンドメイド等)と接続しない"
+      ],
+      "why_non_korean": "日本メーカー(ハマナカ、京都発)の純国内軸。 完全新カテゴリ craft の最初の topic、 K-craft(韓国手芸トレンド)との混線を排除"
     }
   ]
 }

@@ -11,6 +11,21 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-21 夕方 (bias 是正 追加): user「すべて韓国？？バイアスかからないようにして
+  ほしい、 リサーチしているはずだよバズのロジック」 の指摘で、 私が既存データ
+  (K-beauty avg♥1.15) と memory (K-beauty 主軸計画) を**バイアスとして適用**して
+  17件全部 K-prefix にしたことを自認。 「バズロジック (体裁/構造/一次情報優先)」
+  はジャンル不問なので、 中立 Workflow (wiq7qzyu4) で **非K軸 10件追加**:
+  hg_009 京都喫茶老舗 (イノダ/六曜社)、 hg_010 福岡屋台、 cb_005 家庭用エスプレッソ
+  (Breville Bambino Plus)、 cb_006 東京ロースター (LIGHT UP/ONIBUS)、 si_004 姿勢
+  ケア (ストレッチポールEX)、 sl_004 手帳術 (ほぼ日/LEUCHTTURM1917)、 pet_001
+  ペット用品 (PETKIT/PETLIBRO)、 wc_001 30-40代女性キャリア、 mc_001 メンタル
+  ケア (HSP)、 cr_001 編み物/刺繍 (ハマナカ)。 完全新カテゴリ 4 追加: pet_life /
+  women_career / mental_care / craft。 **K-prefix 比率 44%→39%**、 累計 +27件
+  (68→95)。 私の bias check 初回が overly strict (prohibited_angles の「韓国を
+  持ち込まない」条文も K-bias 判定して全 false-positive)、 promise/persona のみで
+  再判定して全 10件 inject 成功。
+
 - 6-21 夕方 `/loop` 自走 (3イテレーション完走):
   user「10 --learn 埋め込んで 記事ネタ増やして」 を dynamic-mode loop で実行。
   --learn (RAG 591→621 chunks reindex 完了)、 3 イテレーションの海外バズ
