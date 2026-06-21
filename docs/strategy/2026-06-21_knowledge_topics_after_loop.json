@@ -2791,6 +2791,167 @@
         "中国製ブランド品・コピー品を本物と混在で並べる / 質屋・転売品 (メルカリ等) を主推薦経路に / 大手百貨店PBや量産チェーン (無印・ユニクロのレザー風) を国産専門ブランドと並列比較 / 個人ブログ『何年使えた』の主観体験を耐久年数の根拠扱い"
       ],
       "neutrality_check": "K-prefix なし: 韓国レザーブランドに触れない / 完全新カテゴリ: 117トピック中 leather_bag_jp 0件、 fashion_jp 1件は『アパレル全般』であり革製品単体は未開拓、 minimalism (持ち物削減) とは資産軸が逆"
+    },
+    {
+      "id": "snr_001_endlife_starter",
+      "category": "senior_endlife",
+      "niche_axis": "super-niche persona: 60-75歳シニア(主にプレシニア層65±5)、デジタル弱者寄り、終活初動。子世代(40-50代)からの紹介流入も狙える二次読者層あり",
+      "persona": "65-75歳、配偶者または子供から『そろそろエンディングノートを』と言われたが、書店本は分厚すぎて挫折。スマホで簡潔に着手したい",
+      "pain": "エンディングノートが100種類以上市販されていて選べない。法的拘束力の有無、相続/遺言/医療意思決定の境界が分からない。書いた後どこに保管すれば家族が確実に見つけるか不明",
+      "promise": "コクヨ『もしもの時に役立つノート LES-E101』(¥1,540)を軸に、法的拘束力なしのエンディングノート(任意記入)と公正証書遺言(法的拘束力あり)の使い分けを、法務省・日本公証人連合会・厚労省ACP(人生会議)の一次資料で整理。保管先は法務局の自筆証書遺言書保管制度(¥3,900)も提示",
+      "outline": "導入(終活市場8兆円・矢野経済) / エンディングノートと遺言の違い(法的拘束力チャート) / コクヨLES-E101の実物レビュー(項目12カテゴリ) / 競合3冊(無印良品『じぶんノート』¥890、エイ出版『一番わかりやすいエンディングノート』¥1,650、リベラル社『書き込み式 もしもに備える』¥1,430) / 医療意思決定はACP(人生会議)推奨 / 法務局自筆証書遺言書保管制度(¥3,900・全国312箇所) / 保管先5パターン比較 / 家族との共有タイミング / まとめ",
+      "must_include_assets": "コクヨ もしもの時に役立つノート LES-E101 ¥1,540, 無印良品 じぶんノート ¥890, 法務局自筆証書遺言書保管制度 ¥3,900 (https://www.moj.go.jp/MINJI/minji05_00028.html), 厚労省ACP(人生会議) https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000212396.html, 日本公証人連合会 https://www.koshonin.gr.jp/, 矢野経済研究所『終活関連サービス市場』, 公正証書遺言手数料¥11,000-(財産5,000万円以下), 全国312箇所(法務局保管窓口)",
+      "evidence_required": [
+        "法務省公式URL+保管制度ページ / 日本公証人連合会公式 / 厚労省ACP公式PDF / コクヨ・無印良品公式商品ページ / 矢野経済研究所プレスリリース"
+      ],
+      "prohibited_angles": [
+        "遺産分割の具体的アドバイス(税理士/弁護士業務範囲) / 特定の葬儀社・墓地推奨 / 『家族が困らない』等の感情誘導 / 投資・保険商品の勧誘"
+      ],
+      "neutrality_check": "K-bias 0%: 韓国要素・K-prefix 一切なし。日本固有制度(法務局・公証人・コクヨ・無印)のみで構成。シニアジャンルは125既存topic中ゼロ",
+      "affiliate_family": "stationery_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "sng_001_singlemom_tanshuku",
+      "category": "single_parent_jp",
+      "niche_axis": "super-niche persona: シングルマザー(全国約120万世帯・厚労省H28)、特に幼児〜小学校低学年子を持つ30-40代、可処分時間1日90分以下層。コミュニティ少なく情報空白地帯",
+      "persona": "30代シングルマザー、子4歳と6歳、フルタイム勤務。平日19時迎え→21時就寝までに夕食・風呂・洗濯を回せず毎日詰む。時短家電に¥30,000まで投資する覚悟ある",
+      "pain": "ホットクックや食洗機の比較記事は『共働き夫婦向け』ばかりで、ワンオペ前提のレビューがない。¥30,000以下で実際にワンオペ親の時間を15分以上戻す家電が何か分からない",
+      "promise": "シャープ ヘルシオ ホットクック KN-HW10G(¥30,800)/パナソニック食洗機NP-TML1(¥38,800工事不要分岐水栓型)/ドラム式洗濯機の優先順位を、厚労省『国民生活時間調査』のシングル親家事時間データで根拠付け、¥30,000予算ならまず何を買うかを提示",
+      "outline": "導入(厚労省H28全国ひとり親世帯等調査:母子世帯123.2万) / 時短家電3種スペック比較(ホットクック/食洗機/ドラム式) / ¥30,000以内ベスト1=食洗機NP-TML1(設置簡易タイプ実証) / ¥30,000超なら次点=ホットクックKN-HW10G / ドラム式は¥150,000超で順位3位 / 自治体ひとり親家庭日常生活支援事業(東京都/横浜市/名古屋市の補助制度URL) / 児童扶養手当との関係 / まとめ",
+      "must_include_assets": "シャープ ホットクック KN-HW10G ¥30,800 https://jp.sharp/hotcook/, パナソニック食洗機 NP-TML1 ¥38,800 https://panasonic.jp/dish/, 厚労省『平成28年度全国ひとり親世帯等調査』母子世帯123.2万 https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000188147.html, 児童扶養手当(全部支給¥45,500/月・令和6年4月) https://www.mhlw.go.jp/bunya/kodomo/osirase/100526-1.html, 東京都ひとり親家庭日常生活支援事業 https://www.fukushi.metro.tokyo.lg.jp/kodomo/katei/, 国民生活時間調査(NHK放送文化研究所)",
+      "evidence_required": [
+        "厚労省ひとり親世帯等調査PDF / シャープ・パナソニック公式商品ページ+定価 / 自治体公式支援制度URL(3自治体以上) / NHK放送文化研究所国民生活時間調査"
+      ],
+      "prohibited_angles": [
+        "離婚を煽る論調 / 元配偶者批判 / 特定の養育費請求サービス勧誘 / 『シングルマザーかわいそう』フレーミング / 婚活アプリへの誘導"
+      ],
+      "neutrality_check": "K-bias 0%: 韓国要素一切なし。日本の社会保障制度・日本国内家電が論点。シングル親ジャンルは125既存topic中ゼロ",
+      "affiliate_family": "home_appliance_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "frn_001_bankaccount_zairyu",
+      "category": "foreigner_jp",
+      "niche_axis": "super-niche persona: 在日外国人(法務省2024末で約341万人)、特に中長期在留者で来日6ヶ月以内の銀行口座開設フェーズ。日本語OK or 英語/中国語UI希望。日本人向け銀行比較記事は彼らの審査基準を扱わない",
+      "persona": "在日インド/中国/ベトナム籍、来日3-6ヶ月、エンジニアまたは特定技能、在留カードと住民票はあるが銀行口座開設を3行で断られている",
+      "pain": "メガバンクは6ヶ月在留要件で門前払い。ネット銀行も英語UIが少なく、振込手数料の比較が日本人向け記事しかない。マイナンバー通知前に作れる口座が分からない",
+      "promise": "Sony Bank WALLET(英語UI・在留期間6ヶ月未満OK・条件あり)/ ゆうちょ銀行(全国24,000窓口・在留カードで即日)/ Prestia SMBC信託銀行(多言語サポート・送金強い)の3行を、各行の外国人申込条件(在留期間/在留資格/書類)とSWIFT送金手数料で比較し、来日月数別の最適解を提示",
+      "outline": "導入(法務省R6末在留外国人341万人) / メガバンク6ヶ月在留要件の根拠(全銀協ガイドライン) / 来日3ヶ月以内=ゆうちょ銀行(在留カード+住民票で口座開設手数料¥0) / 3-6ヶ月=Sony Bank WALLET(英語UI・10通貨対応) / 6ヶ月以上=Prestia SMBC信託銀行(本国送金SWIFT手数料¥4,000-) / マイナンバー通知前の制約 / 在留資格別の壁(留学/特定技能/技人国) / まとめ",
+      "must_include_assets": "Sony Bank WALLET https://moneykit.net/en/, ゆうちょ銀行外国人向けページ https://www.jp-bank.japanpost.jp/en/, Prestia SMBC信託銀行 https://www.smbctb.co.jp/en/, 法務省『令和6年末現在における在留外国人数』341.8万人 https://www.moj.go.jp/isa/publications/press/, 全国銀行協会『口座開設時のご本人確認』 https://www.zenginkyo.or.jp/abstract/efforts/safe/honnin/, 在留カード(出入国在留管理庁) https://www.moj.go.jp/isa/applications/procedures/zairyukanri10_00014.html, SWIFT送金手数料Prestia¥4,000(2026時点)",
+      "evidence_required": [
+        "各銀行公式英語ページ / 法務省在留外国人統計プレスリリース / 全銀協公式ガイドライン / 出入国在留管理庁公式"
+      ],
+      "prohibited_angles": [
+        "特定国籍の信用力評価 / グレー代行業者(口座売買)言及 / 個人ブログ体験談を主根拠化 / 不法滞在者向けノウハウ / 暗号資産での迂回提案"
+      ],
+      "neutrality_check": "K-bias 0%: K-prefix 完全不使用。韓国籍は対象に含むが主眼は『在日外国人全般』の制度解説、韓国限定要素なし。在日外国人ジャンルは125既存topic中ゼロ",
+      "affiliate_family": "fintech_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "hsp_001_sensory_gear",
+      "category": "hsp_adult",
+      "niche_axis": "super-niche persona: HSP/感覚過敏成人(国内推定15-20%/Aron 1996)、特に職場の音・光に消耗する20-40代。ASD/ADHDグレーゾーンも重なる。一般的なノイキャン記事は『集中したいビジネスパーソン』前提で過敏者の閾値を扱わない",
+      "persona": "20-30代会社員、オフィスのキーボード音/蛍光灯チラつき/同僚の体臭で午後には消耗。診断はないがHSP自認、ノイキャンと遮光メガネで毎日のQOLを上げたい",
+      "pain": "Sony WF-1000XM5などの主要ノイキャンレビューが『通勤電車』前提で、オフィス静音環境での会話を残しつつタイピング音だけ消す用途のスペックが書かれていない。Loop Quietのような『遮音』専用器具との比較がない",
+      "promise": "Sony WF-1000XM5(¥41,800)/Apple AirPods Pro 2(¥39,800)/Loop Quiet 2(¥3,790・電池不要遮音耳栓)の3製品を、外部音取り込みモードのカスタマイズ性・遮音dB値・8時間連続装着時の耳負担で比較し、感覚過敏オフィスワーカーに最適な1製品を提示",
+      "outline": "導入(Aron 1996 HSP概念・国内15-20%) / 感覚過敏は医学的にはDSM-5でASD随伴症状 / Sony WF-1000XM5の周囲音モード細分化(20段階) / Apple AirPods Pro 2会話検出機能 / Loop Quiet 2の25dB遮音(電池不要・¥3,790) / 蛍光灯チラつき対策=Pixel Eyewear ブルーライト+調光メガネ(¥9,900) / 産業医面談で『環境調整』を申請する文例 / 厚労省『発達障害者雇用トータルサポーター』制度 / まとめ",
+      "must_include_assets": "Sony WF-1000XM5 ¥41,800 https://www.sony.jp/headphone/products/WF-1000XM5/, Apple AirPods Pro 2 ¥39,800 https://www.apple.com/jp/airpods-pro/, Loop Quiet 2 ¥3,790 (25dB SNR) https://www.loopearplugs.com/products/quiet, Aron, E.N. (1996) The Highly Sensitive Person ISBN 978-0553062182, DSM-5感覚過敏記述(ASD), 厚労省発達障害者雇用トータルサポーター https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/koyou/shougaishakoyou/06b.html, Pixel Eyewear Buford Tortoise ¥9,900",
+      "evidence_required": [
+        "Sony/Apple/Loop公式商品ページ+定価 / Aron 1996原著ISBN / 厚労省発達障害支援制度URL / DSM-5引用(American Psychiatric Association)"
+      ],
+      "prohibited_angles": [
+        "HSPを医学的疾患と断定(医学的にはDSM未収載) / 自己診断テストで読者を分類 / 退職勧奨の論調 / 特定の心療内科クリニック推奨 / ASD/ADHDとHSPを混同して扱う"
+      ],
+      "neutrality_check": "K-bias 0%: 韓国要素一切なし。米心理学者Aron(米国)+日本厚労省制度+グローバル製品で構成。HSPジャンルは125既存topic中ゼロ",
+      "affiliate_family": "audio_gadget",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "std_001_laptop_10man",
+      "category": "student_jp",
+      "niche_axis": "super-niche persona: 大学生(特に文系1-2年生、理系で大学指定PCに不満な層)、予算¥100,000厳守、4年間使う前提。価格.com系記事は社会人前提でWord処理速度や本体重量の優先順位が違う",
+      "persona": "大学1-2年生、レポート(Word/PowerPoint)+Zoom授業+将来的にAdobe Illustrator軽め、予算¥100,000厳守。生協推奨PC(¥180,000+)はオーバースペック",
+      "pain": "メーカー直販と量販店の学割の差が見えない。Surface Laptop GoとMacBook Airの中古整備品とLenovo IdeaPadのどれが4年持つか分からない。生協は強制ではないが断る根拠が欲しい",
+      "promise": "Apple認定整備済 MacBook Air M2 13インチ ¥120,800(学割¥118,800)/Surface Laptop Go 3 学生価格 ¥106,480/Lenovo IdeaPad Slim 5 14型 ¥89,980の3機種を、4年保証・バッテリー交換費・修理ネットワーク・OS寿命で比較し、文系1年生に¥100,000以下で買うべき1台を提示",
+      "outline": "導入(全私大生協推奨PC平均¥185,000の根拠) / 4年使う基準=メモリ16GB/SSD 256GB以上必須 / Lenovo IdeaPad Slim 5 14型 ¥89,980(16GB/512GB・直販学割) / Surface Laptop Go 3 学生価格 ¥106,480(8GB上限が4年壁) / Apple整備済 MacBook Air M2 ¥120,800(学割で¥118,800) / 修理ネットワーク比較(Lenovo:翌営業日訪問¥3,300・Apple:Genius Bar) / 生協PCのメリット(4年保証込)とデメリット(¥60,000上乗せ) / まとめ",
+      "must_include_assets": "Apple認定整備済 MacBook Air M2 13インチ ¥120,800 https://www.apple.com/jp/shop/refurbished/mac, Surface Laptop Go 3 学生価格 ¥106,480 https://www.microsoft.com/ja-jp/store/b/education, Lenovo IdeaPad Slim 5 14型 直販¥89,980 https://www.lenovo.com/jp/, 全国大学生活協同組合連合会 https://www.univcoop.or.jp/, Apple学生・教職員価格 https://www.apple.com/jp/shop/browse/home/education_routing, Microsoft 学生プログラム https://www.microsoft.com/ja-jp/education/students, Lenovo学割ストア https://www.lenovo.com/jp/ja/students/",
+      "evidence_required": [
+        "各メーカー公式学割ページURL+価格 / 大学生協連合会公式 / 各社修理ネットワーク公式説明"
+      ],
+      "prohibited_angles": [
+        "生協PCを全否定 / 中古オークション(メルカリ等)推奨 / 海外個人輸入推奨 / ゲーミングPC方向への誘導 / ChromeBookを大学レポート用として推奨(Officeネイティブ問題)"
+      ],
+      "neutrality_check": "K-bias 0%: K-prefix 一切なし。日米メーカー+日本の生協制度のみ。学生PC選びジャンルは125既存topic中ゼロ",
+      "affiliate_family": "laptop_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "hi_001_nisa_optimize_1500",
+      "category": "hi_income_salary",
+      "niche_axis": "super-niche persona: 年収1,500-3,000万円サラリーマン(国税庁R5民間給与統計で給与所得者の0.7%)、富裕層向け『プライベートバンカー』記事は使えず、一般向け『新NISA入門』では物足りない。住宅ローン控除終了後/扶養2人の節税最適化フェーズ",
+      "persona": "35-45歳、年収1,800万円、外資/総合商社/コンサル/医師など、新NISA満額(¥360万/年)済み、iDeCo企業型加入、追加の節税・資産形成余地を探している",
+      "pain": "新NISA満額の次が分からない。マイクロ法人化(個人事業主+合同会社)の損益分岐点が¥1,500万なのか¥2,000万なのか専門家ごとに意見が違う。プラチナNISA構想や2026年税制改正の影響が読めない",
+      "promise": "新NISA満額後の積み上げ順序を、①企業型DC上限拡大(2024年12月マッチング撤廃)→②iDeCo月¥23,000(2025年12月上限¥62,000化予定)→③特定口座での全世界株インデックス→④マイクロ法人化(損益分岐¥1,500万)の4段で、国税庁・厚労省・金融庁の一次資料で根拠付け",
+      "outline": "導入(国税庁R5民間給与統計 年収1,500万超は給与所得者0.7%) / 新NISA枠¥1,800万の使い切りペース / 第2層=iDeCo 2025年12月上限改正(¥62,000/月) / 第3層=企業型DC+マッチング制度 / 第4層=特定口座eMAXIS Slim全世界株式 / マイクロ法人化の損益分岐(年収¥1,500万・社保最適化) / 2026年税制改正(防衛特別法人税/金融所得課税) / プラチナNISA(政府検討中)の現状 / 住宅ローン控除2024年改正の高所得者影響 / まとめ",
+      "must_include_assets": "国税庁『令和5年分民間給与実態統計調査』年収1,500万超0.7% https://www.nta.go.jp/publication/statistics/kokuzeicho/minkan/top.htm, 金融庁新NISA公式 https://www.fsa.go.jp/policy/nisa2/, 厚労省iDeCo上限拡大2025年12月 https://www.mhlw.go.jp/stf/newpage_, eMAXIS Slim全世界株式(オール・カントリー)信託報酬0.05775% https://emaxis.jp/fund/253425.html, 国民年金基金連合会iDeCo https://www.ideco-koushiki.jp/, 国税庁マイクロ法人課税(法人税23.2%) https://www.nta.go.jp/, 令和7年度税制改正大綱(財務省) https://www.mof.go.jp/tax_policy/tax_reform/",
+      "evidence_required": [
+        "国税庁・金融庁・厚労省・財務省の一次資料URL / eMAXIS Slim公式信託報酬 / 国民年金基金連合会iDeCo公式"
+      ],
+      "prohibited_angles": [
+        "個別株推奨(銘柄選定) / 不動産投資への誘導 / 特定IFA・税理士事務所への誘導 / FX・暗号資産への誘導 / 富裕層マウンティング論調 / 『年収1",
+        "000万は中流』など階層差別的表現"
+      ],
+      "neutrality_check": "K-bias 0%: 韓国要素一切なし。日本税制+金融庁制度のみ。高所得サラリーマン税金最適化ジャンルは125既存topic中ゼロ",
+      "affiliate_family": "fintech_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "sdi_001_sendai_kissaten",
+      "category": "local_sendai",
+      "niche_axis": "super-local Japan: 仙台市青葉区/宮城野区の昭和創業喫茶店(牛タン・ずんだの観光記事は飽和、仙台市民の日常領域は空白)。地元歩き読者+宮城出身の上京者の郷愁需要",
+      "persona": "30-40代、仙台出身で関東在住の上京組、または出張で仙台一泊する文化系会社員。牛タン以外の『地元の人が普段通う場所』を1〜2軒押さえたい",
+      "pain": "仙台観光記事は牛タン・ずんだ・笹かまの三本柱で固定。地元喫茶店の現役店リストが食べログ星3.5以下に埋もれていて掘り出せない",
+      "promise": "仙台市内に現存する昭和創業喫茶店3軒(『カフェ・ド・ガレ』1979年青葉区国分町・自家焙煎/『ホシヤマ珈琲店 仙台店』1990年青葉区一番町・サイフォン/『カフェ ファミリア』1976年青葉区上杉)を、創業年・現在の店主・看板メニュー価格・営業時間で実在ベース紹介",
+      "outline": "導入(仙台喫茶文化と『杜の都』気候) / 1軒目 カフェ・ド・ガレ(国分町2-3-25・1979年創業・自家焙煎ブレンド¥600) / 2軒目 ホシヤマ珈琲店 仙台店(一番町・サイフォン式・季節のフルーツパフェ¥1,650) / 3軒目 カフェ ファミリア(上杉・モーニング¥850) / 各店アクセス(地下鉄南北線勾当台公園駅徒歩X分等) / 仙台コーヒー文化年表 / 訪問マナー(撮影可否確認) / まとめ",
+      "must_include_assets": "カフェ・ド・ガレ(仙台市青葉区国分町2-3-25・実在確認必須・食べログ/Google Maps URL), ホシヤマ珈琲店 仙台店 https://hoshiyama-coffee.com/, カフェ ファミリア(仙台市青葉区上杉・実在確認必須), 仙台市公式観光サイト https://www.sentabi.jp/, 仙台地下鉄南北線(勾当台公園/北四番丁駅) https://www.kotsu.city.sendai.jp/, 喫茶店全国データベース『日本コーヒー文化学会』言及, チェーン店ブラックリスト(config/settings.yaml gourmet_rules.chain_blacklist)で再確認必須",
+      "evidence_required": [
+        "各店公式サイトまたは食べログ/Google Mapsピン(実在確認) / 仙台市公式観光サイト / 仙台地下鉄公式 / 創業年は店公式または信頼メディア記事"
+      ],
+      "prohibited_angles": [
+        "閉店店舗を現役扱い / 架空店名・住所創作 / チェーン店(コメダ/ドトール/スタバ等)混入 / 食べログ星評価を断定的に書く / 個人ブログ訪問記を主根拠化"
+      ],
+      "neutrality_check": "K-bias 0%: 韓国要素一切なし。仙台市固有の喫茶店3軒。仙台ローカルジャンルは125既存topic中ゼロ(hidden_gourmet は東京中心)",
+      "affiliate_family": "travel_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
+    },
+    {
+      "id": "oki_001_yambaru_forest_cafe",
+      "category": "local_okinawa",
+      "niche_axis": "super-local Japan: 沖縄本島北部やんばる地区(国頭村・大宜味村・東村、2021年世界自然遺産登録)。那覇国際通りや美ら海水族館の観光記事は飽和、北部森林カフェは情報空白。エコツーリズム志向30-40代読者層",
+      "persona": "30-40代、沖縄に2泊以上滞在、那覇からレンタカーで北上、世界自然遺産やんばるを五感で味わいたい文化志向旅行者",
+      "pain": "やんばる地区のカフェ情報がInstagram個人投稿に断片化、移転・閉店も多い。実在確認済の森林カフェ3軒のリストが日本語の信頼ソースにない",
+      "promise": "やんばる3村に現存する森林カフェ3軒(『山甌(やまがめ)』大宜味村・国頭マージ土器作家工房併設/『カフェ がじまんろー』東村・福地ダム湖畔/『黒糖工房 凜』大宜味村喜如嘉・現役黒糖工房)を、住所・営業日(週末のみ多数)・代表メニュー価格で実在ベース紹介",
+      "outline": "導入(2021年世界自然遺産登録 やんばる) / 那覇空港からのアクセス(沖縄自動車道許田IC→国道58号 約2時間) / 1軒目 山甌(大宜味村大兼久58・木曜のみ開店・ぜんざい¥700・国頭マージ土器の器) / 2軒目 カフェがじまんろー(東村慶佐次・福地ダム湖畔・モリンガティー¥600) / 3軒目 黒糖工房 凜(大宜味村喜如嘉・現役黒糖製造1月-3月見学可・黒糖サーター天ぷら¥300) / 環境省やんばる国立公園公式マップ / レンタカー注意(野生動物ロードキル) / まとめ",
+      "must_include_assets": "山甌(やまがめ)沖縄県国頭郡大宜味村大兼久58・実在確認(食べログ/Google Maps URL必須), カフェ がじまんろー(沖縄県国頭郡東村慶佐次)実在確認, 黒糖工房 凜(沖縄県国頭郡大宜味村字喜如嘉)実在確認, 環境省やんばる国立公園 https://www.env.go.jp/park/yambaru/, ユネスコ世界自然遺産登録2021年7月26日(奄美大島・徳之島・沖縄島北部及び西表島) https://whc.unesco.org/en/list/1574/, OCVB沖縄観光コンベンションビューロー https://www.visitokinawa.jp/, 沖縄自動車道許田IC https://www.driveplaza.com/, チェーン店ブラックリスト(config/settings.yaml gourmet_rules.chain_blacklist)で再確認必須",
+      "evidence_required": [
+        "各店食べログ/Google Maps URL(実在確認) / 環境省やんばる国立公園公式 / UNESCO世界遺産公式登録ページ / OCVB沖縄観光コンベンションビューロー公式"
+      ],
+      "prohibited_angles": [
+        "閉店・移転済店舗を現役扱い / 架空店名創作 / チェーンカフェ混入 / 世界遺産コアゾーン立入推奨(規制エリア) / ヤンバルクイナ等天然記念物への接近推奨 / 個人ブログを主根拠化"
+      ],
+      "neutrality_check": "K-bias 0%: 韓国要素一切なし。沖縄やんばる地区限定。沖縄ローカル(特に北部森林)ジャンルは125既存topic中ゼロ",
+      "affiliate_family": "travel_jp",
+      "rotation_weight": 1.2,
+      "cooldown_days": 21
     }
   ]
 }
