@@ -1,0 +1,1992 @@
+{
+  "_readme": "Evergreen note topic pool. Feeds the note generation pipeline as a replacement for Google Trends (2026-04-23 pivot to knowledge/self-improvement). Each topic is a 'reader-pain unit' — a concrete problem + promise the article must satisfy. Schema per Codex review: id / category / persona / intent / pain / promise / outline / evidence_required / affiliate_family / rotation_weight / cooldown_days / prohibited_angles. Pillars: 韓国美容・コスメ / 隠れた名店グルメ / コーヒー・バリスタ / 自分磨き・自己啓発 / AI副業・マネタイズ / AIツール・エージェント解説 (ai_literacy, added 2026-04-23 per operator request).",
+  "pillars": [
+    "k_beauty",
+    "hidden_gourmet",
+    "coffee_barista",
+    "self_improvement",
+    "ai_sidejob",
+    "ai_literacy",
+    "physical_ai",
+    "k_culture",
+    "slow_living"
+  ],
+  "topics": [
+    {
+      "id": "kb_001",
+      "category": "k_beauty",
+      "persona": "20-30代女性、韓国コスメを試したいが自分の肌質に合うか不安",
+      "intent": "informational",
+      "pain": "韓国コスメ人気ブランドが多すぎて、乾燥肌 / 脂性肌 / 敏感肌のどれに何を選ぶべきか分からない",
+      "promise": "肌質タイプ別に、K-beautyの定番ブランド (Anua / Beauty of Joseon / COSRX / Laneige) から 3 stepルーティンを提示する",
+      "outline": "導入(韓国コスメ2026春の潮流) / 肌質診断 / 乾燥肌向け3step / 脂性肌向け3step / 敏感肌向け3step / よくある失敗 / まとめ",
+      "evidence_required": [
+        "公式ブランドサイトURL",
+        "@cosme等の第三者レビュー",
+        "実成分表"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "個人のBluesky/X投稿を根拠にしない",
+        "架空のブランド名を作らない"
+      ]
+    },
+    {
+      "id": "kb_002",
+      "category": "k_beauty",
+      "persona": "30代女性、韓国スキンケアの理論を理解して日々のケアに生かしたい",
+      "intent": "informational",
+      "pain": "『10-step skincare』が流行っているが、実際日本の気候でどこまで必要かが分からない",
+      "promise": "日本の湿度・水質を踏まえ、10stepから実用的な5stepに絞ったルーティンを提案する",
+      "outline": "導入(韓国vs日本 気候差) / 本家10stepの意味 / 日本向け5step圧縮ルール / 朝ルーティン / 夜ルーティン / アイテム選定ガイド / まとめ",
+      "evidence_required": [
+        "韓国皮膚科医の公開記事",
+        "日本気象庁の湿度データ",
+        "製品公式ページ"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "『○○さんが使っている』のような未確認セレブ情報"
+      ]
+    },
+    {
+      "id": "kb_003",
+      "category": "k_beauty",
+      "persona": "K-POP好き20代、好きなアイドルのメイクを真似したい",
+      "intent": "transactional",
+      "pain": "推しのメイクアップアーティストが使っているアイテムは高価/入手困難、代替品が欲しい",
+      "promise": "人気K-POPアイドルのメイクトレンド(ドーリー / シャーベット / Y2K)を、国内で入手可能な5000円以内のアイテムで再現する",
+      "outline": "導入(2026春のK-POPメイクトレンド3系統) / ドーリールック再現 / シャーベットルック再現 / Y2Kルック再現 / お財布別おすすめブランド / まとめ",
+      "evidence_required": [
+        "所属事務所公式MV/写真",
+        "使用ブランド公式プロダクト一覧"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "『スタイリストが○○で暴露』のようなゴシップ口調は禁止"
+      ]
+    },
+    {
+      "id": "hg_001",
+      "category": "hidden_gourmet",
+      "persona": "東京都内在住20-30代、デート先に悩んでいる",
+      "intent": "transactional",
+      "pain": "食べログ3.5以上の有名店はすぐ予約が埋まる/ミシュラン店も高額、穴場個人店を探している",
+      "promise": "東京の特定エリア(例: 恵比寿/神楽坂/中目黒)で、食べログ未掲載 or ☆少なめだが地元民が通う隠れた個人店を3軒紹介する",
+      "outline": "エリア導入 / 1軒目(和食系) / 2軒目(ビストロ系) / 3軒目(居酒屋系) / 予約Tips / 行くベストな時間帯 / まとめ",
+      "evidence_required": [
+        "店舗公式サイト/食べログURL",
+        "Google Mapsピン",
+        "実営業情報"
+      ],
+      "affiliate_family": "gourmet",
+      "rotation_weight": 0.0,
+      "cooldown_days": 60,
+      "prohibited_angles": [
+        "チェーン店(スタバ/鳥貴族/サイゼリヤ/コメダ等)は絶対紹介しない",
+        "架空の店名/住所を作らない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "hg_002",
+      "category": "hidden_gourmet",
+      "persona": "一人飯派30代、カウンターで静かに食べたい",
+      "intent": "transactional",
+      "pain": "チェーン店は落ち着かない、個人経営でカウンター席が快適な店を探している",
+      "promise": "カウンター特化で1人でも歓迎される、評価が割れすぎず確実に良い店を3軒(寿司/焼鳥/ラーメン別)紹介",
+      "outline": "1人飯の条件整理 / 寿司1軒 / 焼鳥1軒 / ラーメン1軒 / マナー/予算感 / 失敗しない入店タイミング / まとめ",
+      "evidence_required": [
+        "店舗公式情報",
+        "食べログで確認可能な営業時間/予算"
+      ],
+      "affiliate_family": "gourmet",
+      "rotation_weight": 0.0,
+      "cooldown_days": 60,
+      "prohibited_angles": [
+        "チェーン店掲載禁止"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "cb_001",
+      "category": "coffee_barista",
+      "persona": "コーヒー好き20-30代、自宅でカフェクオリティを出したい",
+      "intent": "informational",
+      "pain": "自宅ドリップが思ったほど美味しくない、何が原因か切り分けられない",
+      "promise": "抽出不良の5つの原因(豆鮮度/挽き目/湯温/湯量/時間)を系統立てて切り分け、修正方法を示す",
+      "outline": "導入 / 失敗の5原因 / 原因1-5それぞれの検証/対策 / プロが絶対やらないNG行動 / 推奨器具(予算別) / まとめ",
+      "evidence_required": [
+        "バリスタ選手権公式ルール",
+        "SCA(Specialty Coffee Association)推奨パラメータ"
+      ],
+      "affiliate_family": "coffee_gear",
+      "rotation_weight": 0.0,
+      "cooldown_days": 45,
+      "prohibited_angles": [
+        "『プロが○○と言っていた』の未出典引用"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "cb_002",
+      "category": "coffee_barista",
+      "persona": "カフェ巡り好き、東京/関西のスペシャルティロースター注目",
+      "intent": "informational",
+      "pain": "スペシャルティコーヒーのロースターが急増、どこを信頼すべきか基準が分からない",
+      "promise": "豆の仕入/焙煎度/カッピング情報公開度を軸に、東京の信頼できるスペシャルティロースター5店を客観評価",
+      "outline": "スペシャルティの定義 / 評価軸4つ / 店1-5紹介 / 自宅通販の使い方 / まとめ",
+      "evidence_required": [
+        "各ロースター公式サイト",
+        "SCAスコア公開記録"
+      ],
+      "affiliate_family": "coffee_gear",
+      "rotation_weight": 0.0,
+      "cooldown_days": 60,
+      "prohibited_angles": [
+        "チェーン/大手焙煎所のみの紹介は避ける"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "si_001",
+      "category": "self_improvement",
+      "persona": "20-30代、朝の時間を有効活用したい",
+      "intent": "informational",
+      "pain": "朝活しようとしても3日坊主、継続できる仕組みが欲しい",
+      "promise": "行動科学(Fogg Behavior Model)ベースで、5分から始められる朝活の設計法を示す",
+      "outline": "導入(3日坊主の正体) / Fogg Behavior Model解説 / 5分ルール設計 / 具体プラン3例(読書/運動/ジャーナリング) / 挫折対処 / まとめ",
+      "evidence_required": [
+        "BJ Fogg著作の公式引用",
+        "査読論文の行動変容研究"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『○○という本にこう書いてある』と架空の引用を作らない"
+      ]
+    },
+    {
+      "id": "si_002",
+      "category": "self_improvement",
+      "persona": "社会人20代、副業/学習に使える時間を作りたい",
+      "intent": "informational",
+      "pain": "8時間労働+家事で学習時間が取れない",
+      "promise": "タイムブロッキング/ポモドーロ/Deep Workを組み合わせ、平日1h/土日3h確保する具体スケジュール",
+      "outline": "導入(時間不足の錯覚) / タイムブロッキング基礎 / ポモドーロ実装 / Deep Workの配置 / 1週間テンプレ / よくある挫折要因 / まとめ",
+      "evidence_required": [
+        "Cal Newport著作引用",
+        "タイムトラッキングツール公式情報"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "根拠なき『生産性X倍』の誇張"
+      ]
+    },
+    {
+      "id": "si_003",
+      "category": "self_improvement",
+      "persona": "メンタルが疲れている社会人、休み方がわからない",
+      "intent": "informational",
+      "pain": "休日にしっかり休めず翌週疲労が蓄積、良い休み方の指針が欲しい",
+      "promise": "『休息の7分類』(身体/精神/感情/社会/感覚/創造/霊的) フレームワークで自分に足りない休息を特定",
+      "outline": "導入(休めない原因) / 7分類解説 / 自己診断15問 / タイプ別おすすめアクション / 1週間休息プラン / まとめ",
+      "evidence_required": [
+        "Dr. Saundra Dalton-Smith著作(7 types of rest)の正確な引用"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "スピリチュアル系の根拠なき主張は排除"
+      ]
+    },
+    {
+      "id": "ai_001",
+      "category": "ai_sidejob",
+      "persona": "20-40代会社員、AIで副業を始めたいが何から始めるか分からない",
+      "intent": "informational",
+      "pain": "ChatGPT/Claudeを使える人は多いが、実際月1-5万円収益化できている人の手順が見えない",
+      "promise": "実在するAI副業モデル5種(ライティング/動画制作/LP制作/個別コンサル/SaaS)の始め方と月収目安を提示",
+      "outline": "導入(2026年のAI副業地図) / モデル1 AIライティング / モデル2 AI動画生成 / モデル3 LPデザイン / モデル4 個人コンサル / モデル5 SaaS / 選び方 / まとめ",
+      "evidence_required": [
+        "各モデルで実際に募集がある案件プラットフォームのURL",
+        "報酬相場の公開データ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "『月100万円稼いだ』の誇大文言は禁止 (forbidden_phrases参照)"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "ai_002",
+      "category": "ai_sidejob",
+      "persona": "非エンジニア社会人、Claude Code/Cursor等のAIツールを活かしたい",
+      "intent": "informational",
+      "pain": "AIコーディングツールが登場したが、自分でプログラム書けなくてもどこまで使えるかが分からない",
+      "promise": "非エンジニアがClaude Codeで実現できる3レベル(スプレッドシート自動化/簡易Webアプリ/個人向けツール)を示す",
+      "outline": "導入(2026年AIツール地図) / レベル1 Excel/Sheets自動化 / レベル2 簡易Webアプリ / レベル3 個人向けツール / コスト目安 / 失敗しない進め方 / まとめ",
+      "evidence_required": [
+        "Claude Code/Cursor公式ドキュメント",
+        "実例公開レポジトリ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "『エンジニア不要時代』の極論煽りは避ける"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "ai_003",
+      "category": "ai_sidejob",
+      "persona": "個人クリエイター、AIで制作コストを圧縮したい",
+      "intent": "informational",
+      "pain": "動画/画像/音声のAI生成ツールが多すぎて、本業クオリティに耐えるセットアップが組めない",
+      "promise": "映像制作者/イラストレーター/作曲家が2026年時点で実運用しているAIツールスタック3種を提示",
+      "outline": "導入 / 映像系スタック(Runway/Pika等) / イラスト系スタック(Midjourney/SD等) / 音声系スタック(Suno/ElevenLabs等) / コスト比較 / 実運用の注意点 / まとめ",
+      "evidence_required": [
+        "各ツール公式プラン料金",
+        "実運用クリエイターの公開発言"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "特定のクリエイターを名指しして未確認の作業フローを断定しない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "al_001",
+      "category": "ai_literacy",
+      "persona": "エンジニア/IT系会社員、2026年のAIコーディングツール地図を知りたい",
+      "intent": "informational",
+      "pain": "Cursor / Claude Code / Windsurf / Copilot が乱立、どう使い分ければいいか整理したい",
+      "promise": "4ツールの得意領域/料金/思想的違いを、実運用シナリオ別に整理し、2026年時点の使い分けを提示",
+      "outline": "導入(2026 AI coding tools地図) / Cursor: IDE統合型の王道 / Claude Code: CLI+Agent型 / Windsurf: Cascade型の提案 / Copilot: 既存IDE拡張 / シナリオ別使い分け5パターン / コスト感 / まとめ",
+      "evidence_required": [
+        "各ツール公式料金ページ",
+        "公式ドキュメント URL",
+        "公式ブログ投稿"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『○○が最強』のような1社推し表現は禁止",
+        "ベンチマークは公式公開データのみ使用"
+      ]
+    },
+    {
+      "id": "al_002",
+      "category": "ai_literacy",
+      "persona": "Claude Code を使っているが slash command / hooks / sub-agents の活用法が浅い",
+      "intent": "informational",
+      "pain": "基本操作はできるが、slash command / hooks / sub-agents をフル活用するベストプラクティスが分からない",
+      "promise": "Claude Code の3大拡張機能 (slash commands / hooks / sub-agents) を用途別に解説し、自動化レシピ10個を提示",
+      "outline": "導入 / slash command 基礎 / hooks 基礎 / sub-agents 基礎 / 自動化レシピ1-10 / よくあるハマり / まとめ",
+      "evidence_required": [
+        "Claude Code 公式ドキュメント",
+        "公式サンプルリポジトリ URL"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "未リリース機能の言及",
+        "公式ドキュメントにない挙動を断定"
+      ]
+    },
+    {
+      "id": "al_003",
+      "category": "ai_literacy",
+      "persona": "AIツール初心者、ChatGPT / Claude / Gemini のどれを有料契約するか迷っている",
+      "intent": "transactional",
+      "pain": "3社とも月20ドル前後で料金が拮抗、用途別にどれを選ぶべきか判断軸がない",
+      "promise": "2026年モデル比較 (Opus 4.7 / GPT-5.4 / Gemini 2.5) を、得意タスク別(長文/コーディング/マルチモーダル/検索)に評価し、ペルソナ別推奨を提示",
+      "outline": "導入(2026 AIチャット勢力図) / Claude Opus 4.7 強み弱み / GPT-5.4 強み弱み / Gemini 2.5 強み弱み / タスク別スコア比較 / ペルソナ別推奨 / まとめ",
+      "evidence_required": [
+        "各社公式ベンチマーク",
+        "公式プラン料金ページ",
+        "公式発表 URL"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "第三者ベンチマークを公式として引用しない",
+        "各社サポートのランキング表を根拠なく作らない"
+      ]
+    },
+    {
+      "id": "al_004",
+      "category": "ai_literacy",
+      "persona": "AIエージェント (Devin / Cognition / Manus / Claude Code) に興味があるエンジニア",
+      "intent": "informational",
+      "pain": "エージェント製品が急増、それぞれの思想 (human-in-the-loop / autonomous / agent-swarm) が分からない",
+      "promise": "2026年のAIエージェント地図を 4 類型 (IDE統合型 / 自律完遂型 / オーケストレータ型 / プロジェクト管理型) に整理し、代表プロダクトと適用領域を提示",
+      "outline": "導入(エージェント時代の到来) / 4 類型の定義 / 代表プロダクト一覧 / 類型別適用シナリオ / 人間が残すべき役割 / まとめ",
+      "evidence_required": [
+        "各プロダクト公式サイト",
+        "主要発表ブログ",
+        "公式デモ動画"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "未公開ベータ機能の言及禁止",
+        "特定プロダクトのdeprecated前提の記述は避ける"
+      ]
+    },
+    {
+      "id": "al_005",
+      "category": "ai_literacy",
+      "persona": "開発者、MCP (Model Context Protocol) を実運用に入れたい",
+      "intent": "informational",
+      "pain": "MCP の概念は分かるが、Claude Desktop / Claude Code / 他クライアントでの設定と代表サーバの使いこなしが不透明",
+      "promise": "MCP の仕組みを30秒で説明し、Claude Code + 人気 MCP サーバ 5種 (Filesystem / Git / Slack / Supabase / Gmail) の設定例を提示",
+      "outline": "導入(MCP とは) / 仕組み30秒解説 / Claude Code 設定方法 / サーバ1 Filesystem / サーバ2 Git / サーバ3 Slack / サーバ4 Supabase / サーバ5 Gmail / 運用注意 / まとめ",
+      "evidence_required": [
+        "MCP 公式仕様 (modelcontextprotocol.io)",
+        "各 MCP サーバの公式リポジトリ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "プロトコル仕様について不正確な定義を書かない"
+      ]
+    },
+    {
+      "id": "al_006",
+      "category": "ai_literacy",
+      "persona": "業務効率化したい会社員、ChatGPT/Claude の Projects / Gems / Memory 機能を活用したい",
+      "intent": "informational",
+      "pain": "プロンプトを毎回書き直す時間が勿体ない、どの機能でナレッジを貯めるべきかが分からない",
+      "promise": "ChatGPT Projects / Claude Projects / Gemini Gems / Memory の違いを整理し、業務ロール別の最適な使い分けを提示",
+      "outline": "導入(ナレッジ永続化機能の地図) / 4機能の定義と違い / ロール別活用 (営業/開発/人事/マーケ) / Memory の注意点 (プライバシー/クリア方法) / まとめ",
+      "evidence_required": [
+        "各公式ヘルプページ",
+        "プラン別可用性の公式情報"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "プライバシー関連は各社公式ポリシーのみを根拠とする"
+      ]
+    },
+    {
+      "id": "al_007",
+      "category": "ai_literacy",
+      "persona": "ローカルLLM を試したいが、Ollama / LM Studio / llama.cpp の違いが分からないユーザー",
+      "intent": "informational",
+      "pain": "ローカル LLM の選択肢が多すぎて、どのフレームワークで何のモデル (Gemma3 / Qwen / Llama) を動かすか決められない",
+      "promise": "2026年時点で定番の3フレームワーク × 3モデルの組合せを、用途・必要GPU/RAM・速度感で比較提示",
+      "outline": "導入(ローカルLLMの意義) / フレームワーク比較 (Ollama / LM Studio / llama.cpp) / モデル比較 (Gemma3 / Qwen / Llama) / 最小セットアップ手順 / 用途別おすすめ / まとめ",
+      "evidence_required": [
+        "各フレームワーク公式ドキュメント",
+        "モデル公式カードページ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "ベンチマーク数値は公式/査読済のみ。個人ブログのベンチは二次情報として限定的に使う"
+      ]
+    },
+    {
+      "id": "al_008",
+      "category": "ai_literacy",
+      "persona": "非エンジニアでもノーコードで AI を活用したい事務/営業/マーケター",
+      "intent": "informational",
+      "pain": "ChatGPT だけでは限界、Zapier / Make / n8n で AI を業務フローに組み込みたいが何から始めるか不明",
+      "promise": "Zapier / Make / n8n の違いを整理し、ノーコードで組める 5 つの業務自動化レシピを提示 (議事録要約/メール下書き/SNS投稿/競合調査/リード情報整理)",
+      "outline": "導入 / 3ツールの違い / レシピ1 議事録要約 / レシピ2 メール下書き / レシピ3 SNS投稿 / レシピ4 競合調査 / レシピ5 リード整理 / コスト感 / まとめ",
+      "evidence_required": [
+        "各プラットフォーム公式テンプレート",
+        "公式料金ページ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "利用規約に反する自動化 (スクレイピング過剰等) は提示しない"
+      ]
+    },
+    {
+      "id": "al_009",
+      "category": "ai_literacy",
+      "persona": "プロンプトエンジニアリングを体系的に学びたい実務担当者",
+      "intent": "informational",
+      "pain": "ネットの情報が玉石混交、体系的な『業務で効くプロンプト設計』のフレームが欲しい",
+      "promise": "Anthropic / OpenAI の公式ガイドを基に、業務プロンプトの 5 要素 (役割/目的/制約/出力形式/評価基準) を示し、現場で使えるテンプレ7種を提示",
+      "outline": "導入(良いプロンプトの正体) / 5要素フレーム / テンプレ1 要約 / テンプレ2 比較 / テンプレ3 評価 / テンプレ4 抽出 / テンプレ5 翻訳 / テンプレ6 分類 / テンプレ7 ブレスト / まとめ",
+      "evidence_required": [
+        "Anthropic Prompt Engineering Docs",
+        "OpenAI Best Practices Docs"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "『これでAI全ての性能を引き出せる』という断定は禁止"
+      ]
+    },
+    {
+      "id": "al_010",
+      "category": "ai_literacy",
+      "persona": "AI で画像・動画・音声を作りたい非エンジニアクリエイター",
+      "intent": "informational",
+      "pain": "Midjourney / Stable Diffusion / Runway / Pika / Suno / ElevenLabs の選び方が分からない",
+      "promise": "用途別 (SNS素材/ブログアイキャッチ/商用広告/BGM) に、費用対効果で最適な生成 AI ツールセットを提示",
+      "outline": "導入(生成AIツール地図) / 画像系比較 / 動画系比較 / 音声系比較 / 用途別セット 4 例 / 商用利用ライセンスの注意点 / まとめ",
+      "evidence_required": [
+        "各ツール公式ライセンス規約ページ",
+        "公式料金ページ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "商用利用可否は各社公式規約のみに基づいて記述"
+      ]
+    },
+    {
+      "id": "al_011",
+      "category": "ai_literacy",
+      "persona": "Claude Code を導入したいチーム開発者、CI/CD や権限管理に不安",
+      "intent": "informational",
+      "pain": "個人利用は分かるが、チームで Claude Code を安全に使う設計 (認証/権限/settings.json/hooks) が見えない",
+      "promise": "Claude Code のチーム運用設計を、認証フロー / 権限設定 / settings.json 共有 / hooks でガードレール / 監査ログ の 5 軸で提示",
+      "outline": "導入(個人→チーム移行の壁) / 認証 / 権限分離 / settings.json 設計 / hooks ガードレール例 / 監査ログ / まとめ",
+      "evidence_required": [
+        "Claude Code 公式ドキュメント",
+        "Anthropic 公式セキュリティガイド"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "推測ベースの権限設計は書かない (公式ドキュメント or 実検証のみ)"
+      ]
+    },
+    {
+      "id": "al_012",
+      "category": "ai_literacy",
+      "persona": "AI にコードレビューを任せたいエンジニア",
+      "intent": "informational",
+      "pain": "Codex / Claude Code review / CodeRabbit / DeepCode 等のレビュー系AIが乱立、自分のプロジェクトにどれを入れるべきか分からない",
+      "promise": "4 ツールを 7 軸 (精度/セキュリティ観点/CI統合/料金/誤検知率/日本語対応/プロジェクト規模) で比較し、チーム規模別の推奨を提示",
+      "outline": "導入(AIレビュー時代) / 4ツールの思想 / 7軸比較表 / スタートアップ向け推奨 / エンプラ向け推奨 / 導入時の落とし穴 / まとめ",
+      "evidence_required": [
+        "各ツール公式ページ",
+        "公式事例紹介"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "実測値のないベンチマーク比較は書かない"
+      ]
+    },
+    {
+      "id": "pai_001",
+      "category": "physical_ai",
+      "persona": "AIと最新テック動向を追う20-40代ビジネスパーソン／エンジニア志望",
+      "intent": "informational",
+      "pain": "フィジカルAIというバズワードを最近聞くが、ヒューマノイド三強と基盤モデルと世界モデルの関係を体系的に理解できていない",
+      "promise": "2026年春時点のFigure / Tesla / 1X、π0 / GR00T / Helix、V-JEPA 2 / Genie 3 / Cosmosを4層モデルで整理し、投資・キャリアの判断軸まで提示",
+      "outline": "定義 / 4層勢力図 / VLA基盤モデル三極 / ヒューマノイド三強 / 世界モデル / 実証導入の現実 / 日本勢 / キャリア視点 / まとめ",
+      "evidence_required": [
+        "NVIDIA公式プレスリリース (developer.nvidia.com, nvidianews)",
+        "Physical Intelligence公式blog (pi.website)",
+        "Figure / Tesla / 1X公式サイト",
+        "openpi GitHubリポジトリ"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 21,
+      "prohibited_angles": [
+        "未発表の価格や発売日を断定しない",
+        "架空の提携や出資を書かない",
+        "ヒューマノイドが家事を完全代行できると誇張しない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "pai_002",
+      "category": "physical_ai",
+      "persona": "AIロボティクスに興味を持つ学生・研究者志望者",
+      "intent": "informational",
+      "pain": "Physical Intelligenceのπ0・π05の何が新しいのか、openpiで自分が何を試せるのかが分からない",
+      "promise": "π0 / π05の技術的特徴 (VLA + Flow Matching)、学習データ構成、openpiの使いどころを、公式blogとGitHubの情報から再構成",
+      "outline": "背景 / π0アーキテクチャ / Flow Matchingの利点 / 7ロボット68タスク訓練 / π05の改善点 / openpiセットアップ / 学術応用例 / まとめ",
+      "evidence_required": [
+        "Physical Intelligence公式blog (pi.website/blog/pi0)",
+        "openpi GitHub (github.com/Physical-Intelligence/openpi)",
+        "arXiv論文 (2410.24164)"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 30,
+      "prohibited_angles": [
+        "benchmarkやタスク成功率を推測しない",
+        "openpiをまだ試していない段階で体験談を捏造しない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "pai_003",
+      "category": "physical_ai",
+      "persona": "NVIDIAの戦略と投資テーマを把握したい投資家／PM志望",
+      "intent": "informational",
+      "pain": "NVIDIAがIsaac / GR00T / Cosmos / Jetson Thorを同時に押し出しているが、各層の役割と競合の区別がつかない",
+      "promise": "NVIDIAのロボット版Android戦略を、ハード (Jetson Thor 800 TFLOPS) / シム (Cosmos 2M DL) / モデル (GR00T N1→N1.6→N2) の3層で整理",
+      "outline": "背景 / Jetson ThorとBlackwell / Cosmosの役割 / GR00Tの世代進化 / パートナー構成 / 競合との違い / リスク要因 / まとめ",
+      "evidence_required": [
+        "NVIDIA newsroom (CES 2026発表)",
+        "developer.nvidia.com/isaac/gr00t",
+        "NVIDIA公式ブログ (blogs.nvidia.com)"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 30,
+      "prohibited_angles": [
+        "株価予測を断定しない",
+        "未公開の出荷数や契約を捏造しない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "pai_004",
+      "category": "physical_ai",
+      "persona": "家庭用ロボット・家電の次世代に興味がある一般消費者",
+      "intent": "informational",
+      "pain": "1X Neoがついに家庭投入されると聞いたが、今のFigureやTesla Optimusとの違い、家に置ける現実味が判断できない",
+      "promise": "1X Neoのテンドン駆動・静音性・家庭特化設計を、Figure (工場) / Tesla (工場) との対比で整理し、2026年に家庭投入できるかを現実的に評価",
+      "outline": "1X会社概要 / Neoスペック / テンドン駆動の意味 / Figureとの差 / Tesla Optimusとの差 / 価格・出荷時期 / 家庭導入の現実 / まとめ",
+      "evidence_required": [
+        "1X公式 (1x.tech)",
+        "Figure公式 (figure.ai)",
+        "Tesla AI公式 (tesla.com/AI)"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 45,
+      "prohibited_angles": [
+        "価格を断定しない (未公開)",
+        "家事を完全自動化できると誇張しない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "pai_005",
+      "category": "physical_ai",
+      "persona": "次世代AIパラダイムを先読みしたい知的好奇心層",
+      "intent": "informational",
+      "pain": "LLMの次は世界モデルと聞くが、V-JEPA 2 / Genie 3 / Marble / Cosmosの違いと、なぜフィジカルAIに必要なのかが分からない",
+      "promise": "4大世界モデルの立ち位置を整理し、ロボット学習における役割 (データ不足の補完) を、Meta / Google / World Labs / NVIDIAの公式発表から再構成",
+      "outline": "世界モデルとは / なぜ必要か / V-JEPA 2 (Meta) / Genie 3 (DeepMind) / Marble (World Labs) / Cosmos (NVIDIA) / LeCunのAMI Labs / まとめ",
+      "evidence_required": [
+        "Meta AI research blog",
+        "DeepMind blog (Genie 3)",
+        "World Labs公式 (worldlabs.ai)",
+        "NVIDIA Cosmos docs"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 30,
+      "prohibited_angles": [
+        "LeCun発言を捏造しない",
+        "調達額は報道ベースで「〜と報じられた」と明記"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "pai_006",
+      "category": "physical_ai",
+      "persona": "製造業DX / 工場オートメーションの実務者",
+      "intent": "informational",
+      "pain": "ヒューマノイドの工場投入 (Figure×BMW / Apptronik×Mercedes / Tesla×Giga) の実績が、自社ラインに応用できるか判断できない",
+      "promise": "BMW / Mercedes / Tesla Gigaでの実証結果と、ヒューマノイド導入の前提条件 (工程・精度・データ供給体制) を現場視点で整理",
+      "outline": "背景 / Figure × BMW 11ヶ月 / Apptronik × Mercedes / Tesla自社工場 / 導入の前提 / ROI試算の考え方 / 日本の製造業への示唆 / まとめ",
+      "evidence_required": [
+        "Figure公式プレス (BMWパイロット)",
+        "Apptronik公式 (apptronik.com)",
+        "Tesla AI / 決算発表"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 45,
+      "prohibited_angles": [
+        "稼働率や生産性数値を捏造しない",
+        "採用決定を断言しない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "pai_007",
+      "category": "physical_ai",
+      "persona": "AI × ロボティクスでキャリアを考える若手エンジニア",
+      "intent": "informational",
+      "pain": "LLMエンジニアとしてキャリアを積んできたが、VLA / Sim-to-Real / ROS 2に移行するなら何から始めるべきか分からない",
+      "promise": "VLA時代に必要なスキルセット (ROS 2 / MuJoCo / Isaac Lab / openpi) と、学習ロードマップを3フェーズで提示",
+      "outline": "市場背景 / 給与水準の観測 / Phase1: 基礎 (ROS 2 / MuJoCo) / Phase2: 実践 (Isaac Lab) / Phase3: 応用 (openpi / fine-tune) / 学習ソース / まとめ",
+      "evidence_required": [
+        "ROS 2公式ドキュメント",
+        "NVIDIA Isaac Lab公式",
+        "openpi GitHub",
+        "LinkedIn求人統計情報"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 0.0,
+      "cooldown_days": 30,
+      "prohibited_angles": [
+        "具体的な年収額を断定しない",
+        "特定企業への転職を推奨しない"
+      ],
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "ai_004",
+      "category": "ai_sidejob",
+      "persona": "デザインスキル無しでデジタル商品を売りたい20-30代",
+      "intent": "transactional",
+      "pain": "Notionテンプレを売って稼ぐと聞くが、何を作って・どこで売って・どう宣伝すれば売れるのか動線が分からない",
+      "promise": "Notion AIで作る『売れるテンプレ』の型と、Gumroad / note / BOOTH 比較、購入導線の最低限の宣伝設計を提示",
+      "outline": "売れているテンプレの共通点 / テンプレ設計の3ステップ / 販売先比較 (Gumroad / note / BOOTH の手数料・客層) / 商品ページの書き方 / X / Threads での宣伝動線 / 価格設定の根拠 / まとめ",
+      "evidence_required": [
+        "Notion公式テンプレギャラリー",
+        "Gumroad / note / BOOTH 公式の手数料ページ",
+        "Notion公開クリエイターの実販売事例 (公開数字のみ)"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "『月◯◯万円達成』と未確認の収益を断定しない",
+        "存在しないテンプレ販売者名を作らない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 7500
+      }
+    },
+    {
+      "id": "ai_005",
+      "category": "ai_sidejob",
+      "persona": "自動化スキルを身につけて受託副業を始めたい非エンジニア",
+      "intent": "informational",
+      "pain": "Make / Zapier / n8n が話題だが、副業として『何を作って』『いくらで売れるのか』が見えない",
+      "promise": "Make / Zapier / n8n を比較し、副業受託で組める業務自動化レシピを5パターン示し、各々の想定単価を提示",
+      "outline": "3ツール比較 (料金 / 学習コスト / 連携サービス数) / レシピ1: 議事録要約自動化 / レシピ2: 問い合わせ対応一次返信 / レシピ3: SNS投稿スケジューラ / レシピ4: 経費精算リマインダ / レシピ5: 受注→請求書生成 / 単価相場 (ココナラ / Lancers / 直契約) / まとめ",
+      "evidence_required": [
+        "Make / Zapier / n8n 公式料金ページ",
+        "ココナラ / Lancers の自動化案件公開価格",
+        "n8n公式テンプレギャラリー"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "プラットフォーム規約違反になる自動化を勧めない (DM一斉送信等)",
+        "競合をdisる比較表現は避ける"
+      ],
+      "length_target": {
+        "min": 6500,
+        "max": 9000
+      }
+    },
+    {
+      "id": "ai_006",
+      "category": "ai_sidejob",
+      "persona": "TikTok / Shorts クリエイター志望、AI ツールで制作効率を上げたい",
+      "intent": "transactional",
+      "pain": "AI で動画を作って収益化したいが、CapCut / Eleven Labs / Suno / Pika などツールが多すぎて、収益化までの最短ルートが分からない",
+      "promise": "TikTok 短尺動画を AI ツールスタックで量産し、収益化条件 (TikTok Creator Rewards / YouTube Partner) に乗せるまでの実践手順",
+      "outline": "現状の TikTok / Shorts 収益化条件 (2026年5月時点) / ツールスタック (CapCut + Eleven Labs + Suno + Pika or Runway) / ジャンル選定 (ペット系 / 解説系 / モチベ系) / 1日1本量産フロー / 著作権・規約上の注意 / 発信開始から収益化までの目安 / まとめ",
+      "evidence_required": [
+        "TikTok Creator Rewards 公式ヘルプ",
+        "YouTube Partner Program 公式要件",
+        "Eleven Labs / Suno 商用利用ライセンスページ"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "他クリエイターの収益額を断定しない",
+        "ディープフェイク / なりすまし系の使い方は紹介しない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 7500
+      }
+    },
+    {
+      "id": "ai_007",
+      "category": "ai_sidejob",
+      "persona": "ストックフォト/AI 画像販売で月数万円の不労収入を作りたい",
+      "intent": "informational",
+      "pain": "AI 画像でストックフォト販売が儲かるという話を聞くが、Adobe Stock / Shutterstock / Pixta の現在のAI画像ポリシーと売れ筋ジャンルが見えない",
+      "promise": "2026年時点の各プラットフォームのAI画像受付ポリシーと売れ筋ジャンル、申請が通るアップロードの作法を整理",
+      "outline": "ストックフォトの基本収益構造 / Adobe Stock の最新AIポリシー / Shutterstock の最新AIポリシー / Pixta の最新AIポリシー / 売れているAI画像のジャンル傾向 / 申請が落ちる典型理由 / 1日1時間運用のコツ / まとめ",
+      "evidence_required": [
+        "Adobe Stock コントリビューターガイドライン",
+        "Shutterstock contributor 公式 AI 画像ポリシー",
+        "Pixta AI 画像販売ガイドライン"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "他のクリエイターの売上を捏造しない",
+        "プラットフォームポリシーは『2026年5月時点で◯◯』と日付を明示"
+      ],
+      "length_target": {
+        "min": 5000,
+        "max": 7000
+      }
+    },
+    {
+      "id": "ai_008",
+      "category": "ai_sidejob",
+      "persona": "ITスキル中級者、AI チャットボット構築の受託で月10-20万円を狙いたい",
+      "intent": "transactional",
+      "pain": "Dify / Voiceflow / Botpress でチャットボット構築の案件があると聞くが、案件単価・納品物・必要スキルが具体的に見えない",
+      "promise": "Dify / Voiceflow を中心に、AI チャットボット構築代行の案件タイプ別 (FAQ / 予約 / カスタマーサポート) 単価レンジと納品フローを整理",
+      "outline": "AI チャットボット市場 / Dify / Voiceflow / Botpress 比較 / 案件タイプ別単価 (FAQ / 予約 / EC接客 / 社内ヘルプデスク) / 必要スキル / 営業ルート (ココナラ / Lancers / 直営業) / 納品とサポート契約 / まとめ",
+      "evidence_required": [
+        "Dify / Voiceflow / Botpress 公式料金",
+        "ココナラ / Lancers のチャットボット構築案件公開価格",
+        "OpenAI / Anthropic API 料金ページ"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "未確認の案件数や受注数を断定しない",
+        "OpenAI / Anthropic の SLA を勝手に保証しない"
+      ],
+      "length_target": {
+        "min": 6500,
+        "max": 9000
+      }
+    },
+    {
+      "id": "ai_009",
+      "category": "ai_sidejob",
+      "persona": "プロンプト設計に強い20-30代、デジタル商品で副収入を作りたい",
+      "intent": "transactional",
+      "pain": "Gumroad で AI プロンプト集が売れていると聞くが、価格設定・カテゴリ選定・宣伝動線が見えない",
+      "promise": "Gumroad で AI プロンプト集 (ChatGPT / Claude / Midjourney 用) を売るための、商品設計・価格・LP・SNS宣伝の最小セットを提示",
+      "outline": "プロンプト集が売れる理由 / Gumroad と note / BOOTH の比較 / 売れるカテゴリ (ライティング / マーケ / 画像生成 / コード生成) / 商品ページ7要素 / 価格設定 (低単価×量 vs 高単価×厚み) / X / Threads での集客動線 / アップデート運用 / まとめ",
+      "evidence_required": [
+        "Gumroad 公式ガイド (Creator Resources)",
+        "公開クリエイターの実販売実績 (本人公開数字のみ)",
+        "Stripe / PayPal の手数料公式ページ"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "存在しない販売者名を作らない",
+        "『誰でも100万円』のような誇大表現を避ける"
+      ],
+      "length_target": {
+        "min": 5000,
+        "max": 7000
+      }
+    },
+    {
+      "id": "ai_010",
+      "category": "ai_sidejob",
+      "persona": "AI副業 0→1 で挫折した経験者、再挑戦のロードマップが欲しい",
+      "intent": "informational",
+      "pain": "AI 副業を始めたいが、何を学んで・何を作って・どう売るかの順番がバラバラで進まない",
+      "promise": "完全未経験から AI 副業で月5万円ラインに乗せるための30日学習ロードマップを、週単位タスクで分解",
+      "outline": "前提整理 (時間予算 / スキルの初期値) / Week1: ChatGPT / Claude の基礎運用 / Week2: 1ツール深掘り (自分の強み×AI) / Week3: 商品/サービス1個を作る / Week4: 販売チャネル開設 + 初売上 / よくある詰まり / 30日後の伸ばし方 / まとめ",
+      "evidence_required": [
+        "OpenAI / Anthropic 公式チュートリアル",
+        "実在する学習プラットフォーム (Udemy / Coursera / YouTube公式)",
+        "公開クリエイターの実体験記事 (note / Zenn) — URLを明記"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "成功保証はしない",
+        "存在しないオンラインスクール名を作らない"
+      ],
+      "length_target": {
+        "min": 7000,
+        "max": 9500
+      }
+    },
+    {
+      "id": "ai_011",
+      "category": "ai_sidejob",
+      "persona": "BGM / SE 制作で副収入を得たいクリエイター",
+      "intent": "transactional",
+      "pain": "Suno / Udio で BGM を作って売れると聞くが、商用利用ライセンス・販売先・YouTube クリエイター向けの売り方が見えない",
+      "promise": "Suno / Udio で生成した BGM / SE を、商用利用 OK の販売先 (Audiio / BGMer 等) で出すための、ライセンス / 制作フロー / 価格設定を整理",
+      "outline": "Suno / Udio の商用ライセンス最新情報 / 販売プラットフォーム比較 (Audiio / BGMer / Pond5 など) / 1日5曲制作フロー / YouTube クリエイターへの直販ルート / 価格設定 / 著作権上の注意 / 月収シミュレーション / まとめ",
+      "evidence_required": [
+        "Suno / Udio 公式の商用ライセンス条項",
+        "Audiio / BGMer / Pond5 の出品ガイドライン",
+        "YouTube 音楽ライブラリの実際のクリエイター利用例"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "ライセンス条項は『2026年5月時点』と日付明示",
+        "他クリエイターの収益額を捏造しない"
+      ],
+      "length_target": {
+        "min": 5000,
+        "max": 7000
+      }
+    },
+    {
+      "id": "ai_012",
+      "category": "ai_sidejob",
+      "persona": "情報収集系のリサーチ代行で受託副業を作りたい",
+      "intent": "transactional",
+      "pain": "Perplexity / Felo / GenSpark などリサーチ系 AI が増えたが、これを使ってどう案件化するかが見えない",
+      "promise": "Perplexity / Felo / GenSpark を使ったリサーチ代行案件のタイプ別単価と、納品物のフォーマット、クライアントの探し方を整理",
+      "outline": "AI リサーチ系ツール比較 (Perplexity / Felo / GenSpark / Consensus) / 案件タイプ (市場調査 / 競合分析 / 法令調査 / 専門書まとめ) / 単価レンジ / 納品物フォーマット (Notion / Google Docs / Markdown) / 営業ルート (ココナラ / Lancers / 直営業) / 信頼性の担保 (出典明示の作法) / まとめ",
+      "evidence_required": [
+        "Perplexity / Felo / GenSpark 公式機能ページ",
+        "ココナラ / Lancers のリサーチ系案件公開価格",
+        "公開クリエイターの体験記事 (URL明記)"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "AI 出力をそのまま納品する低品質パターンを推奨しない",
+        "ツールの精度を断定的に保証しない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 7500
+      }
+    },
+    {
+      "id": "ai_013",
+      "category": "ai_sidejob",
+      "persona": "ライティング副業で月3万円→10万円にスケールアップしたい",
+      "intent": "informational",
+      "pain": "Claude / ChatGPT を使えば速く書けると分かったが、Lancers / CrowdWorks の単価が低い案件しか取れず時給換算で割が合わない",
+      "promise": "AI ライティングを武器に、低単価ライティング案件 (1円/字台) から、専門領域 (BtoB SaaS / 医療 / 法務) の3-10円/字案件へステップアップする戦略",
+      "outline": "AI ライティング副業の現状 (2026年5月) / 低単価が抜けない構造 / 案件単価マップ (Lancers / CrowdWorks / 直契約) / 専門領域選定 (BtoB SaaS / 医療 / 法務 / Fintech) / ポートフォリオ作成 / Claude / ChatGPT の使い分け / 営業文テンプレ / クライアント単価交渉 / まとめ",
+      "evidence_required": [
+        "Lancers / CrowdWorks のライティング案件公開価格",
+        "BtoB / 医療 / 法務系の業界レポート",
+        "Anthropic / OpenAI 公式の利用規約 (ゴーストライティング可否)"
+      ],
+      "affiliate_family": "ai_tool",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "他ライターの実収益を断定的に書かない",
+        "業界の慣習をdisる比較表現は避ける"
+      ],
+      "length_target": {
+        "min": 6500,
+        "max": 9000
+      }
+    },
+    {
+      "id": "hg_akabane",
+      "category": "hidden_gourmet",
+      "persona": "赤羽周辺で飲み歩き・食べ歩きしたい30代男女、ガイドブックに載らない実在店を求めている",
+      "intent": "transactional",
+      "pain": "赤羽はせんべろ・もつ焼きで有名だが、観光客向けの目立つ店ばかり紹介されていて、地元の常連が静かに通う実在の名店が見つけにくい",
+      "promise": "赤羽駅周辺の徒歩圏内で、実在する独立系の名店を3-4軒紹介する。もつ焼き/うなぎ/老舗酒場/穴場ラーメン等のジャンル違いで、各店の特徴・予算感・予約可否を実情ベースで整理する",
+      "outline": "赤羽がせんべろの聖地である背景 (戦後の闇市から続く飲み屋街文化) / 1軒目: まるます家 (老舗うなぎ屋、立ち飲み有名、赤羽1丁目) — 鯉とうなぎ、朝から営業、昭和の活気を残す名店 / 2軒目: 大昇 (老舗やきとん、赤羽駅徒歩圏) — もつ焼き、リーズナブル、地元常連で賑わう / 3軒目: いこい本店 (立ち飲み老舗、1950年代創業) — 戦後から続く立ち飲み文化の象徴、安く飲める / 4軒目: まるよし (老舗もつ焼き、赤羽の人気店) — 行列必至、丁寧な仕込み / 各店の使い分け (一人飲み/友人連れ/カップル別の向き不向き) / 訪問前のマナー・予算感・現金/カードの注意点 / まとめ - 赤羽飲み歩きの楽しみ方",
+      "evidence_required": [
+        "上記4軒は実在する赤羽の名店。各店の食べログ/Google Maps 公開情報を参照すること",
+        "まるます家 = 鯉とうなぎ、赤羽1丁目、戦前から続く名店",
+        "大昇 = 老舗やきとん、赤羽駅から徒歩数分",
+        "いこい本店 = 立ち飲み老舗、戦後から営業",
+        "まるよし = 老舗もつ焼き、赤羽周辺で行列必至"
+      ],
+      "affiliate_family": "gourmet",
+      "rotation_weight": 0.0,
+      "cooldown_days": 60,
+      "prohibited_angles": [
+        "チェーン店は一切紹介しない (鳥貴族/サイゼリヤ/串カツ田中/磯丸水産 等)",
+        "架空の店名は絶対に作らない",
+        "〇〇/××/□□ のような伏字命名は絶対禁止。実在店名を必ず使うこと",
+        "仮名・仮称マーカー禁止",
+        "住所・電話番号・URL の細部は LLM が一切書かない (店名と業態のみ)",
+        "上記4軒以外の店名を勝手に追加しない (個人の評価で「美味しい」程度は OK)"
+      ],
+      "length_target": {
+        "min": 4500,
+        "max": 7000
+      },
+      "disabled_reason": "2026-05-14 ユーザー疲労。赤羽名店系トピックは generate から除外"
+    },
+    {
+      "id": "ai_claude_code_10man_20260514",
+      "category": "ai_sidejob",
+      "persona": "20-40代会社員、副業を AI で始めたい。プログラミング未経験 or 初心者で、Claude Code を使えば自分にも月10万円が現実的かを知りたい",
+      "intent": "transactional",
+      "pain": "「AI 副業で稼げる」と聞くがエンジニアじゃない自分でも本当に行けるのか、何から始めて30日後にどこまで到達できるかが見えない。インフルエンサーの煽り情報ばかりで具体的な手順がない。",
+      "promise": "Claude Code を使って、プログラミング未経験から月10万円の案件納品まで到達するための30日ロードマップを、Day 1 から Day 30 まで具体的に整理する。案件獲得チャネル、見積もり相場、納品フロー、リピート出し方、キャッシュポイント、税務初期対応まで一気通貫で解説する。",
+      "outline": "## 1. なぜ「Claude Code × 非エンジニア」が成立するか (2026年時点の AI コーディング自動化の到達点と、必要なスキルが「コードを書く」から「要件を整理して LLM に振る」に変わったこと、月10万円ラインに到達した事例の特徴) / ## 2. Day 1-7: 環境構築と「最初の動くもの」(Claude Code インストール、課金プラン選定、最初の小さな自動化を完成させる) / ## 3. Day 8-14: 案件を取れるレベルの3スキル習得 (スプレッドシート自動化 / Webスクレイピング / 簡易LP生成) / ## 4. Day 15-21: 案件獲得チャネル戦略 (ココナラ/ランサーズ/X DM/note 経由の4経路、最初の3件を取る) / ## 5. Day 22-30: 納品・リピート・キャッシュポイント (見積もり相場、納期、リピート率を上げる成果物の書き方、振込までの実務) / ## 6. 「月10万円」を超える人と止まる人の3つの分岐点 / ## 7. 失敗パターン5選 (受注し過ぎて納期破綻 / 単価を下げ過ぎ / 単発案件しか取れない / 税務無視 / 学習投資ゼロ) / ## 8. 30日後の次の一手 — 月10万→月30万のフェーズへ",
+      "evidence_required": [
+        "Claude Code 公式ドキュメントの料金プラン (Sonnet/Opus 課金体系の公式 URL)",
+        "ココナラ / ランサーズ / クラウドワークスの「業務効率化ツール作成」カテゴリ単価レンジ (公開済みデータのみ)",
+        "Claude Code 公式の使い方ガイド URL",
+        "副業の住民税申告ライン (年20万円超で確定申告) — 国税庁公式 URL"
+      ],
+      "affiliate_family": "ai_sidejob",
+      "rotation_weight": 2.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "「誰でも100%稼げる」体の煽り表現は禁止 (forbidden_phrases参照)",
+        "具体的な人物の年収 / 月収を実名で書かない (本人公開ソース URL がある場合のみ可)",
+        "Claude Code で「コードを書かずに」全部自動化できる、という誇大表現は禁止 (要件定義・テスト・本番運用の責任は人間)",
+        "「楽して」「寝ながら」「自動で」「ノースキル」のような誇大ワードは見出しに使わない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8500
+      },
+      "_note": "2026-05-14 ユーザー指定で seed 注入。生成後に rotation_weight を 1.0 に戻すか topic 自体削除を検討。"
+    },
+    {
+      "id": "rag_2026_complete_map",
+      "category": "ai_literacy",
+      "persona": "RAG (Retrieval-Augmented Generation) を勉強したい開発者・データサイエンティスト・AI プロダクト企画者。chromadb / LangChain / LlamaIndex を触ったことがあり、Naive RAG の限界 (sim 0.92 で素通り、固有名詞の取りこぼし) を実感し始めている層",
+      "intent": "informational",
+      "pain": "RAG = ベクトル DB という認識で止まっている人が多い。2026年時点の主流である Re-ranking / Hybrid Search / CRAG / GraphRAG / Self-RAG / Agentic RAG / Long-context vs RAG / Multimodal RAG の使い分けが整理されていない。論文と実装の橋渡しがされていない。",
+      "promise": "RAG の作り方を 10 種類のパターンで網羅的に整理する。各パターンの (① 仕組み ② 強み ③ 弱み ④ 実装ライブラリ ⑤ コスト ⑥ どんな用途で選ぶか) を一表で比較。Naive RAG → Re-ranking → Hybrid Search → CRAG → GraphRAG → Self-RAG → Agentic → Long-context vs RAG → Multimodal までを段階的に学べる構成。筆者が chromadb + e5-base で実運用する中で踏んだ事案 (sim 0.92 で素通り、MD5 同一画像、Lake Tahoe スコープ逸脱) を一次情報として埋め込む。",
+      "outline": "## 1. Naive RAG の限界 — 私が今日踏んだ事案 (sim 0.92 hallu-veto が ScoreAggregator に効いていなかったバグ、MD5 同一画像 11連事件、Writer scope drift で Lake Tahoe が観光ガイド化した事例) / ## 2. Re-ranking RAG — kNN で広く取って cross-encoder で絞る、BGE-reranker-v2 / Cohere Rerank の使い分け、私の chromadb プロジェクトで sim 0.85 → rerank 0.7 で precision が 30%+ 改善した実数値 / ## 3. Hybrid Search (BM25 × Dense) — 固有名詞検索が dense 単独でブレる理由、Qdrant / pgvector / Elasticsearch+Chroma の選び方 / ## 4. Query Transformation (HyDE / Multi-query / Step-back) / ## 5. Self-RAG / Reflective RAG — Asai 2023 論文の中身、specialized fine-tune の現実的コスト / ## 6. Corrective RAG (CRAG) — 検索結果の信頼度評価 + Web 補完、ハルシ 99.9% ゼロ目標に最も近い設計思想 / ## 7. GraphRAG — Microsoft Research 2024、エンティティ抽出+トラバース、数千文書を跨ぐ問いに圧倒的に強い / ## 8. Agentic RAG — LangGraph / Anthropic Tool Use、複雑分析の代償 / ## 9. Long-context vs RAG (2026年論点) — Gemini 2.5 / Claude Opus 4.7 で全文書投入できる時代に RAG はまだ必要か / ## 10. Multimodal RAG — CLIP/ViT で画像 embed、PDF テーブル混在検索 / ## 11. どう選ぶか — 比較表 (10パターン × 6評価軸) / ## 12. 筆者の見解 — 「自分のプロジェクトで採用した順番」と現時点での組み込み済機能",
+      "evidence_required": [
+        "Asai et al. 2023 Self-RAG 論文 (arXiv:2310.11511) の公式 URL",
+        "Microsoft Research GraphRAG 論文 / GitHub (microsoft/graphrag) URL",
+        "BGE-reranker-v2 の HuggingFace model card URL",
+        "chromadb / Qdrant / Pinecone / Weaviate / pgvector の公式 URL",
+        "LangGraph / LlamaIndex の公式ドキュメント URL",
+        "Cohere Rerank API ドキュメント URL",
+        "Gemini 2.5 / Claude 4.7 の context window 公式仕様 URL"
+      ],
+      "affiliate_family": "ai_tools",
+      "rotation_weight": 0.5,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "全パターンを「最強」「完全攻略」と煽らない。それぞれ trade-off があることを率直に書く",
+        "実体験のない pattern (例: 筆者が GraphRAG を実運用していない場合) は「実装したことはないが」と明示",
+        "論文を引くときは必ず公式 URL + 著者名 + 年。「○○教授によれば」型架空引用は絶対禁止 (2026-05-14 Utah BYU 事案を回避)",
+        "「私のプロジェクトで」セクションは事実ベース。chromadb の chunk 数、e5-base の dim、実測 sim 値などソースに無い数字を書かない",
+        "Long-context vs RAG では一方を断罪しない。ハイブリッド使い分けが筆者の見解"
+      ],
+      "length_target": {
+        "min": 4500,
+        "max": 7500
+      },
+      "_note": "2026-05-14 夜 ユーザー指定で seed 注入。RAG 学習教材+体験談ハイブリッド。一次情報は筆者の chromadb 運用ログから引く"
+    },
+    {
+      "id": "kb_004",
+      "category": "k_beauty",
+      "persona": "20-30代女性、最新韓国スキンケア成分のトレンドを追いたい",
+      "intent": "informational",
+      "pain": "PDRN / エクソソーム / ポリヌクレオチドなど韓国発の話題成分が次々出てきて、どれが本物の科学根拠で、どれが煽りなのか見極められない",
+      "promise": "2026春時点で話題の K-beauty成分 3-4 種を、薬理学エビデンス・配合濃度・国内皮膚科の見解で整理し、買って良い製品とスキップして良い製品を提示",
+      "outline": "導入(成分ブームの周期性) / 成分1 PDRN / 成分2 エクソソーム / 成分3 セラミドNP+PDRN複合 / 成分4 ナイアシンアミド10% / 成分の優先順位 / 国内で買える代表製品(各成分2品) / 皮膚科医が警告するNG使い方 / まとめ",
+      "evidence_required": [
+        "PubMed論文URL (PDRN/エクソソーム関連)",
+        "公式ブランド成分表ページ",
+        "@cosme / 韓国OliveYoung公式レビュー",
+        "国内皮膚科クリニックの公式コラム (湘南美容/品川美容外科等)"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "個人のBluesky/X投稿を根拠にしない",
+        "未承認医薬部外品を医薬品扱いしない",
+        "シミが消える/シワが消えるの断定表現禁止"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "kb_005",
+      "category": "k_beauty",
+      "persona": "20-30代女性、韓国コスメを日本で安全に買いたい",
+      "intent": "transactional",
+      "pain": "OliveYoung日本上陸後も並行輸入と正規品の値段差・偽物リスクが分からない。新大久保ロードショップで買って良いか判断に困る",
+      "promise": "日本で韓国コスメを買える 4 経路 (OliveYoung実店舗 / @cosme TOKYO韓国コーナー / 新大久保ロードショップ / 公式オンライン) を、価格差・偽物見分け方・送料・到着日数で比較し、ブランド別の最適購入経路を提示",
+      "outline": "導入(2026年の韓国コスメ流通) / 経路1 OliveYoung日本店舗 / 経路2 @cosme TOKYO・LUMINEなど / 経路3 新大久保ロードショップ(店名は実在のみ) / 経路4 公式オンライン直送 / 偽物見分け方5つ(QR/シリアル/箱の質/香り/価格) / ブランド別おすすめ経路マップ / まとめ",
+      "evidence_required": [
+        "OliveYoung Japan公式 (店舗一覧URL)",
+        "@cosme公式店舗情報",
+        "公式ブランドサイト (Anua / Beauty of Joseon / COSRX / Laneige)",
+        "新大久保のロードショップ実在店舗の食べログ/Google Mapsピン"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "架空の店名/住所を作らない",
+        "閉店した店を現役として書かない",
+        "個人代行業者は推奨しない (PL責任の所在不明)"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "kb_006",
+      "category": "k_beauty",
+      "persona": "20-30代女性、韓国コスメで肌トラブルが起きて困っている",
+      "intent": "informational",
+      "pain": "韓国コスメを使ったら赤み/かゆみ/吹き出物が出た。原因が成分か偽物か体質か分からない、皮膚科行くべきか自己対処すべきか判断できない",
+      "promise": "韓国コスメ起因の肌トラブル 5 パターン (接触皮膚炎/光毒性/酸不耐症/エクソソーム反応/偽物炎症) を症状別に切り分け、自己対処と受診目安を提示",
+      "outline": "導入(韓国コスメ国民生活センター苦情件数) / トラブル1 接触皮膚炎 / 2 光毒性 / 3 AHA/BHA不耐 / 4 エクソソーム炎症 / 5 偽物による化学熱傷 / 自己対処5step / 受診すべきサイン / 偽物見分け方(再掲) / まとめ",
+      "evidence_required": [
+        "国民生活センター発表データ",
+        "日本皮膚科学会の公式ガイドライン",
+        "PubMed論文 (cosmetic dermatitis)",
+        "PMDA医薬品医療機器情報"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "医療行為の自己診断を促さない",
+        "特定ブランドを偽物があると断定的に書かない (流通系の警告のみOK)",
+        "個人ブログ症例を根拠にしない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "kc_001",
+      "category": "k_culture",
+      "persona": "20-30代女性、韓国カルチャー全般に興味があり食文化も知りたい",
+      "intent": "informational",
+      "pain": "韓国フードがブームだがチーズダッカルビやチーズハットグなど一過性のものが多く、本場で今食べられている定番が分からない",
+      "promise": "2026春の韓国食トレンド 3-4 種 (テンジャン回帰 / クルバン / 韓国茶 / マンドゥ専門店) を、本場ソウルの店舗例と東京で再現可能な個人店リストで提示",
+      "outline": "導入(K-foodの周期性) / トレンド1 テンジャン回帰 / トレンド2 クルバン / トレンド3 韓国茶(ボリチャ/オクスス/ユジャ) / トレンド4 マンドゥ専門店 / 東京で食べられる個人店(チェーン除外) / 自宅で作れる簡易レシピ / まとめ",
+      "evidence_required": [
+        "韓国本国メディア (Korean Herald / Naver Food)",
+        "東京の実在個人店 (食べログ/Google Mapsピン)",
+        "韓国農水産食品流通公社(aT)公式データ"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "チェーン店(韓流ブームの大手居酒屋等)を紹介しない",
+        "架空の店名/住所を作らない",
+        "閉店した店を現役として書かない",
+        "歴史記述で政治的主張をしない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "kc_002",
+      "category": "k_culture",
+      "persona": "20-30代女性、韓国カフェの世界観が好きで東京で再現したい",
+      "intent": "transactional",
+      "pain": "韓国カフェ巡りに行きたいが、新大久保以外でどこにあるか分からない。チェーンのインスタ映え系では満足できない",
+      "promise": "東京で韓国カフェの世界観 (大理石/グレージュ/韓菓子/ハンドドリップ) を体験できる個人店 5-6 軒をエリア別に提示。新大久保以外を中心に。",
+      "outline": "導入(韓国カフェのデザイン文化) / エリア1 中目黒〜代官山 / 2 表参道〜原宿 / 3 三軒茶屋〜下北沢 / 4 蔵前〜浅草 / 5 高円寺〜阿佐ヶ谷 / 6 新大久保で本場系1店 / 注文Tipsとマナー / まとめ",
+      "evidence_required": [
+        "店舗公式Instagram/Webサイト",
+        "Google Mapsピン",
+        "食べログ/Retty実在ページ",
+        "営業日確認 (休業情報)"
+      ],
+      "affiliate_family": "gourmet",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "チェーン店(スタバ/ドトール/サンマルク/タリーズ/カフェ・ベローチェ等)を紹介しない",
+        "架空の店名/住所を作らない",
+        "閉店した店を現役として書かない",
+        "ホテルラウンジを個人カフェ扱いしない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "kc_003",
+      "category": "k_culture",
+      "persona": "20-30代、K-POP女性アイドルが好きで楽曲の進化を体系的に追いたい",
+      "intent": "informational",
+      "pain": "BLACKPINK→NewJeans→ILLIT→IVE→aespaなど世代/事務所が違うアイドルの楽曲を、好みで聞き分けているが理論的な違いが分からない",
+      "promise": "2007〜2026のK-POP女性アイドル 4 世代を、楽曲構造 (BPM / コード進行 / ヴァース構成 / プロデューサー陣) で比較し、世代別の代表曲とリスナーの楽しみ方を提示",
+      "outline": "導入(K-POP世代区分の意味) / 1世代 Wonder Girls / KARA / Girls Generation / 2世代 2NE1 / SISTAR / 3世代 TWICE / BLACKPINK / Red Velvet / 4世代 aespa / NewJeans / IVE / ILLIT / プロデューサー陣の系譜 / 世代別の聴き方ガイド / まとめ",
+      "evidence_required": [
+        "公式音楽配信プラットフォーム (Melon / Spotify / Apple Music)",
+        "公式事務所 (HYBE / SM / YG / JYP / Source Music) サイト",
+        "Korean Music Awards公式",
+        "credits記載のあるアルバム情報"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "メンバー個人のプライベートを推測しない",
+        "活動休止/契約問題に断定的言及しない (公式発表のみ)",
+        "事務所間の優劣を断定しない",
+        "アイドルの容姿を批評しない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      }
+    },
+    {
+      "id": "sl_001",
+      "category": "slow_living",
+      "persona": "20-40代、丁寧な生活に憧れるが3日坊主、忙しい平日でも続く朝の30分が欲しい",
+      "intent": "informational",
+      "pain": "松浦弥太郎/暮しの手帖系の理想は分かるが、平日朝に時間も気力もない。シンプル化と丁寧さの両立法が見えない",
+      "promise": "朝 30 分で完結する 丁寧な生活 ルーティン (掃除10分 / 茶10分 / 書く5分 / 食べる5分) を、行動科学・道具リスト・続けるコツとセットで提示",
+      "outline": "導入(丁寧な生活の3日坊主の正体) / 30分構成の全体像 / ブロック1 掃除10分(箒/雑巾) / ブロック2 茶10分(煎茶/紅茶/ハーブ) / ブロック3 書く5分(手書きジャーナル) / ブロック4 食べる5分(土鍋ご飯/具1つ味噌汁) / 続けるための7日設計 / 失敗パターンと立て直し / 道具予算別(0円/3000円/1万円) / まとめ",
+      "evidence_required": [
+        "実在書籍引用 (松浦弥太郎の今日もていねいに等、ISBN付き)",
+        "行動科学の査読論文 (Fogg Behavior Model等)",
+        "実在道具メーカー (公長齋小菅 / 中川政七商店 / SOU・SOU等の公式)"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 0.0,
+      "cooldown_days": 30,
+      "prohibited_angles": [
+        "本にこう書いてあるの架空引用禁止 (ISBN/出版社/章番号必須)",
+        "宗教/スピリチュアル断定表現禁止",
+        "高額商材の押し売り禁止"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      },
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "sl_002",
+      "category": "slow_living",
+      "persona": "20-40代、四季を感じる暮らしをしたいが、現代生活で何から始めるか分からない",
+      "intent": "informational",
+      "pain": "暦の上の春夏秋冬は知っているが、自分の生活に季節感を入れる具体策が分からない。歳時記の本を買っても続かない",
+      "promise": "二十四節気をベースに、その時期にやる3つのこと (食材1つ / しつらえ1つ / 香り1つ) を提示。2026春 (立夏-小満-芒種) の実践例 + 通年で使えるフレームワーク",
+      "outline": "導入(二十四節気と現代生活の接点) / フレームワーク: 食材/しつらえ/香り の3要素 / 立夏(5月初旬) / 小満(5月下旬) / 芒種(6月初旬) / 季節の道具リスト / 旬の食材カレンダー / 失敗パターン (やりすぎ/形骸化) / 通年で続ける7日リズム / まとめ",
+      "evidence_required": [
+        "国立天文台暦要項 (二十四節気の公式日付)",
+        "実在書籍 (歳時記 / 民俗学関連、ISBN必須)",
+        "農林水産省の旬の食材データ",
+        "実在道具メーカー (中川政七商店 / かまわぬ等)"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 0.0,
+      "cooldown_days": 30,
+      "prohibited_angles": [
+        "神事/宗教行事の断定的解釈を避ける (民俗学的記述に留める)",
+        "架空の言い伝えを作らない",
+        "ISBN無き書籍引用を作らない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      },
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "sl_003",
+      "category": "slow_living",
+      "persona": "20-40代、モノに圧迫されている感覚があり、生活を軽くしたい",
+      "intent": "informational",
+      "pain": "ミニマリスト本は読んだが過激すぎて自分には合わない。生活を保ちつつ持ち物を1-2割減らす現実的な手順が欲しい",
+      "promise": "1週間で持ち物を1-2割減らせる 丁寧な減らし方 プログラム。7日×30分で、捨てる/譲る/売るの判断軸とBefore/Afterの暮らしの変化を提示",
+      "outline": "導入(ミニマリズムと丁寧な暮らしの違い) / 7日プログラム全体像 / Day1 玄関 / Day2 衣類 / Day3 書類 / Day4 キッチン / Day5 リビング(本/雑貨) / Day6 デジタル(写真/メール) / Day7 振り返り+残すルール / 売る経路(メルカリ/2nd STREET/ブックオフ) / 譲る経路(地域コミュニティ等) / まとめ",
+      "evidence_required": [
+        "実在書籍 (近藤麻理恵/佐々木典士等、ISBN必須)",
+        "メルカリ等の公式利用ガイド",
+        "自治体の不用品回収公式ページ",
+        "心理学的減らし方研究 (査読論文)"
+      ],
+      "affiliate_family": "self_improvement",
+      "rotation_weight": 0.0,
+      "cooldown_days": 60,
+      "prohibited_angles": [
+        "他人のモノ/服装/暮らしを批評しない",
+        "捨てを礼賛して廃棄物環境負荷を無視しない (リユース優先で書く)",
+        "高額収納グッズ販売を煽らない"
+      ],
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      },
+      "disabled_reason": "2026-05-28 growth pivot — out of lane"
+    },
+    {
+      "id": "kb_pdrn",
+      "category": "k_beauty",
+      "persona": "20-30代女性、肌の悩みが深く、再生系成分に興味",
+      "intent": "informational",
+      "pain": "PDRN (サーモンDNA) が話題だが、本当に効くのか / 副作用は / 自宅 vs クリニック どちらか分からない",
+      "promise": "PDRNの科学的根拠、自宅ケア商品 (Rejuran系) と美容医療の境界、安全に始める順序を提示",
+      "outline": "PDRN とは / 韓国でのブーム理由 / 自宅ケア商品比較 / クリニック施術との違い / 副作用と禁忌 / 始める順序",
+      "evidence_required": [
+        "公式論文 or 臨床データURL",
+        "ブランド公式URL",
+        "クリニック施術費用相場"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "医療効果を断定しない",
+        "個人の感想を一般化しない"
+      ]
+    },
+    {
+      "id": "kb_exosome",
+      "category": "k_beauty",
+      "persona": "30-40代女性、エイジングケア真剣派、最新成分を試したい",
+      "intent": "informational",
+      "pain": "エクソソームが流行しているが、自宅ケア商品が玉石混淆。本物 vs 名ばかり をどう見分けるか",
+      "promise": "エクソソーム成分の科学、信頼できるブランド (Cellbn / Beauty of Joseon etc.) の見分け方、効果実感までの目安期間",
+      "outline": "エクソソームとは / 美容医療 vs 自宅ケア / 信頼できるブランド3-5社 / 偽物の見分け方 / 効果実感のタイムライン / 値段の妥当性",
+      "evidence_required": [
+        "臨床論文URL",
+        "ブランド公式URL",
+        "成分認証情報"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "未認可成分を推奨しない",
+        "個人医療と自宅ケアの境界を曖昧にしない"
+      ]
+    },
+    {
+      "id": "kb_rejuran",
+      "category": "k_beauty",
+      "persona": "30-40代女性、リジュラン注射経験者 or 検討中",
+      "intent": "informational",
+      "pain": "リジュラン注射後のホームケアで効果を最大化したいが、何を組み合わせるべきか分からない",
+      "promise": "リジュラン施術後 4 週間の自宅ケアスケジュール、相性の良い成分 (PDRN/レチノール/シカ) の組み合わせ、避けるべきもの",
+      "outline": "リジュランとは / 施術後 1-2週: 鎮静期 / 3-4週: 再生支援期 / 相性 OK 成分 / 相性 NG 成分 / 価格帯別おすすめ商品",
+      "evidence_required": [
+        "クリニック公式 URL",
+        "成分相性の臨床根拠",
+        "ブランド公式 URL"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "施術効果を保証しない",
+        "クリニック特定の宣伝を避ける"
+      ]
+    },
+    {
+      "id": "kb_trouble_emergency",
+      "category": "k_beauty",
+      "persona": "20-30代女性、急な肌トラブル発生時",
+      "intent": "transactional",
+      "pain": "急に赤み/ニキビ/乾燥/かぶれが出た時、韓国コスメで何を使えば早く治るか分からない",
+      "promise": "トラブル別 緊急ケア 5 ステップ + K-beauty おすすめ救急アイテム (鎮静/抗炎症/再生) を症状別に即提示",
+      "outline": "症状別判定フロー / 赤み・ヒリつき / ニキビ・吹き出物 / 乾燥・ひび割れ / かぶれ・かゆみ / 受診目安",
+      "evidence_required": [
+        "皮膚科学公式情報",
+        "ブランド公式 URL",
+        "成分の作用機序"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "受診を否定しない",
+        "重症化サインを軽視しない"
+      ]
+    },
+    {
+      "id": "kb_antiaging_science",
+      "category": "k_beauty",
+      "persona": "30-40代女性、エビデンス重視のエイジングケア層",
+      "intent": "informational",
+      "pain": "韓国コスメのアンチエイジング商品が多すぎ、本当に科学的根拠があるのは何か見分けたい",
+      "promise": "K-beauty アンチエイジング核成分 (レチノール / ナイアシンアミド / ペプチド / グロスファクター) の臨床根拠と、実在ブランドの正しい使い方",
+      "outline": "成分カテゴリ4 大柱 / 各成分の臨床データ / ブランド別 配合濃度比較 / 朝晩使い分け / 効果実感まで何ヶ月",
+      "evidence_required": [
+        "査読論文 URL",
+        "FDA/食薬処データ",
+        "ブランド公式 URL"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "濃度や効能を誇張しない",
+        "未承認の併用を推奨しない"
+      ]
+    },
+    {
+      "id": "kb_cica_deep",
+      "category": "k_beauty",
+      "persona": "敏感肌 / 揺らぎ肌の 20-40代女性",
+      "intent": "informational",
+      "pain": "シカが流行しているが、各ブランドの違いと本当に肌に合うかどう判断するか分からない",
+      "promise": "シカ (Centella Asiatica) 完全解剖: 成分構造 / ブランド別配合比 / 肌タイプ別おすすめ商品 / NG 組み合わせを徹底比較",
+      "outline": "シカとは / マデカソサイド vs アジアチコサイド / 主要ブランド5社比較 / 肌タイプ別おすすめ / NG 組み合わせ / 効果を最大化する順序",
+      "evidence_required": [
+        "成分論文 URL",
+        "ブランド公式成分表",
+        "@cosme 第三者レビュー"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "特定ブランドを過剰宣伝しない",
+        "個人差を無視しない"
+      ]
+    },
+    {
+      "id": "kb_texture_compare",
+      "category": "k_beauty",
+      "persona": "韓国コスメ初心者 - 中級者、 商品選びで迷う層",
+      "intent": "informational",
+      "pain": "化粧水・美容液のテクスチャー (とろみ・水様・ジェル・オイル) で何を選べばよいか分からない",
+      "promise": "K-beauty 化粧水/美容液 テクスチャー別マッピング 20 商品 + 季節・肌悩み別の選び方",
+      "outline": "テクスチャー5分類 / 水様 / さっぱりジェル / とろみ / クリーム / オイル / 季節別 / 肌悩み別 / 値段帯別おすすめ",
+      "evidence_required": [
+        "商品公式 URL",
+        "テクスチャー画像 (@cosme公式)",
+        "全成分表"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "効能ではなく使用感の話に終始しない (実成分も触れる)"
+      ]
+    },
+    {
+      "id": "kb_medical_home",
+      "category": "k_beauty",
+      "persona": "20-40代女性、美容医療 + ホームケア を組み合わせたい層",
+      "intent": "informational",
+      "pain": "美容医療施術 (HIFU / ダーマペン / レーザー) 後の自宅ケアで K-beauty 何を使うべきか",
+      "promise": "施術別 (HIFU / ダーマペン / レーザートーニング) のダウンタイムケア + 維持期に最適な K-beauty 商品マッピング",
+      "outline": "美容医療 3 施術概要 / 施術後 1 週ケア / 1 ヶ月維持ケア / 避けるべき成分 / 相性 OK 成分 / 月コスト目安",
+      "evidence_required": [
+        "クリニック公式 URL",
+        "成分相性データ",
+        "K-beauty ブランド公式"
+      ],
+      "affiliate_family": "k_beauty",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "医療と自宅ケアの境界を曖昧にしない",
+        "施術効果を保証しない"
+      ]
+    },
+    {
+      "id": "kc_cafe_trend",
+      "category": "k_culture",
+      "persona": "20-30代女性、韓国カフェ巡り好き、 2026 年最新動向を知りたい",
+      "intent": "informational",
+      "pain": "韓国の最新カフェトレンド (ベーカリー / 韓国茶 / カフェ&アトリエ) で東京で行けるところを知りたい",
+      "promise": "2026春の韓国カフェトレンド3-5 軸 + 東京で類似体験できる実店舗を Instagram URL 付きで提示",
+      "outline": "韓国カフェ 2026 トレンド3軸 / 韓国茶ブーム / ベーカリー復権 / カフェ&アトリエ融合 / 東京で類似店4-6軒",
+      "evidence_required": [
+        "韓国メディア記事URL",
+        "店舗公式 Instagram URL",
+        "メニュー写真"
+      ],
+      "affiliate_family": "k_culture",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "チェーン店は紹介しない (個人店のみ)",
+        "架空の店名を作らない"
+      ]
+    },
+    {
+      "id": "kc_idol_makeup",
+      "category": "k_culture",
+      "persona": "10-20代女性、K-POP 推し、 推しメイクを真似たい層",
+      "intent": "informational",
+      "pain": "推しメンバーのメイクテクニックを真似したいが、 日本で手に入る K-beauty 商品でどう再現するか分からない",
+      "promise": "K-POP 4 世代 主要グループ メンバー別 メイク 3-5 タイプ + 再現に必要な日本入手可能商品 (税込価格付き)",
+      "outline": "推しメイク3-5タイプ抽出 / 各タイプの肌作り / ベース / アイ / リップ / 商品3点ずつ / 価格合計",
+      "evidence_required": [
+        "公式SNS写真URL",
+        "公式メイクアップアーティストインタビュー",
+        "商品公式URL"
+      ],
+      "affiliate_family": "k_culture",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "メンバー個人情報を推測しない",
+        "公式ソース以外のスタイリストコメントを引用しない"
+      ]
+    },
+    {
+      "id": "kc_fashion_2026ss",
+      "category": "k_culture",
+      "persona": "20-30代女性、ファッション感度高い、韓国トレンド追跡層",
+      "intent": "informational",
+      "pain": "2026春夏の韓国ファッショントレンドを日本で取り入れたいが、何が hot で何が古いか分からない",
+      "promise": "2026 SS 韓国ファッション5主軸 + 日本で手に入るブランド (3CE / Stylenanda / KIRSH 等) と日本ブランド代替案",
+      "outline": "5主軸トレンド抽出 / 各トレンドの代表アイテム / 韓国ブランド購入経路 / 日本ブランド代替 / 価格帯別コーディネート",
+      "evidence_required": [
+        "韓国メディア記事URL",
+        "ブランド公式 URL",
+        "Instagram コーデ写真"
+      ],
+      "affiliate_family": "k_culture",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "著作権侵害になる芸能人写真を貼らない",
+        "ブランドロゴ盗用を避ける"
+      ]
+    },
+    {
+      "id": "kc_kbeauty_medical",
+      "category": "k_culture",
+      "persona": "30-40代女性、韓国式美容医療に興味、 渡韓 or 国内クリニック検討中",
+      "intent": "informational",
+      "pain": "韓国式美容医療 (リフトアップ / 肌再生 / ダーマペン+成長因子) のトレンドと日本で受けられる場所を知りたい",
+      "promise": "2026 韓国美容医療トップトレンド5 + 日本で受けられるクリニック比較 (3-5院) + 渡韓 vs 国内 コスト比較",
+      "outline": "韓国美容医療5トレンド / 各施術の概要 / 日本で受けられるクリニック3-5院 / 価格・実績比較 / 渡韓のメリデメ",
+      "evidence_required": [
+        "クリニック公式URL",
+        "施術データ",
+        "渡韓ツアー会社公式"
+      ],
+      "affiliate_family": "k_culture",
+      "rotation_weight": 11.0,
+      "cooldown_days": 7,
+      "prohibited_angles": [
+        "医療広告ガイドライン違反を避ける",
+        "効果保証は禁止"
+      ]
+    },
+    {
+      "id": "kb_007",
+      "category": "k_beauty",
+      "persona": "K-beauty を 3 年以上追っているスキンケア中級者の 25-35 歳女性。PDRN・エクソソームは既に試しており、次のホット成分を知りたい",
+      "intent": "informational",
+      "pain": "2026 年に PDRN や NAD+ など複合成分が一気に増えて、何が本当に効くのか・価格差は妥当なのかわからない",
+      "promise": "Vogue / Marie Claire / Refinery29 / Olive Young の一次データを横断して、2026 年 6 月時点の \"主役\" 次世代成分 10 種以上を USD 価格・濃度・代表商品名と一緒に保存版として渡す",
+      "outline": "導入 (なぜいま PDRN+NAD+ が来ているか／Olive Young 検索 +90% データ) / NAD+ 系次世代成分 (numbuzin No.9 / Derma Factory NMN 1% / BIOHEAL BOH / Haruharu Wonder 2% NAD+) / 複合 PDRN 処方 (SeoulCeuticals 2/15 launch / Biodance Caviar PDRN 69%) / 植物由来 PDRN (Mediheal 250x small) / 経皮デリバリー第二世代 (liposome / cicasome) / Glass Skin → Bloom Skin のキーワードシフト / 失敗しない選び方 (skin barrier 別) / まとめ",
+      "evidence_required": [
+        "Vogue/Marie Claire/Refinery29/Grazia 等の一次記事 URL",
+        "Olive Young の検索データや在庫情報",
+        "ブランド公式の濃度ppm/USD価格",
+        "醜美的成分の作用機序を表す皮膚科系一次文献"
+      ],
+      "prohibited_angles": [
+        "個人 SNS 投稿を効果根拠にしない",
+        "架空のブランド名・架空の数値を作らない",
+        "PDRN/NAD+ の効果を医療的に断定しない (\"〜と報告されている\" など留保語を必ず添える)",
+        "薬機法に抵触する表現を避ける"
+      ],
+      "affiliate_family": "kbeauty",
+      "rotation_weight": 99.0,
+      "cooldown_days": 30,
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      },
+      "must_include_assets": "PDRN, NAD+, Olive Young検索+90%, ニアシンアミド+26%, Medicube PDRN Pink Cica Soothing Toner $33, Skin1004 Madagascar Centella Toner $22.99, numbuzin No.9 NAD Bio Lifting-sil Essence, Haruharu Wonder Black Rice 2% NAD+ Serum Mist, Derma Factory NMN 1% Renewing Serum, Sungboon Editor Green Tomato NMN 1,000 ppb, Biodance Caviar PDRN Liposome Bubble Booster $19.99, Anua Niacinamide 10 TXA 4 $23, Mediheal PDRN Lifting Pad £22, Dr.Reju-All All Advanced PDRN Cream 1,200 ppm, SeoulCeuticals PDRN+Vitamin C Serum (2026/2/15 launch, dermal density +8.67%, brightness +4.88%), Bloom Skin"
+    },
+    {
+      "id": "kc_004",
+      "category": "k_culture",
+      "persona": "ソウル個人カフェ巡りが好きな 25-40 歳の女性。観光客向けチェーンではなく現地ローカルの隠れた名店を知りたい",
+      "intent": "informational",
+      "pain": "ガイドブックは情報が古く、観光客で混む店ばかり載っている。Instagram で見つけたい新店も住所や営業時間まで日本語で書かれていない",
+      "promise": "2026 年 6 月最新の Esquire Korea / Visit Seoul / Tatler Asia の特集を横断し、延禧洞 4 軒 + 聖水洞行列ベーカリー 2 軒の計 6 軒を住所・営業時間・SNS URL までそのまま日本語で渡す",
+      "outline": "導入 (2026 年ソウルカフェ市場の \"Better Community\" 潮流) / 延禧洞① 카페 미곳 (생강청 아이스라떼) / 延禧洞② 탄정 (말차 한 상 / 予約制) / 延禧洞③ 이너커피 (시나몬 라떼) / 延禧洞④ 스테이로우 (비건 브런치 / 平日 7:00 オープン) / 聖水洞① Jayeondo Salt Bread (1日7,000個) / 聖水洞② Rain Report (15分ごとに人工降雨) / 行き方・支払い・注意点 / まとめ",
+      "evidence_required": [
+        "Esquire Korea / Visit Seoul / Tatler Asia 等の一次記事 URL",
+        "各店舗の公式 Instagram URL (アカウント名は実在のものに限る)",
+        "原文ママの住所表記 (서울 + 区 + 番地)"
+      ],
+      "prohibited_angles": [
+        "チェーン店を取り上げない (CLAUDE.md 絶対ルール)",
+        "架空の店名・架空の住所を作らない",
+        "個人の Bluesky/X 投稿を根拠にしない",
+        "営業時間が確認できない店は載せない (必ず公式ソースで確認)"
+      ],
+      "affiliate_family": "travel_kr",
+      "rotation_weight": 99.0,
+      "cooldown_days": 30,
+      "length_target": {
+        "min": 5500,
+        "max": 8000
+      },
+      "must_include_assets": "카페 미곳 (서울 서대문구 연희동 81-13, 수제 생강청 아이스라떼), 탄정 (서울 서대문구 연희동 129-6, 말차 한 상, 예약필수 Instagram DM), 이너커피 (서울 서대문구 연희동 194-30, 시나몬 라떼), 스테이로우 (서울 서대문구 연희동 126-2, 비건 브런치, 평일 7:00 오픈), Jayeondo Salt Bread 자연도 소금빵 (56-1 Yeonmujang-gil Seongdong-gu, 1日7,000個), Rain Report (15分ごとに人工降雨), Better Community / Original Local / Nature Forward 三大トレンド, Esquire Korea 2026年特集, Visit Seoul 公認"
+    },
+    {
+      "id": "kb_008",
+      "category": "k_beauty",
+      "persona": "25-40歳の都市部男性 (および美意識高めパートナーを持つ女性)、自分のスキンケアを始めたい/グルーミングをアップデートしたい初心者",
+      "pain": "男性向けスキンケアは選択肢が少なく、何から始めればいいか分からない (日本の男性スキンケア普及率は<15%)。オールインワンと言われてもブランドの違いが不透明",
+      "promise": "韓国の男性スキンケア市場 (普及率40%、BTS / EXO / Stray Kids 由来の新しい男らしさ) のロジックを、Laneige Homme / B.READY / Lazy Society の3製品 + All-in-One哲学 で15秒ルーティン化",
+      "outline": "1) なぜ韓国男性は5製品使うのか (Cosmetics Business 'manissance' レポート、Asia Pacific 最速成長地域、68%のGen Z男性が5年前より外見気にする). 2) 男性肌の特徴 (女性肌より厚く脂性、pH違い) と韓国式formulation. 3) Step1 クレンザー: Laneige Homme Active Water Foam Cleanser (pH5.5、€17.90). 4) Step2 オールインワン保湿: Laneige Homme Active Water Moisturizer (toner+essence+emulsion統合、€22.90). 5) Step3 朝のトラブルリセット: B.READY Cicaffeine Trouble Reset Cleansing Foam (cica+caffeine、€25.90). 6) 15秒ルーティンの組み立て + 注意点 (退行 / 過剰使用しない). 7) なぜ「manissance」が日本でも来年来るか",
+      "must_include_assets": "Laneige Homme Active Water Foam Cleanser €17.90, Laneige Homme Active Water Moisturizer €22.90, B.READY Cicaffeine Trouble Reset Cleansing Foam €25.90, '40% Korean men use 5+ skincare products vs <15% France' (Ma Petite Coree), 'manissance' Cosmetics Business レポート用語, 68%のGen Z/Millennial男性が5年前より外見ケア意識 (Accio), https://us.laneige.com/, https://cosmeticsbusiness.com/inside-the-manissance-why-men-s-grooming-is-gearing",
+      "evidence_required": [
+        "https://cosmeticsbusiness.com/inside-the-manissance-why-men-s-grooming-is-gearing",
+        "https://mapetitecoree.com/en/blogs/le-blog-mpc/k-beauty-pour-homme-2026-guide-complet-du-grooming-coreen",
+        "https://us.laneige.com/",
+        "https://www.sephora.com/brand/laneige/men",
+        "https://www.accio.com/business/mens-grooming-trends-2026"
+      ],
+      "prohibited_angles": [
+        "ハイドロキノン処方を勧める",
+        "女性向けK-beauty記事の焼き直し",
+        "5+製品をいきなり全部買えと煽る",
+        "男性蔑視的トーン (ケアしない男はダサい等)",
+        "チェーン店ドラッグストア限定品の言及"
+      ],
+      "intent": "新ペルソナ開拓 (男性向けK-beauty第1弾)、女性読者経由のパートナー提案軸も狙う",
+      "affiliate_family": "k_beauty_men_grooming",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "kb_009",
+      "category": "k_beauty",
+      "persona": "30-45歳女性、K-beauty定番ルーティンは完了済み、次のフロンティアを探している層 (薄毛/抜け毛/ボリュームダウンの自覚が出始めた)",
+      "pain": "顔のスキンケアは突き詰めたが、頭皮ケアは安価なシャンプー任せ。髪のボリュームダウン / 頭皮の脂っぽさ / 朝のスタイリングの持ち悪さに気づき始めたが、何を使えば良いか不明",
+      "promise": "2026のK-beauty最重要トレンド『スキニフィケーション』(顔のスキンケアを頭皮にも適用) を Aromatica Rosemary 2製品 + Olive Young Pasadena旗艦店 (5月オープン、頭皮分析サービス付) で実践",
+      "outline": "1) 2026 K-beautyトレンド: 顔→頭皮への skinification 拡張 (Global Cosmetic Industry 業界レポート). 2) Olive Young 米国初出店 (Pasadena、2026年5月28日、UPI報道) — 頭皮分析サービス / The Beauty Lab / 水洗浄ステーション併設の異例の体験型店舗. 3) 入門製品A: Aromatica Rosemary Scalp Scrub 165g (¥3,900〜、NEW指定、Olive Young Global). 4) 入門製品B: Aromatica Rosemary Root Enhancer 100mL (頭皮スプレー、根元ボリューム回復). 5) ルーティン: 週2スクラブ + 朝晩のRoot Enhancer. 6) 国内 (日本) で買う方法 (Olive Young Global / Qoo10). 7) 関連カテゴリの拡張 (hair damage care / better nights / morning wellness shots がOlive Young 2026注目)",
+      "must_include_assets": "Aromatica Rosemary Scalp Scrub 165g ¥3,900+ (Olive Young Global NEW), Aromatica Rosemary Root Enhancer 100mL, Olive Young Pasadena店 5月28日 2026 オープン (UPI), 'skinification' / 'scalp analysis services' / 'The Beauty Lab' 用語, Global Cosmetic Industry レポート言及, https://www.upi.com/Top_News/World-News/2026/05/28/Olive-Young-opens-1st-US-store-as-K-beauty-booms/2521779962037/",
+      "evidence_required": [
+        "https://www.upi.com/Top_News/World-News/2026/05/28/Olive-Young-opens-1st-US-store-as-K-beauty-booms/2521779962037/",
+        "https://www.gcimagazine.com/brands-products/skin-care/article/22967753/olive-young-plants-its-flag-in-the-us-as-kbeautys-retail-expansion-accelerates",
+        "https://global.oliveyoung.com/product/detail?prdtNo=GA220414486",
+        "https://global.oliveyoung.com/product/detail?prdtNo=GA210510211",
+        "https://stylevanity.com/from-seoul-to-your-shelf-the-k-beauty-trends-shaping-2026-at-olive-young/"
+      ],
+      "prohibited_angles": [
+        "ミノキシジル等の医薬品成分を効能で勧める",
+        "育毛効果の医薬的断定",
+        "顔のスキンケア成分 (PDRN/NAD+/シカ/ペプチド/BHA/セラミド) の既出記事と被る訴求",
+        "Olive Young 米国店の主観的店内写真捏造"
+      ],
+      "intent": "K-beauty部位拡張 (頭皮 skinification 初弾)、Olive Young 米国旗艦店時事性で鮮度確保",
+      "affiliate_family": "k_beauty_scalp_care",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "kb_010",
+      "category": "k_beauty",
+      "persona": "30-40歳女性、産後シミ / 妊娠線後の色ムラ / 紫外線蓄積によるくすみが気になり、ハイドロキノン処方薬には抵抗があるが結果が欲しい層",
+      "pain": "シミ / メラズマ / 炎症後色素沈着 (PIH) にビタミンC試したが効果が薄い、ハイドロキノンは処方ハードル高い、既存ナイアシンアミド単体では物足りない。韓国コスメで安価かつ強い処方を探している",
+      "promise": "美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacinamide 10 TXA 4 Serum ($23、米国Olive Young) で、ハイドロキノンに頼らない3-4週でブライトニング。PDRN / シカ / ペプチド系既存記事の盲点だった『色素沈着』をピンポイント攻略",
+      "outline": "1) Tranexamic Acidとは: 経口の止血薬として知られるが、メラニン産生抑制効果でメラズマ・PIHに有効 (NBC Select 2026ガイド、皮膚科医肯定). 2) 推奨濃度 2-5% (Skincare Company 2026レポート). 3) 主役製品: Anua Niacinamide 10 TXA 4 Serum ($23、30ml、米国Olive Youngで取扱、Marie Claire 12選掲載). フォーミュラ: 10% ナイアシンアミド + 4% TXA + 2% アルブチン + セラミド + ヒアルロン酸. 4) 比較: Dr. Althea (5% ナイアシンアミド + 2% TXA + Wビタミンc + アルファアルブチン、<$30), Jumiso ($24/40ml), Cos De BAHA. 5) 4週ルーティン (朝はSPF必須 / 夜はTXA後にバリア系). 6) 注意点 (経口TXA処方薬とは別、妊娠中医師相談). 7) 美容医療シミレーザーとの比較コスパ",
+      "must_include_assets": "Anua Niacinamide 10 TXA 4 Serum $23 (US Olive Young UA79297712), Marie Claire 2026 12選掲載事実 + URL, Dr. Althea 5%ナイアシンアミド+2%TXA serum <$30, Jumiso $24/40ml, Cos De BAHA TXA 5% Serum, '2-5% TXA濃度' Skincare Company / DermApproved レポート, NBC Select 2026 9 best TXA serums言及, https://us.oliveyoung.com/products/UA79297712",
+      "evidence_required": [
+        "https://www.marieclaire.com/beauty/skincare/best-korean-beauty-products-olive-young/",
+        "https://us.oliveyoung.com/products/UA79297712",
+        "https://www.nbcnews.com/select/shopping/best-tranexamic-acid-serum-rcna146988",
+        "https://anua.com/products/niacinamide-10-txa-4-serum-2",
+        "https://kbeautyworld.com/collections/tranexamic-acid-skin-care"
+      ],
+      "prohibited_angles": [
+        "経口TXAを記事内で勧める",
+        "ハイドロキノンや処方薬と効果同等と断定",
+        "'完全に消える' '即日効果' などの薬機法逸脱",
+        "妊娠中の使用を無条件推奨",
+        "'99%が知らない' '9割が知らない' の捏造統計タイトル"
+      ],
+      "intent": "色素沈着 (シミ/PIH) ピンポイント攻略、既存PDRN/NAD+/シカ/ペプチド/BHA/セラミドの空白を埋める",
+      "affiliate_family": "k_beauty_brightening",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "kc_005",
+      "category": "k_culture",
+      "persona": "Netflixで韓ドラを浴びるが、配信ランキング1位の作品を会社の同僚との雑談で語れる粒度の解説が欲しい25-40歳の韓ドラ視聴者 (特に女性)",
+      "pain": "SoompiやMyDramaListを毎日見るほどではないが、話題作はキャストと原作と社会背景までさらっと押さえておきたい。日本語まとめは『あらすじ+俳優プロフ』止まりで、なぜ韓国で教権ものが今ハマるのかが分からない",
+      "promise": "6/5配信で即Netflix非英語ドラマ1位、85ヶ国Top10に入った本作を、(a) ERPBという架空組織が韓国の実在する『教権保護条例』(2023制定) を反転させた風刺だと解読、(b) 主演Kim Mu-yeol (Na Hwa-jin / Grim Reaper) とLee Sung-min (教育部長官役) のキャリア接続、(c) 原作Naver Webtoon 'Get Schooled' との改変点3つ、を5分で渡す",
+      "outline": "1. フック: 6/5配信→即85ヶ国Top10 / Kim Mu-yeolがnon-ENドラマ俳優1位 (数字verbatim). 2. 何の話か: ERPB (Educational Rights Protection Bureau) 監察官がdelinquent生徒にphysical intervention認可で立ち向かう. 3. キャスト解剖: Kim Mu-yeol(Na Hwa-jin) / Lee Sung-min(教育部長官Choi Gang-seok) / Jin Ki-joo(Im Han-rim) / P.O Pyo Ji-hoon(Bong Geun-dae). 4. なぜ今刺さるか: 2023『教権保護4法』成立背景 + 韓国教師自殺多発事件 (一次ソース必須). 5. 原作との差分3つ: Webtoon 'Get Schooled' (Naver Series) との改変ポイント. 6. 視聴順ガイド: 1話の見どころ / どこまで見れば判断できるか",
+      "must_include_assets": "Netflix公式 https://www.netflix.com/title/81947300, Netflix Tudum https://www.netflix.com/tudum/articles/teach-you-a-lesson-cast-characters, 配信開始日2026/6/5, 85ヶ国Top10, Kim Mu-yeol (Na Hwa-jin役、通称Grim Reaper), Lee Sung-min (Choi Gang-seok教育部長官役), Jin Ki-joo (Im Han-rim役), P.O Pyo Ji-hoon (Bong Geun-dae役), 原作Naver Webtoon 'Get Schooled', ERPB (Educational Rights Protection Bureau), Wikipedia https://en.wikipedia.org/wiki/Teach_You_a_Lesson",
+      "evidence_required": [
+        "https://www.netflix.com/title/81947300",
+        "https://www.netflix.com/tudum/articles/teach-you-a-lesson-cast-characters",
+        "https://en.wikipedia.org/wiki/Teach_You_a_Lesson",
+        "https://www.whats-on-netflix.com/news/k-dramas/teach-you-a-lesson-netflix-k-drama-preview/",
+        "https://mydramalist.com/778658-get-schooled"
+      ],
+      "prohibited_angles": [
+        "ストーリーの完全ネタバレ (1話以上の詳細結末)",
+        "出演者の私生活/熱愛憶測",
+        "教師暴力の現実肯定的トーン",
+        "教師自殺事件の被害者特定情報",
+        "'99%が知らない' '9割が知らない' タイトル"
+      ],
+      "intent": "K-culture初の配信中Netflix単体解説、時事性 (6/5配信ホットなうち) で鮮度最大化",
+      "affiliate_family": "k_culture_netflix",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "kc_006",
+      "category": "k_culture",
+      "persona": "推しがいてアルバム買うレベルのK-popライト〜ミドルファン(20-35歳女性)、推しカが当たらなくて二次流通に手を出すか迷っている層 + ファンダム経済そのものに興味あるビジネス層",
+      "pain": "推しカを公式アルバム封入だけで揃えるのは不可能。Twitterの個人取引は怖い、メルカリは日本国内限定で韓国限定カードが来ない、PocamarketやWeverse Shopは韓国語で分かりにくい。グレードや真贋判定の基準が掴めない",
+      "promise": "(a) 2026年に$500M規模・rare cardが$200〜$1000+で取引される市場の構造、(b) Pocamarket (450,000+ verified card、韓国倉庫で真贋検証、世界配送3-14日) と日本のラクマ/Mercari proxy buyingの使い分け、(c) 明洞の30%店舗がフォトカード/ライトスティック専門化した現地の今、を一次ソース付きで渡す。詐欺回避のチェックリスト付き",
+      "outline": "1. フック: 2026年フォトカード二次市場$500M超え / rare card $200-$1000+ (BTS/BLACKPINK graded $1000超え). 2. 市場構造: mass封入カード$5-20 vs broadcast/event rare card $200+ の二極化. 3. プラットフォーム比較: Pocamarket (450,000+ verified、韓国倉庫検証) / Mercari Japan + ラクマ + proxy buying / Weverse Shop / Twitter個人取引のリスク. 4. 現地ハブ: 明洞の店舗30%がフォトカード/ライトスティック専門 / Seoul 50+ offline shops. 5. 詐欺回避5箇条: 偽lightstickが本物より早く出回る注意、graded判定、proxy選び. 6. 始め方: 推し1人ぶんを揃える月予算試算",
+      "must_include_assets": "Pocamarket公式 https://pocamarket.com/, Pocamarket FAQ https://pocamarket.oopy.io/faq/photocard, App Store https://apps.apple.com/us/app/pocamarket-get-kpop-photocard/id6448335489, $500M annual市場規模, rare card $200+, BTS/BLACKPINK graded $50-$500 (最高$1000+), 明洞30%店舗占有, Seoul 50+ offline shops, 配送3-14日, 450,000+ verified card, Mercari Japan + Rakuma proxy言及",
+      "evidence_required": [
+        "https://pocamarket.com/",
+        "https://pocamarket.oopy.io/",
+        "https://neokyo.com/blog/kpop-photocards/",
+        "https://daebak.co/en-jp/blogs/magazine/korean-photocard-culture-the-k-pop-fan-collecting-craze",
+        "https://beyondthepanorama.com/the-business-of-k-pop-photocards/",
+        "https://koreaexperience.com/blog/collecting-k-pop-photocards-the-global-market-and-trading-etiquette-2026"
+      ],
+      "prohibited_angles": [
+        "特定の高額カードに投機を煽る",
+        "'これ買えば儲かる' 投資商材化",
+        "アイドル個人への過度な所有感を煽る",
+        "偽物の購入経路を案内",
+        "Twitter個人取引DM晒し",
+        "'99%が知らない' タイトル"
+      ],
+      "intent": "K-popファンダム経済初弾、既存68本に皆無の二次流通/グッズ市場軸",
+      "affiliate_family": "k_pop_fandom_goods",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "hg_007",
+      "category": "hidden_gourmet",
+      "persona": "ソウル旅行をリピートする30代日本人 (特に女性)、観光地化した弘大/明洞に飽きて『地元の20代が今夜行く店』を探している層、日本酒や自然派ワインから派生してマッコリに関心が向いた層",
+      "pain": "ソウルでマッコリ=チェーン系の韓国屋台しか選択肢を知らない。Ikseon-dong (益善洞) という地名は聞くがどの店が本物か分からない。韓国語予約サイトを読めない。延禧洞は文化 (kc_004) で被るので避けたい",
+      "promise": "(a) Jongno (鍾路) 区に120軒のtraditional makgeolli establishmentが集中、Ikseon-dong (益善洞) は1920年代韓屋を改装した個人店だけで形成された希少エリアであることを地理データで示し、(b) クラフトマッコリ醸造リバイバル (heirloom grain / clay jar fermentation / 6-8%低アル) の流れがなぜ20代を呼び戻したかを構造化、(c) Baekusaeng (백우생) などの実在brewery + makgeolli tasting tour 一次ソース付きで紹介 (個人店のみ、チェーン除外)",
+      "outline": "1. フック: 益善洞=1920年代韓屋がそのままmakgeolli酒場になった唯一のエリア / Jongno区120軒の超密集地帯. 2. なぜ若者が戻ったか: 6-8%低アル、heirloom grain回帰、craft producer がfruit infusion / oak barrel aging で実験中. 3. 個人店ガイド (チェーン店ブラックリスト準拠で厳選): Baekusaeng Makgeolli (백우생) など実在brewery + tasting class情報. 4. 周辺ハシゴ: Gogi Street BBQ + salt bread bakery + craft beer bar (益善洞夜の動線). 5. 注文の作法: makgeolli 1주전자 (1 kettle) / pajeon (チヂミ) ペアリング基本. 6. アクセス: 鍾路3街駅4番出口 / 営業時間帯",
+      "must_include_assets": "Baekusaeng公式 https://baekusaeng.com/, Visit Seoul公式 https://visit.seoul.kr/en/articles/seoul-makgeolli-guide-2026, Jongno区120軒, 益善洞=1920年代韓屋, makgeolli 6-8% ABV, 鍾路3街駅4番出口, GetYourGuide makgeolli tasting tour t962471, チェーン店ブラックリスト (config/settings.yaml gourmet_rules.chain_blacklist) で再確認必須, 架空店名禁止 (Visit Seoul / 10mag掲載店のみ採用)",
+      "evidence_required": [
+        "https://visit.seoul.kr/en/articles/seoul-makgeolli-guide-2026",
+        "https://baekusaeng.com/",
+        "https://10mag.com/best-makgeolli-bars-in-seoul/",
+        "https://thesoulofseoul.net/ikseon-dong-where-to-eat-and-what-to-do/",
+        "https://www.getyourguide.com/seoul-l197/seoul-craft-makgeolli-brewery-tour-tasting-experience-t962471/",
+        "https://en.wikipedia.org/wiki/Makgeolli"
+      ],
+      "prohibited_angles": [
+        "チェーン店 (韓国屋台等) の紹介",
+        "架空店名/住所/メニューの創作",
+        "延禧洞や kc_004 と被る『カフェ』軸での扱い",
+        "飲酒運転肯定的トーン",
+        "未成年飲酒示唆",
+        "アルコール量を競う表現"
+      ],
+      "intent": "hidden_gourmet 韓国ローカル酒文化第1弾、kc_004 (延禧洞カフェ) と地理・カテゴリ両方で差別化",
+      "affiliate_family": "hidden_gourmet_seoul_makgeolli",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "hg_008",
+      "category": "hidden_gourmet",
+      "persona": "都内・京都在住の20-30代女性、旅行で訪れる際に『今しか味わえない新店』を1軒は組み込みたいカフェ巡り好き",
+      "pain": "新店情報がインスタ断片で全体像が掴めず、結局有名チェーンに流れがち。個人店の住所/営業時間/シグニチャー一杯が散乱して比較できない",
+      "promise": "2025年10月〜2026年3月に開業した個人スペシャルティ新店3軒を、住所・営業時間・シグニチャードリンク・建築背景まで verbatim 一発比較。訪問順序も提案",
+      "outline": "1) 新店3軒の地図ピン (京都東山 / 蔵前 / 三軒茶屋). 2) SWAY COFFEE ROASTERY 京都東山 (2026/3/19開業、京都府京都市東山区鷲尾町513、9-18時、ねねの道、2階畳席で東山屋根並み). 3) MIA MIA Kuramae (2-3-2 Kojima Taito、築120年精米所リノベ、Leonardo diCappuccino、2階に宿泊2室). 4) SAMAA_ (世田谷区上馬1-33-7、2025/10/1、築70年長屋再生、Super Milk Brew=超音波ミキサー1分抽出、9-22時). 5) 各店のシグニチャー比較表. 6) 訪問プラン (1日東京 / 1泊京都)",
+      "must_include_assets": "SWAY COFFEE ROASTERY 京都府京都市東山区鷲尾町513 / 2026.3.19 / @sway_coffee_roastery / 9:00-18:00 / 価格帯¥1,000-1,999, MIA MIA Kuramae 東京都台東区小島2-3-2 / @miamia_kuramae / 築120年精米所 / Leonardo diCappuccino, SAMAA_ 東京都世田谷区上馬1-33-7 / 2025/10/1 / @samaa_coffee / 9:00-22:00 / Super Milk Brew, https://tabelog.com/en/kyoto/A2601/A260301/26044854/, https://shiftc.jp/2026/02/20/samaa_-coffeeshop/",
+      "evidence_required": [
+        "https://tabelog.com/en/kyoto/A2601/A260301/26044854/",
+        "https://www.instagram.com/sway_coffee_roastery/",
+        "https://www.tokyoweekender.com/food-and-drink/new-international-coffee-shops-tokyo-2026/",
+        "https://www.instagram.com/miamia_kuramae/",
+        "https://shiftc.jp/2026/02/20/samaa_-coffeeshop/",
+        "https://www.instagram.com/samaa_coffee/",
+        "https://co-trip.jp/article/703978"
+      ],
+      "prohibited_angles": [
+        "チェーン店 (スタバ/ドトール/コメダ等 config/settings.yaml chain_blacklist) の紹介",
+        "架空店名/住所/メニュー創作",
+        "公式SNS未確認の営業時間断言",
+        "店内写真の借用 (公式SNS marker 無しでの掲載)",
+        "'99%が知らない' タイトル"
+      ],
+      "intent": "hidden_gourmet 日本国内個人スペシャルティ第1弾、既存cb_*/kc_*が韓国寄りな空白を埋める",
+      "affiliate_family": "hidden_gourmet_jp_specialty",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "cb_004",
+      "category": "coffee_barista",
+      "persona": "30-40代の食体験への投資を惜しまない感度高め層 (ワインomakase経験者、雑誌Pen / Casa Brutus 読者)",
+      "pain": "『コーヒーomakase』という言葉だけ独り歩きして、実態 (席数・価格・予約方法・誰が淹れるか) が不明。¥4,000を払う価値の根拠が見えない",
+      "promise": "Time Out が世界100位に選定した日本2軒 (Ult Coffee #24 + Koffee Mameya Kakeru #28) を、World Brewers Cup 優勝者 Emi Fukahori 氏の経歴・席数4席・予約必須・コース構成まで verbatim で解剖。¥4,000の内訳がわかる",
+      "outline": "1) Time Out『世界100ベストカフェ2026』日本2軒選定の意味 (Ult Coffee #24 / Koffee Mameya Kakeru #28). 2) Kuro Mame Tokyo詳細: 港区虎ノ門5-3-3 神谷町プレイス E1、10-19時、¥4,000〜、4席カウンター、完全予約制、オーナー Emi Fukahori = World Brewers Cup 優勝バリスタ. 3) Koffee Mameya Kakeru: omakase 形式の元祖、cold brew/milk brew/filter/espresso 複数抽出法. 4) 行く前に知るべき予約方法・コース所要時間. 5) 写真撮影マナー / 着席後の流れ",
+      "must_include_assets": "Kuro Mame Tokyo / 港区虎ノ門5丁目3-3 神谷町プレイス E1 / 10:00-19:00 (LO18:30) / +81 3-6403-1890 / @kuro_mame_tokyo / 4-seat counter / ¥4,000〜 / Emi Fukahori (World Brewers Cup winner), Koffee Mameya Kakeru #28 World's 100 Best Coffee Shops 2026, Ult Coffee Osaka #24 (@ultcoffee.exp, Boram Um=2023 WBC Champion), https://www.timeout.com/tokyo/news/japan-lands-two-spots-on-the-worlds-100-best-coffee-shops-list-for-2026-022626, https://www.timeout.com/tokyo/restaurants/kuro-mame-tokyo",
+      "evidence_required": [
+        "https://www.timeout.com/tokyo/news/japan-lands-two-spots-on-the-worlds-100-best-coffee-shops-list-for-2026-022626",
+        "https://www.timeout.com/tokyo/restaurants/kuro-mame-tokyo",
+        "https://www.instagram.com/kuro_mame_tokyo/",
+        "https://tabelog.com/en/tokyo/A1307/A130704/13310782/"
+      ],
+      "prohibited_angles": [
+        "チェーン店 (スタバReserve含む config/settings.yaml chain_blacklist) との同列比較",
+        "公式予約方法を確認せず断言",
+        "バリスタ個人の私生活/SNS発言の引用",
+        "写真借用 (店内/カウンター画像) を公式SNS marker 無しで掲載",
+        "'99%が知らない' タイトル"
+      ],
+      "intent": "coffee_barista 日本国内ハイエンド第1弾、既存cb_001-003が韓国インディー寄りな空白を埋める",
+      "affiliate_family": "coffee_barista_jp_omakase",
+      "rotation_weight": 2,
+      "cooldown_days": 14
+    },
+    {
+      "id": "kf_001",
+      "category": "k_fashion",
+      "persona": "20-30代女性、 K-pop アイドル着用ブランドを日本未上陸のうちに先取りしたいファッション感度高め層",
+      "pain": "Instagram でアイドル着用ブランドを見つけても、 ハングル名で読めず、 公式EC があるのか BUYMA 経由しかないのか、 関税込みで日本上陸後より安いのか判断できない。 結局 BUYMA で 1.5 倍払うか諦めるかの二択",
+      "promise": "Seoul Fashion Week 2026 SS/FW で注目を集めた本物の新興ブランド 4 つ (MÜNN / MMAM / SATUR / 2000Archives) を、 デザイナー出自・代表アイテム実価格 (KRW + 円換算)・公式EC URL・日本配送可否・K-pop アイドル着用実績で整理。 BUYMA を経由せず公式から直接買う経路を提示",
+      "outline": "導入 (Seoul Fashion Week 2026 25周年で何が変わったか) / ブランド1 MÜNN (Han Hyun-min、 ミラノから凱旋、 リサイクル紙ニット) / ブランド2 MMAM (Park Hyun、 Emerging Layers、 NY→Paris→Seoul 凱旋) / ブランド3 SATUR (2020 創業、 Give Saturday、 K-pop アイドル着用、 satur-jp.com 国内 EC 有) / ブランド4 2000Archives (aespa KARINA リムレスメガネ) / 公式 EC 直送 vs BUYMA 価格比較表 / 関税ライン (¥16,666 ルール) / まとめ",
+      "must_include_assets": "MÜNN 公式 (Han Hyun-min, 2026 FW opening show 2/3 at DDP), MMAM 公式 (Park Hyun, Emerging Layers collection), SATUR 公式日本 https://satur-jp.com/ (Tシャツ¥10,000-15,000 2枚, デニム¥20,000-30,000), 2000Archives BUYMA https://www.buyma.com/r/_2000ARCHIVES-2000%E3%82%A2%E3%83%BC%E3%82%AB%E3%82%A4%E3%83%96%E3%82%B9/, Seoul Fashion Week 2026 SS 期間 2025年9月1-7日 / FW 期間 2026年2月3-8日 DDP 開催, JO1 出席 (jo1.jp/news/detail/5438)",
+      "evidence_required": [
+        "https://english.seoul.go.kr/seoul-fashion-week-2026-s-s-to-celebrate-25th-anniversary-highlighting-seouls-identity-on-the-global-stage/",
+        "https://www.arahkaii.com/arahkaii-com-seoul-fashion-week-fw-2026/",
+        "https://www.koreaherald.com/article/10670387",
+        "https://satur-jp.com/",
+        "https://www.wwdjapan.com/articles/1438043",
+        "https://jo1.jp/news/detail/5438?lang=en"
+      ],
+      "affiliate_family": "k_fashion",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "BUYMA を最安と断定しない (公式直送が安い場合あり)",
+        "デザイナー個人 SNS 発言を一次ソース扱いしない",
+        "K-pop アイドル着用は公式マガジン/公式 IG 投稿のみ採用 (ファン推測タグ NG)",
+        "偽サイト/コピー品 EC を紹介しない"
+      ],
+      "novelty_vs_existing": "K-beauty (kb_001-010) は化粧品成分、 K-culture (kc_001-006) はカフェ/Netflix/フォトカードのみカバー。 ファッション ブランド単独レビューは zero、 完全新カテゴリ"
+    },
+    {
+      "id": "kfo_001",
+      "category": "k_food",
+      "persona": "20-30代女性、 韓国コンビニ スイーツを日本のコンビニより一歩先取りしたい流行り物好き",
+      "pain": "ドバイチョコ や タオルケーキ が韓国でバズっているのは知っているが、 GS25 / CU / セブンイレブン のどれで何ウォン (税抜) で売っているか、 また 2026 初頭の値上げで今いくらか分からない。 旅行前にどのコンビニを優先するか決められない",
+      "promise": "韓国コンビニ 3 社 (GS25 / CU / セブンイレブン) の 2026 注目スイーツ 4 種 (ドバイチョコ系 / タオルケーキ / 延世牛乳クリームパン / マカロンアイス) を、 価格 (KRW + 円換算)・値上げ履歴・販売開始日・累計販売数・売切れ時間帯で比較し、 旅行 1 日で全部食べ比べる動線を提示",
+      "outline": "導入 (2026 韓国コンビニスイーツの勢力図) / スイーツ1 ドバイチョコ (CU 1/19 値上げ最大+700KRW, GS25 ドバイチョコもち 2個 5,800KRW) / スイーツ2 タオルケーキ (CU 405 ベーカリー製、 NCT WISH YouTube 紹介、 2025/1 発売 4日 4,500個完売) / スイーツ3 延世牛乳クリームパン (CU, 2022 発売、 抹茶/チョコ 派生) / スイーツ4 GS25 ソウル牛乳デザート (2025/5 発売、 累計 500万個突破) / 食べ比べ動線 (明洞→江南 1日ルート) / 持ち帰り可否と賞味期限 / まとめ",
+      "must_include_assets": "CU ドバイシリーズ 2026/1/19 値上げ最大 +700KRW (Yahoo!ニュース KOREA WAVE), GS25 ドバイチョコもち 2個入 5,800KRW (X @joahcafe 2026), CU タオルケーキ 405 ベーカリー 2025/1 発売 4日 4,500個完売, GS25 ソウル牛乳デザート 2025/5 発売 累計 500万個突破, CU 延世牛乳クリームパン 2022 発売",
+      "evidence_required": [
+        "https://news.yahoo.co.jp/articles/a4826ba2f28ce053b53ccca33f6541ec2052959d",
+        "https://otokorea.com/dubai_choco_compare/",
+        "https://otokorea.com/convini_20_25sp/",
+        "https://x.com/joahcafe/status/2013159709952667944",
+        "https://tnc-trend.jp/korea61/",
+        "https://ameblo.jp/chapter2-life/entry-12887846255.html"
+      ],
+      "affiliate_family": "k_food",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "個人ブログ価格情報のみで断定しない (1次は KOREA WAVE/各社公式リリース)",
+        "在庫保証しない (人気商品は売切れ前提で書く)",
+        "日本流通している類似商品との安直な置き換え推奨は NG",
+        "ドバイチョコ系の薬効/健康効果を謳わない"
+      ],
+      "novelty_vs_existing": "既存 hg_007-008 はマッコリバー/日本国内スペシャルティ店、 cb_001-004 はインディーカフェ/コーヒー。 コンビニ スイーツ ジャンルは zero、 完全新カテゴリ"
+    },
+    {
+      "id": "kw_001",
+      "category": "k_wellness",
+      "persona": "20-30代女性、 K-beauty の次の段階として韓国式の心身ケア (チムジルバン/テンプルステイ) を本場体験したいウェルネス志向層",
+      "pain": "チムジルバン と テンプルステイ どっちを選ぶか、 日帰り vs 1泊、 女性専用施設はあるか、 予約は日本語/英語でできるか、 料金とアクセスが情報源バラバラで決められない。 観光ガイド本は古くて 2026 の実情と合わない",
+      "promise": "ソウルで体験できる韓国式ウェルネス 4 施設 (BORI SPA 江南区庁・女性専用 / スパレックス東大門 24時間 / 仁寺洞汗蒸幕 伝統薪式 / 津寛寺テンプルステイ 1泊2日) を、 料金 (KRW)・所要時間・予約導線 (日本語可否)・アクセス・服装・必須持ち物・体験前後の食 (シッケ+メクパンソンゲラン) で並列比較し、 滞在日数別の最適選択を提示",
+      "outline": "導入 (K-beauty 文脈での K-wellness 台頭) / 施設1 BORI SPA 江南区庁 (女性限定、 薪式汗蒸幕、 清潔評判) / 施設2 スパレックス東大門 (24時間、 韓屋風、 98℃/108℃ 2部屋) / 施設3 仁寺洞汗蒸幕 (伝統薪式の都心立地) / 施設4 津寛寺テンプルステイ (1泊2日 60,000KRW、 108拝 + 鉢盂供養 + 森瞑想) / 予約導線 (eng.templestay.com / Klook / 現地) / 服装持ち物リスト / 体験後の定番食シッケ+メクパンソンゲラン / 1日 vs 2泊3日の選び方 / まとめ",
+      "must_include_assets": "津寛寺テンプルステイ 1泊2日 60,000KRW (大人1人) ソウル市恩平区チングァンギル73 +82-2-359-8410, BORI SPA 江南区庁駅 女性限定 薪式汗蒸幕, スパレックス東大門 24時間 韓屋風 汗蒸幕98℃/108℃ 2部屋, 仁寺洞汗蒸幕 都心立地伝統薪式, テンプルステイ統合情報センター ソウル市鐘路区ウジョングクロ56 +82-2-2031-2000, 公式予約 https://eng.templestay.com/, シッケ + メクパンソンゲラン (焼きゆで卵) 定番セット",
+      "evidence_required": [
+        "https://japanese.seoul.go.kr/%E6%9C%8D%E5%8B%99/%E3%82%AB%E3%83%AB%E3%83%81%E3%83%A3%E3%83%BC%E3%82%A8%E3%83%B3%E3%82%B8%E3%83%A7%E3%82%A4/%E3%83%86%E3%83%B3%E3%83%97%E3%83%AB%E3%82%B9%E3%83%86%E3%82%A4/",
+        "https://www.konest.com/contents/spot_mise_detail.html?id=18360",
+        "https://hanako.tokyo/health/502270/",
+        "https://www.klook.com/ja/blog/jjimjilbang-sauna-seoul-south-korea/",
+        "https://creatrip.com/en/blog/347",
+        "https://travelholiq.com/insadong-sauna/"
+      ],
+      "affiliate_family": "k_wellness",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "チェーン展開のジムジルバン (大型観光型のみ運営会社が多店舗) は除外、 効能 (病気が治る/痩せる) の医療的断定 NG、 個人ブログ撮影の館内写真を一次ソース扱いしない、 韓国仏教の宗派論争に踏み込まない (曹渓宗の体験紹介に留める)"
+      ],
+      "novelty_vs_existing": "既存 kb_001-010 は化粧品/シャンプー、 K-culture (kc_001-006) はカフェ/ベーカリー/Netflix。 韓国式サウナ・寺院体験は zero、 完全新カテゴリ"
+    },
+    {
+      "id": "kw_002",
+      "category": "k_wellness",
+      "persona": "20-30代女性、 心身の慢性疲労/ストレスを抱え、 西洋ハーブティーは試したが効きが弱いと感じている層",
+      "pain": "韓国伝統茶 (双和茶/五味子茶) が体に良いと聞いても、 ハーブ構成が複雑で何にどう効くか分からず、 国内で買える信頼ブランド (タムト/Tea Therapy) の中で自分の症状にどれが合うか選べない。 漢方薬扱いで医薬品的に語って良いのか境界も不明",
+      "promise": "韓国漢方茶 3 種 (双和茶/五味子茶/シトラスミント韓方茶) を、 配合生薬・伝統的な適応・科学的に確認されている範囲・現代日本人の症状 (ストレス/疲労/不眠) との対応・国内で買える正規ブランド (タムト/Tea Therapy) と価格で整理し、 症状別に「まずこの 1 袋から」を提示",
+      "outline": "導入 (K-beauty の次は inner-care、 韓方茶の世界市場拡大) / 茶1 双和茶 (桂皮+甘草+芍薬+当帰、 疲労回復/ストレス緩和、 タムト 15包) / 茶2 五味子茶 (Schisandra chinensis、 五味 + 五臓対応、 滋養強壮/疲労) / 茶3 シトラスミント韓方茶 (現代向けブレンド、 ストレス特化) / 安全性 (妊娠中/薬併用時の注意) / 国内購入経路 (Tea Therapy 正規代理店 / タムト 韓国市場 EC) / 1日の飲み方ルーティン / 西洋ハーブとの違い / まとめ",
+      "must_include_assets": "Tea Therapy 韓方茶 正規代理店オンライン https://teatherapy.jp/, タムト双和茶 15包 (韓国市場 eprice https://www.eprice.co.jp/view/item/000000006099), 五味子 (Schisandra chinensis) 五味=酸/苦/甘/鹹/辛 五臓=肝/心/脾/腎/肺 対応, 双和茶 主要生薬 (桂皮/甘草/芍薬/当帰), 韓国観光公社 VISITKOREA Tea Therapy 紹介 https://english.visitkorea.or.kr/",
+      "evidence_required": [
+        "https://teatherapy.jp/",
+        "https://www.eprice.co.jp/view/item/000000006099",
+        "https://note.com/luciaaki/n/na7b6ef9d500f",
+        "https://kampomedia.kampolab.com/therapies/herbs-medicinal-plants/citrus-mint-tea-for-stressed-people/",
+        "https://fantist.com/articles/1054",
+        "https://english.visitkorea.or.kr/"
+      ],
+      "affiliate_family": "k_wellness",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "prohibited_angles": [
+        "医薬品的効果 (病気が治る/うつが治る/不眠が治る) の断定 NG、 妊婦/授乳婦への安全性を独自判断で断定しない、 個人 note 体験談を一次根拠にしない (kampomedia/公式販売者を優先)、 韓国漢方医を名乗る匿名 SNS の処方は引用しない、 タムト/Tea Therapy 以外の並行輸入無印商品を推奨しない"
+      ],
+      "novelty_vs_existing": "既存 kb_001-010 は化粧品外用、 inner-care/飲用ジャンルは zero。 kw_001 のチムジルバンとは別軸 (日常 routine vs 旅行 1回体験)、 重複なし"
+    },
+    {
+      "id": "kfra_001",
+      "category": "k_fragrance",
+      "persona": "20-30代女性、香水中級者。Diptyque/Le Labo は試したが韓国ニッチ香水ブランドは未開拓、Olive Young 渡韓 or 国内輸入で買える等身大価格(¥3,000-8,000)の主役を探している層",
+      "pain": "韓国香水ブランド (Tamburins / Forment / Granhand / Hince など) が一気に増えて、どれがどの香り系統で、どれが日本国内 (Qoo10 / SHELLPAIR / SUKOSHI MART) で買えるのか体系化された情報が無い。Le Labo 韓国限定 (Santal 33 韓国限定 City Exclusive) との違いも不明",
+      "promise": "韓国ニッチフレグランス 6 ブランド × 各 1-2 本の代表香水を、香調 (citrus / floral / woody / gourmand) ・KRW/JPY 価格・日本入手経路 (Qoo10 公式 / SUKOSHI MART 渋谷 / 直輸入) ・K-pop アイドル着用ソースで完全マッピング。Olive Young Global 公式 URL+商品コード必須",
+      "outline": "導入(なぜ韓国ニッチ香水が今ホット, Olive Young 香水カテゴリ +120% YoY) / Tamburins (Perfume #5 Lambs Wool 50ml ₩115,000) / Forment (Perfumed Hand Cream 50ml ₩12,000 / Eau de Parfum) / Granhand. (Marvellous Stays 200ml ₩48,000, Seongsu アトリエ住所) / Hince (Mood Enhancer Eau de Parfum 50ml ₩98,000) / Borntostandout (One in a Trillion 50ml ₩235,000) / Le Labo 韓国 City Exclusive (Santal 33 Seoul Edition ₩315,000) / 香調マトリクス表 / 日本国内入手ルート 3 経路 (Qoo10 / SUKOSHI MART 渋谷&心斎橋 / 個人輸入 BUYMA) / アイドル着用記録 (Jennie=Tamburins ambassador, IU=Borntostandout 公式インタビュー) / 価格帯別おすすめ",
+      "must_include_assets": "Tamburins公式 https://tamburins.com/ / Forment公式 https://forment.co.kr/ / Granhand. https://granhand.com/ / Hince https://hince.co.kr/ / Borntostandout https://borntostandout.com/ / Le Labo Korea https://www.lelabofragrances.com/kr_ko/ / Olive Young Global perfume カテゴリ URL / SUKOSHI MART 渋谷店舗住所URL / Qoo10 Tamburins 公式ストア URL / Jennie x Tamburins キャンペーン公式 press release",
+      "evidence_required": [
+        "各ブランド公式 URL + 商品名 + KRW 価格 + ml 容量。SUKOSHI MART / Qoo10 等の正規入手経路 URL。アイドル着用は本人 SNS or 公式タイアップ press release のみ (週刊誌・ファンブログ不可)"
+      ],
+      "prohibited_angles": [
+        "個人ブログの香り感想は引用不可 / 並行輸入の真贋を断定しない / アイドル着用を本人 SNS 以外で推測しない / Le Labo 本国 vs 韓国 City Exclusive の価格差を投機目的で煽らない"
+      ],
+      "novelty_vs_existing": "既存80件にfragrance/perfume/香水トピック0件。K-beauty=skincare の暗黙前提を破る初の嗅覚カテゴリ。kc_idol_makeup と persona 重なるが、メイク(視覚)→香水(嗅覚)で完全に別軸",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "affiliate_family": "k_fragrance"
+    },
+    {
+      "id": "kbody_001",
+      "category": "k_bodycare",
+      "persona": "25-40代女性、顔スキンケアは韓国コスメで完成しているが、首から下のボディが乾燥・肘膝の黒ずみ・かかとガサガサで悩んでいる。PDRN/レチノールをボディにも使える商品を知りたい層",
+      "pain": "K-beauty=顔の話ばかりで、韓国のボディスキンケア (ハンドクリーム / ボディローション / フットケア) の最新情報がまとまっていない。日本のドラッグストアのボディクリームは古臭く感じる、韓国の Derma 系ボディ製品が日本でどう買えるか不明",
+      "promise": "韓国ボディスキンケア5カテゴリ (ハンド / ボディローション / フットマスク / ボディスクラブ / バスソルト) × 各カテゴリ 2-3 商品で「顔用と同じ成分 (PDRN / レチノール / ナイアシンアミド) を含む K-bodycare」を ml 単価・購入先・成分濃度で完全比較。Anua / Beauty of Joseon / Numbuzin など顔ブランドのボディライン拡張も網羅",
+      "outline": "導入(K-beauty body 市場 2026 = 顔市場の 1/8 だが YoY+45%, Olive Young データ) / カテゴリ1 ハンドクリーム (Forment Perfumed Hand 50ml ₩12,000 / Round Lab Soybean Hand 50ml ₩8,000) / カテゴリ2 PDRN/レチノール配合ボディローション (Manyo Galactomy Body 250ml ₩28,000 / Beauty of Joseon Glow Body Lotion 公式発売予定) / カテゴリ3 フットマスク (Petitfee Dry Essence Foot Mask 1pair ₩3,000, Olive Young 売上 No.1) / カテゴリ4 ボディスクラブ (Skinfood Black Sugar Body Scrub 250g ₩15,000) / カテゴリ5 韓国式バスソルト&ヨモギ蒸し由来 (Mediflower Mugwort Bath ₩22,000) / 顔→ボディの成分共有マトリクス / 日本入手経路 (Qoo10 / Stylevana / Olive Young Global)",
+      "must_include_assets": "Forment hand cream 商品 URL / Round Lab https://roundlab.co.kr/ ハンドクリーム商品URL / Manyo Factory body 商品URL / Petitfee https://petitfee.com/ Foot Mask 商品URL / Skinfood Black Sugar Scrub 商品URL / Mediflower https://mediflower.co.kr/ / Olive Young Global Body カテゴリ URL / Qoo10 各ブランド公式ストア / 各商品 KRW 価格 + ml/g 容量 verbatim",
+      "evidence_required": [
+        "各商品の公式 URL + KRW 価格 + 容量 + 主要成分濃度 (% or ppm)。Olive Young Best Seller 順位は Olive Young Global ランキングページ URL 必須。アイドル/インフルエンサーレビューは公式タイアップのみ"
+      ],
+      "prohibited_angles": [
+        "顔用 K-beauty 既存記事 (PDRN/レチノール/シカ) の繰り返しを禁止 — ボディ特化視点を死守 / バスソルトの医療効果は断定しない / フットマスクで角質除去後の医学的効能を保証しない"
+      ],
+      "novelty_vs_existing": "既存80件は顔スキンケア+スカルプ(Aromatica)のみ、ボディ (首〜つま先) ゼロ。kb_007 (NAD+顔) と成分一部共有するが用途部位が完全別。スカルプ(Aromatica)既存ともoverlap無し",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "affiliate_family": "k_bodycare"
+    },
+    {
+      "id": "kfit_001",
+      "category": "k_fitness",
+      "persona": "25-35歳女性、K-pop アイドル(NewJeans / IVE / aespa)体型に憧れる。ジムよりピラティス/リフォーマー/小規模スタジオ志向、東京/ソウルで実際に通えるスタジオと自宅で再現できる動画を探している層",
+      "pain": "韓国アイドルの『細いのに筋肉ある』体型を作る方法が断片的 (YouTube ショート切り抜き) で、どの先生・どのスタジオ・どのメニュー (リフォーマー / ケイデンス / GYROTONIC) が本物か判別できない。江南のスタジオ名と日本(東京)の同等スタジオが繋がっていない",
+      "promise": "K-pop アイドル公認ピラティストレーナー 3-4 名 (Yang Jeongwoon=BLACKPINK Jennie 担当 等) + 江南/聖水のリフォーマースタジオ 4 軒 + 東京の同レベル個人スタジオ 3-4 軒を、料金 (₩/¥) ・予約 URL ・指導スタイル (Classical/Contemporary) で完全比較。自宅 reformer alternative (Lagree Megaformer 代用) も価格付きで提示",
+      "outline": "導入(K-pop body の正体=ピラティス+食事、 ジム筋トレではない理由) / アイドル担当トレーナー 3-4 名 (Yang Jeongwoon @yangjeongwoon_pilates / Jisoo Pilates / Eunji Pilates) / 江南/聖水スタジオ 4 軒 (Pilates Avenue Cheongdam / The Pilates 江南 / Re:form Pilates Seongsu / Heyground Pilates) 各料金1回 ₩60,000-90,000 / 東京の同水準個人スタジオ 3-4 軒 (zenplace pilates 表参道 / B-life studio 中目黒 / pilates K 恵比寿 等、個人/小規模のみ、 大手チェーン除外) / リフォーマー vs マットの差 / 自宅再現 YouTube 動画 3 本 (公式公開) / NewJeans Hanni 公認メニュー (TWICE Mina 元バレリーナベース) ※公式インタビュー出典 / 月コスト試算 (週2 通い ¥40,000-60,000)",
+      "must_include_assets": "Yang Jeongwoon Instagram公式 URL / Pilates Avenue Cheongdam 公式 URL+住所 / Re:form Pilates Seongsu 公式 / zenplace pilates 公式 URL ※チェーン判定要確認、 個人スタジオなら採用 / B-life studio 公式 URL / 各スタジオ料金表 KRW/JPY verbatim / アイドル本人インタビュー (Vogue Korea / Marie Claire Korea / 公式 YouTube) URL",
+      "evidence_required": [
+        "各スタジオ公式 URL + 住所 + 1 回料金 (KRW/JPY)。トレーナーは Instagram 認証 + メディア取材歴。アイドル担当の事実は公式インタビュー or 本人 SNS タグ付けのみ (ファンサイト不可)"
+      ],
+      "prohibited_angles": [
+        "大手チェーンジム (ティップネス / コナミ / カーブス) は紹介しない / トレーナーの個人情報を推測しない / 体型変化を保証しない / アイドルの食事量を推測しない (公式コメントのみ)"
+      ],
+      "novelty_vs_existing": "既存80件にフィットネス/運動カテゴリ0件。slow_living(瞑想)とは別軸(能動的身体活動)。チムジルバン(受動的wellness)とも別。kc_idol_makeup と persona 重なるが視点が完全別(外見再現→身体作り)",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "affiliate_family": "k_fitness"
+    },
+    {
+      "id": "kmed_001",
+      "category": "k_medicine_beauty",
+      "persona": "30-45歳女性、美容医療経験者(国内HIFU/ダーマペン 1-2回経験あり)、 次は本場韓国・江南のクリニックで受けてみたい層。 渡韓2泊3日で受けられる施術と日本人窓口のあるクリニックを探している",
+      "pain": "江南の美容皮膚科 (오라클 / 셀럽 / 더모스트 / 차앤박) の評判が韓国語ブログ・カカオ口コミに散乱、日本人向けの体系的比較が皆無。日本人窓口/通訳/円建て決済/トラブル時の対応 が不透明",
+      "promise": "江南の信頼クリニック 4-5 院 (個人/中規模、 大手チェーン医療法人除外) を「日本人窓口有無 / 主力施術 / 価格 (KRW) / 通訳 / 日本人ブログ実例」で完全比較。Inmode (FaceTite) ・ Shurink (HIFU韓国版) ・ Rejuran (PDRN注射、 原産国) ・ Volnewmer (RF) など『韓国でしか正規・安価で受けられない施術』を厚労省未承認の事実を明記したうえで提示",
+      "outline": "導入(渡韓美容医療 2026 市場規模 + 日本人渡韓数 KTO データ) / 韓国でしか受けられない/安い施術 4 つ (Rejuran PDRN ₩300,000/回 vs 日本 ¥50,000 / Shurink HIFU ₩200,000 vs 日本 ¥80,000 / Volnewmer RF ₩500,000 / Inmode FaceTite ₩2,500,000) / 江南クリニック 4-5 院比較 (Oracle 江南本院 / Cheongdam U / 르페 / Bareun) ※個人/中規模クリニックのみ、 大手医療チェーン除外 / 日本人窓口の質チェックリスト / 渡韓2泊3日モデル日程 / トラブル時の連絡先 (在韓日本大使館 / 韓国保健福祉部 1399) / 厚労省未承認施術の自己責任明記 / 推奨 vs 非推奨条件",
+      "must_include_assets": "Oracle Dermatology 公式 URL (江南本院) / Cheongdam U Clinic 公式 URL / 르페 클리닉 公式 / 各クリニック価格表 (KRW) スクリーンショット元 URL / Rejuran 公式 https://rejuran.co.kr/ / Shurink 公式 / Inmode 公式 / 在韓日本大使館 領事サービス URL / 韓国保健福祉部 외국인환자유치 등록 검색 URL / KTO (韓国観光公社) 医療観光統計 URL",
+      "evidence_required": [
+        "各クリニック公式 URL + 住所 + 主力施術 KRW 価格 + 日本人窓口の有無 (公式記載のみ、 ブログ伝聞不可)。 機器メーカー (Rejuran/Shurink/Inmode/Volnewmer) 公式 URL 必須。 韓国保健福祉部の『외국인환자 유치 의료기관』登録番号で正規施設確認"
+      ],
+      "prohibited_angles": [
+        "効果保証は絶対禁止(医療広告ガイドライン) / 個人ブログのビフォーアフター画像転載禁止 / 大手医療法人系チェーンクリニック非紹介 / 厚労省未承認施術を日本で違法に勧めない / 価格を煽って渡韓を断定的に勧めない / アフィリエイト的なクリニック斡旋にしない"
+      ],
+      "novelty_vs_existing": "既存 kb_medical_home (施術後ホームケア視点) と kc_kbeauty_medical (日本で受けられるトレンド紹介) はあるが、 本記事は『渡韓して現地で受ける』『韓国でしか安く受けられない 4 施術』にピンポイント。 完全に別レイヤー。 既存はホームケア+日本クリニック、 本件は渡韓自体が主題",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "affiliate_family": "k_medicine_beauty"
+    },
+    {
+      "id": "ktech_001",
+      "category": "k_tech_gadget",
+      "persona": "25-40歳男女、ガジェット好き+K-beauty/K-cultureに関心、 日本未発売の韓国独占スマートデバイス (LG StanbyME / Samsung Bespoke AI / 韓国限定スマホアクセサリ) を個人輸入 or 渡韓ついでに買いたい層",
+      "pain": "LG StanbyME Go (バッテリー内蔵27型移動式TV) / Samsung Bespoke AI 関連美容家電 / Coway 美容ミラー / 韓国独占の Galaxy/iPhone ケースブランド (Casetify Korea exclusive 等) — 日本未発売 or 並行輸入のみで体系情報無し。 渡韓ついでに何が買い価値あるか分からない",
+      "promise": "韓国でしか正規購入できない or 圧倒的に安い『K-tech ガジェット』5 カテゴリ × 各 1-3 製品を、KRW 価格 ・ 日本での個人輸入経路 (Coupang Global / Gmarket Global / Qoo10) ・ 関税試算 ・ 電圧/PSE 問題で完全マッピング。 LG StanbyME Go (₩1,200,000) ・ Samsung Bespoke 美容冷蔵庫 ・ Coway BREMA 美容ミラー ・ Galaxy Z Flip Korea Edition ケース ブランドなど",
+      "outline": "導入(韓国家電 2026 トレンド = 美容家電 + ポータブル) / カテゴリ1 ポータブル大型スクリーン (LG StanbyME Go 27LX5QKNA ₩1,200,000) / カテゴリ2 美容冷蔵庫 (Samsung Bespoke Beauty Fridge / Coway Beauty Fridge ₩500,000) / カテゴリ3 美容ミラー&LEDマスク (Cellreturn LED Mask Premium ₩1,800,000 / Medicube Age-R Booster ₩300,000) / カテゴリ4 韓国限定スマホアクセサリ (Casetify Korea Exclusive collab / NewJeans collab Galaxy ケース) / カテゴリ5 K-pop アイドル使用ガジェット (BTS Jungkook 使用 Sony WF-1000XM5 等は除外、 韓国ブランドのみ) / 電圧 220V→100V 問題 / PSE マーク無し問題 / Coupang Global / Gmarket Global 個人輸入手順 / 関税試算 (¥16,666 超で課税)",
+      "must_include_assets": "LG StanbyME Go 公式 URL https://www.lge.co.kr/ + 型番 27LX5QKNA / Samsung Bespoke 公式 URL + 美容冷蔵庫モデル番号 / Coway BREMA 公式 URL / Cellreturn 公式 https://cellreturn.com/ / Medicube Age-R 公式 / Casetify Korea https://www.casetify.com/ko-kr/ / Coupang Global https://global.coupang.com/ / Gmarket Global https://global.gmarket.co.kr/ / 韓国 KC 認証 vs 日本 PSE の差異公式資料 (METI URL) / 関税試算 税関 URL",
+      "evidence_required": [
+        "各製品の韓国公式 URL + 型番 + KRW 価格。 日本での個人輸入経路は Coupang Global / Gmarket Global / Qoo10 の公式 URL。 PSE/電圧情報は METI 公式資料。 関税は税関 (Japan Customs) 公式 URL"
+      ],
+      "prohibited_angles": [
+        "PSE 無し電化製品の使用を推奨しない (販売者ではなく購入者個人責任で使うことを明記) / 並行輸入業者の煽り価格を信用しない / 韓国限定アイドルコラボ品を投機目的(転売)で勧めない / Apple/Sony 等非韓国ブランドを混ぜない(韓国独占に絞る)"
+      ],
+      "novelty_vs_existing": "既存80件にtech/gadget/家電カテゴリ完全に0件。 K-beauty 隣接 (美容冷蔵庫 / LEDマスク) だが商品が device であり消耗品スキンケアと完全別軸。 physical_ai 既存はあるが研究/業界系で、 本件は consumer gadget。 重複なし",
+      "rotation_weight": 2,
+      "cooldown_days": 14,
+      "affiliate_family": "k_tech_gadget"
+    }
+  ]
+}
