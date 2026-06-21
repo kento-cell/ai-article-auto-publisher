@@ -23,6 +23,14 @@
   bias 是正後の新 topics (orc_001 oral_care, kw_001 k_wellness) が早速採用
   された = 152 topic catalog の rotation 効果実証。
 
+  **画像再生成 (08:56 完了)**: routine 中 ChatGPT CDP 失敗 → Unsplash fallback
+  4件。 user 指示で Brave 起動 (port 9222 reachable) → _regen_today_note_
+  with_chatgpt.py 引数 article_id で 4件再実行 → 12画像 (cover×4+inline×8)
+  全て ChatGPT 差し替え成功 (timeout 2回 retry あり)。 sweep 結果 leak 0件。
+  ⚠️ TARGETS hard-coded で初回引数なしだと 6-03 K-beauty 3 件 (PDRN/シカ/
+  緊急ケア) が再生成される副作用あり (致命的でないが古い記事の画像が refresh
+  されてしまった)。
+
 - 6-21 夜 `/loop` 再起動 (iter4-5、 bias-free 22件追加): user の bias 指摘以降
   全 prompt を中立化、 既存 105 を avoid に渡して 2 イテレーションで +22 件:
   - **iter4 (+10)**: br_001 ビジネス書独立横断、 ck_001 Vermicular vs Staub、
