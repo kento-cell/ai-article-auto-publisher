@@ -6,11 +6,31 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-15 07:18 JST
+2026-06-21 15:26 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-21 夕方 `/loop` 自走 (3イテレーション完走):
+  user「10 --learn 埋め込んで 記事ネタ増やして」 を dynamic-mode loop で実行。
+  --learn (RAG 591→621 chunks reindex 完了)、 3 イテレーションの海外バズ
+  Workflow で **knowledge_topics 68→85 (+17件)** に拡大。
+  - **iter1** (+8): kb_008 男性K-beauty(Laneige Homme), kb_009 スカルプケア
+    (Aromatica), kb_010 Tranexamic Acid (Anua), kc_005 Netflix「Teach You
+    a Lesson」, kc_006 フォトカード二次流通 $500M, hg_007 益善洞マッコリバー,
+    hg_008 日本国内スペシャルティ新店, cb_004 Time Out コーヒー世界100
+  - **iter2** (+4): kf_001 K-fashion SFW新興4ブランド(MÜNN/MMAM/SATUR/
+    2000Archives), kfo_001 K-foodコンビニスイーツ4種, kw_001 ウェルネス
+    (チムジルバン+テンプルステイ), kw_002 韓方茶3種
+  - **iter3** (+5): kfra_001 韓国香水6ブランド(Tamburins他), kbody_001
+    K-bodycare 5カテゴリ, kfit_001 K-popピラティス, kmed_001 渡韓美容医療
+    (江南クリニック), ktech_001 K-tech ガジェット (LG StanbyME 他)
+  - **新カテゴリ 8 追加**: k_fashion / k_food / k_wellness / k_fragrance /
+    k_bodycare / k_fitness / k_medicine_beauty / k_tech_gadget
+  各 topic は verbatim 固有名詞+URL+価格込み (ハルシ防止素材完備)。
+  rotation_weight 2.0 で次回 generate から優先サンプリング、 cooldown_days 14。
+  data/knowledge_topics.json は gitignored、 docs/strategy/2026-06-21_
+  knowledge_topics_after_loop.json にミラー (cross-session portability)。
 - 6-19 夕方 `/routine`: learn→generate **4合格/3不合格** → publish (zenn 2 scrap +
   note 2本)。 publish 内訳:
   - nddb0f29b6a04 松島かのん等身大抱き枕 (¥0、 ChatGPT 画像失敗 → Unsplash fallback)
@@ -452,11 +472,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [和泉芳怜、ビキニ姿でたわわな柔らか美ボディ披露…](https://note.com/<NOTE_USER>/n/n12e336a94735?app_launch=false)
-- [きめ細かさの限界へ！ 次期Galaxy Z Fold8、ディスプレイの鮮明さがさらに向上か…](https://note.com/<NOTE_USER>/n/nef4720dcb32f?app_launch=false)
-- [K-POP 4 世代 主要グループ メンバー別 メイク 3-5 タイプ + 再現に必要な日本入手…](https://note.com/<NOTE_USER>/n/n1bb1790e9701?app_launch=false)
-- [Anthropicの新モデル「Claude Fable 5 & Mythos 5」を徹底解説…](https://zenn.dev/kento_cell/scraps/42b5e7ff0a28db)
-- [スタミナに注目！ 次期「Galaxy S27 Pro」は6.5型で5000mAhバッテリー搭載か…](https://note.com/<NOTE_USER>/n/n3570c3d68048?app_launch=false)
+- [睡眠時の心地よさに驚き！ 「Shark TURBOBLADE ハイパワータワーファン」は扇風機の…](https://note.com/<NOTE_USER>/n/ncd3ce0e3bf46?app_launch=false)
+- [松島かのんをリアルサイズで体感！等身大抱き枕カバー発売中 水着違いで3種類展開 発売記念イベント…](https://note.com/<NOTE_USER>/n/nddb0f29b6a04?app_launch=false)
+- [TimeProVe: Propose, then Verify for Efficient Lo…](https://zenn.dev/kento_cell/scraps/4a00a00d933fc3)
+- [JanusMesh: Fast and Zero-Shot 3D Visual Illusion…](https://zenn.dev/kento_cell/scraps/e4b421222030f6)
+- [グラドルが熱望した“紙じゃなきゃできない”写真集とは？「今日も下版はできません！」第121話…](https://note.com/<NOTE_USER>/n/neb29b095c5a6?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -465,7 +485,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - (no commits in last 48h)
+  - 7f096e4 fix(image): remove redundant stored[] label write from _publish_note (NameError noise)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
