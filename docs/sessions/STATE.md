@@ -31,6 +31,17 @@
   緊急ケア) が再生成される副作用あり (致命的でないが古い記事の画像が refresh
   されてしまった)。
 
+  **AIで遊ぼう コンテスト続編 #2 publish (14:05)**:
+  user 指示で続編記事を即生成・publish。 タイトル「【運用日誌②】AIに『ネタ
+  増やせ』と5回叩いた1日、 152個生成・$135燃焼・韓国偏重まで起こした #AIで
+  遊ぼう」 (12,565字、 AIフェスティバル 7回言及)。 内容: 昨日 loop 10 iter
+  の全記録 + K-bias 誤適用と是正 + ccusage $135 燃焼 + agent exhaustion 宣言
+  + 今朝 routine の orc_001/kw_001 採用 (rotation 効果実証 33%) + Brave CDP
+  事故 + image-regen 副作用 + 自己修復 2 対策。 URL: n6300a1a2f77e (¥0)。
+  ChatGPT 画像 batch 1/3/5 timeout で 2 枚 ChatGPT + 2 枚 Unsplash 混在、
+  cover も生成済。 ⚠️ **タグ field が再び空** (note UI 既知制限、 user 手動
+  追加リストに #AIで遊ぼう 追加候補)。
+
 - 6-21 夜 `/loop` 再起動 (iter4-5、 bias-free 22件追加): user の bias 指摘以降
   全 prompt を中立化、 既存 105 を avoid に渡して 2 イテレーションで +22 件:
   - **iter4 (+10)**: br_001 ビジネス書独立横断、 ck_001 Vermicular vs Staub、
