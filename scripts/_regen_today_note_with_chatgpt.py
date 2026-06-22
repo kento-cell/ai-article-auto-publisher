@@ -41,16 +41,38 @@ logging.basicConfig(
 logger = logging.getLogger("regen_today_note")
 
 
-# Default targets (editable per batch). 2026-06-03: today's 3 K-beauty
-# note posts that published with Unsplash fallback (Brave CDP was cold)
-# — regen cover+inline via ChatGPT kbeauty_poster preset.
-# Run: py scripts/_regen_today_note_with_chatgpt.py \
-#        --preset kbeauty_poster --genre "K-beauty / 韓国コスメ"
-TARGETS = [
-    "note-PDRNの科学的根拠_自宅ケア商品__R-1d19f756",
-    "note-シカ__Centella_Asiatic-d9db9ea8",
-    "note-トラブル別_緊急ケア_5_ステップ___-5ae5455a",
-]
+# Default targets: when no positional args are given, auto-pick the note articles
+# published TODAY (Asia/Tokyo) by walking data/articles/ and filtering by mtime
+# and URL host. Old hard-coded TARGETS = [PDRN/シカ/緊急ケア] caused a 6-22 morning
+# accident where K-beauty articles from 6-03 were silently re-generated instead of
+# today's 4 posts. Keep TARGETS empty so the auto-discovery path is the default.
+TARGETS: list[str] = []
+
+
+def _today_note_targets() -> list[str]:
+    """Return article_ids whose JSON was touched today (Asia/Tokyo) and whose
+    published_url points to note.com. Falls back to empty list if discovery fails."""
+    import datetime as _dt
+    articles_dir = _REPO / "data" / "articles"
+    if not articles_dir.exists():
+        return []
+    today_jst = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9))).date()
+    out: list[str] = []
+    for path in articles_dir.glob("*.json"):
+        try:
+            mt = _dt.datetime.fromtimestamp(
+                path.stat().st_mtime,
+                tz=_dt.timezone(_dt.timedelta(hours=9)),
+            ).date()
+            if mt != today_jst:
+                continue
+            d = json.loads(path.read_text(encoding="utf-8"))
+            url = (d.get("published_url") or d.get("note_url") or "")
+            if "note.com" in url and "kanazawa" in url:
+                out.append(path.stem)
+        except Exception:  # noqa: BLE001
+            continue
+    return sorted(out)
 
 
 def _kill_brave() -> None:
@@ -118,10 +140,16 @@ def main() -> int:
         elif a.startswith("--genre="):
             genre_hint = a.split("=", 1)[1]
 
-    # Slugs are positional args (not flags, not flag-values); else TARGETS.
-    targets = [
-        a for a in argv if not a.startswith("-") and a not in consumed
-    ] or TARGETS
+    # Slugs are positional args (not flags, not flag-values); else auto-discover
+    # today's note posts; else fall through to (empty) TARGETS.
+    positional = [a for a in argv if not a.startswith("-") and a not in consumed]
+    if positional:
+        targets = positional
+    else:
+        targets = _today_note_targets() or TARGETS
+        if targets:
+            logger.info("auto-discovered today's note targets (%d): %s",
+                        len(targets), targets)
     if style_preset:
         logger.info("style_preset=%s genre_hint=%s", style_preset, genre_hint)
 
