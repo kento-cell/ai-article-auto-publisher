@@ -11,6 +11,18 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-23 朝 `/routine` (catalog rotation 効果 100% 達成):
+  learn(280 samples/**627 chunks** = 昨日 621+6) → generate **4 合格/3 不合格**
+  (rejected: AutoDex arXiv、 K-beauty 化粧水 dup、 レグザ Mini LED) →
+  bulk_approve → publish:
+  - **note 3件**: ¥0 n8ec55d87dd02 ランニングシューズ (**rn_001 採用**),
+    ¥0 n3c284a80071d 大学生PC (**std_001 採用**), ¥500 n3d431c4cd205 家庭用
+    エスプレッソ Breville (**cb_005 採用** ⚠️ membership 手動追加)
+  - **zenn 1件 scrap**: Lift4D 4次元再構築 (arXiv 由来)
+  **knowledge_topics 由来 3/3 = 100% 採用** (昨日 33%→今日 100%、 catalog
+  rotation が完全稼働実証)。 タイトル「嘘だった」「騙される」 等の border-
+  line 煽り (現在の deny pattern には未収録) を観測対象に。
+
 - 6-22 朝 `/routine` (新 topics 効果検証):
   learn(280 samples/621 chunks) → generate **6 合格/1 不合格** (Cellbn エクソソーム
   rejected) → bulk_approve → publish:
