@@ -11,6 +11,21 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-24 朝 `/routine` (catalog rotation 100% 維持 + iter10 最後の novel pocket 全当選):
+  learn(280 samples/**631 chunks** ← 昨日 627+4 = 6-23 publish 反映) →
+  generate **5 合格/2 不合格** (rejected: Tauri zenn、 K-beauty 化粧水 dup) →
+  bulk_approve → publish:
+  - **note 4件**: ¥0 n3ca3b0ff5124 観葉植物 (**gd_001/gd_002 採用**), ¥0
+    n1cefedacfe26 オフィスチェア BIFMA+Aeron/Leap/コンテッサ/バロン
+    (**wfh_001 採用 ← iter10 last-pocket**), ¥500 ncc692fa39a0d スマート
+    ホーム Matter 1.2+SwitchBot/Aqara/Apple (**sh_001 採用 ← iter10 last-
+    pocket** ⚠️membership), ¥500 n6132150d8efd 猫種 TICA/CFA/JKC+アニコム
+    白書 (**pet_005 採用 ← iter10 last-pocket** ⚠️membership)
+  - **zenn 1件 scrap**: Copilot App (AI/tech RSS)
+  **knowledge_topics 由来 4/4 = 100% 採用維持** (昨日 100%→今日も 100%)。
+  特に iter10 で agent が exhaustion 宣言した最後の追加分 (wfh/sh/pet_cat)
+  が全件当選 = 『最後の novel pocket』 評価が正しかった実証。
+
 - 6-23 朝 `/routine` (catalog rotation 効果 100% 達成):
   learn(280 samples/**627 chunks** = 昨日 621+6) → generate **4 合格/3 不合格**
   (rejected: AutoDex arXiv、 K-beauty 化粧水 dup、 レグザ Mini LED) →
