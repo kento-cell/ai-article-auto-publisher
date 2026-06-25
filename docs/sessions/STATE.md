@@ -11,6 +11,20 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-25 朝 `/routine` (タイトル劣化警告: 「嘘だった」 系連続発生):
+  learn(280 samples/**636 chunks**) → generate **5 合格/2 不合格** → publish:
+  - **note 3件**: ¥0 n1d5e2ef4a597 マットレス腰痛 (**sl_006 採用**)、 ¥0
+    n60154d5d337f EDWIN 夏ファッション (GetNavi)、 ¥500 ned897bbeed07
+    iPhone usbliter8 脆弱性 (GetNavi、 ⚠️membership)
+  - **zenn 2件 scrap**: MulmoClaude AI エージェント、 iOS Go/Rust 性能比較
+
+  ⚠️ **タイトル劣化警告**: 3 日連続で「嘘だった」「騙される」「致命的」
+  系の煽り 7 件発生 (6-23 ランニング+大学生PC、 6-25 マットレス+EDWIN+
+  iPhone)。 過去事故 (「99%が知らない」 = ops_incidents #21) と完全同路線、
+  **deny pattern 追加候補**。 提案: `main.py::_PUBLISH_DENY_PATTERNS` に
+  「嘘(だった|でした|です)」「実は嘘」「騙される」「致命的(欠陥|失敗|ミス)」
+  を追加 (要 user 判断、 即 ban すると generate yield 下がる)。
+
 - 6-24 朝 `/routine` (catalog rotation 100% 維持 + iter10 最後の novel pocket 全当選):
   learn(280 samples/**631 chunks** ← 昨日 627+4 = 6-23 publish 反映) →
   generate **5 合格/2 不合格** (rejected: Tauri zenn、 K-beauty 化粧水 dup) →
