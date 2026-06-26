@@ -11,6 +11,21 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- 6-26 朝 `/routine` (iter10 dp_001 再当選 + 持ち越し 1件発生):
+  learn(280 samples/**641 chunks**) → generate **6 合格/1 不合格** →
+  bulk_approve 6件 → publish:
+  - **note 4件**: ¥0 n6ec837998f43 HSP 武田友紀「繊細さん」 (**mc_001 採用**)、
+    ¥0 n0a17e64c4c22 能登地震 備蓄リスト (**dp_001 採用 ← iter10 last-pocket
+    再当選**)、 ¥500 nb5da77797edd バナナ常温保存 (GetNavi ⚠️)、 ¥500
+    n927ad4830398 冷却リュック (GetNavi ⚠️)
+  - **zenn 1件 scrap**: VSCode→Zed 乗り換え (AI/tech)
+  - **note 1件 翌日持ち越し**: 電源タップ (cap 4 件到達)
+  ⚠️ 「嘘だった」 系 **5件目発生**「冷却ガジェットは嘘だった」 (4日連続)。
+  累計: 嘘だった ×5、 騙される ×1、 致命的 ×1、 禁断 ×1、 終止符 ×1。
+  ops_incidents #21 と完全同じ pattern、 **deny pattern 追加判断推奨**:
+  `r'嘘[（(]?だった|嘘でした|実は嘘'` + `r'騙される|騙された'` +
+  `r'致命的(?:欠陥|失敗|ミス|問題)'`。
+
 - 6-25 朝 `/routine` (タイトル劣化警告: 「嘘だった」 系連続発生):
   learn(280 samples/**636 chunks**) → generate **5 合格/2 不合格** → publish:
   - **note 3件**: ¥0 n1d5e2ef4a597 マットレス腰痛 (**sl_006 採用**)、 ¥0
