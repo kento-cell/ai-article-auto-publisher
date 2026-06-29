@@ -6,10 +6,22 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-22 06:24 JST
+2026-06-30 07:30 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
+
+- 6-30 朝 `/routine` (snr_001 初当選、 「嘘だった」 系 6件目):
+  learn(280 samples/**648 chunks** ← 4日前 641+7) → generate **7 合格/0
+  不合格** → bulk_approve → publish:
+  - **note 4件**: ¥0 n68e9edbdb20c 終活書類 (**snr_001 採用 ← iter7 初当選**),
+    ¥0 n38859ff3c26f 生乾き臭は**嘘だった** (GetNavi)、 ¥500 n7793ca8ea17d
+    洗面所収納 (GetNavi ⚠️)、 ¥500 n4c8806ae67b2 いびき対策 (GetNavi ⚠️)
+  - **zenn 2件 scrap**: ECS ecspresso、 Claude Code バグ自動ルール化
+  - **note 1件 翌日持ち越し**: ヘアアイロン置き場 (cap 到達)
+  ⚠️ 「嘘だった」 系 **6件目発生**「生乾き臭は嘘だった」 (5日連続)。
+  累計: 嘘だった ×6、 騙される ×1、 致命的 ×1、 禁断 ×1、 終止符 ×1、
+  根絶 ×1、 撲滅 ×1。 **deny pattern 追加が依然必要**。
 
 - 6-26 朝 `/routine` (iter10 dp_001 再当選 + 持ち越し 1件発生):
   learn(280 samples/**641 chunks**) → generate **6 合格/1 不合格** →
@@ -586,11 +598,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [睡眠時の心地よさに驚き！ 「Shark TURBOBLADE ハイパワータワーファン」は扇風機の…](https://note.com/kento_kanazawa/n/ncd3ce0e3bf46?app_launch=false)
-- [松島かのんをリアルサイズで体感！等身大抱き枕カバー発売中 水着違いで3種類展開 発売記念イベント…](https://note.com/kento_kanazawa/n/nddb0f29b6a04?app_launch=false)
-- [TimeProVe: Propose, then Verify for Efficient Lo…](https://zenn.dev/kento_cell/scraps/4a00a00d933fc3)
-- [JanusMesh: Fast and Zero-Shot 3D Visual Illusion…](https://zenn.dev/kento_cell/scraps/e4b421222030f6)
-- [グラドルが熱望した“紙じゃなきゃできない”写真集とは？「今日も下版はできません！」第121話…](https://note.com/kento_kanazawa/n/neb29b095c5a6?app_launch=false)
+- [ネット騒然･･･「電源タップのあり方」を根本から変えてきやがった…](https://note.com/kento_kanazawa/n/nc59c42ccb47e?app_launch=false)
+- [リュックを「背負ってるほうが涼しい」に変えてくれた！使い勝手を損なわないのが嬉しいよ…](https://note.com/kento_kanazawa/n/n927ad4830398?app_launch=false)
+- [物価高の味方、「バナナ」。山崎実業のスタンドに吊るしたら、いつもより黒ずみが少なく甘くなりました…](https://note.com/kento_kanazawa/n/nb5da77797edd?app_launch=false)
+- [内閣府防災・消防庁・首相官邸『災害に対するご家庭での備え』 を一次ソースに、 単身 / 2 人 …](https://note.com/kento_kanazawa/n/n0a17e64c4c22?app_launch=false)
+- [日本でHSP概念を広めた武田友紀著の代表作1冊『「繊細さん」の本』を軸に、専門カウンセラーの背景…](https://note.com/kento_kanazawa/n/n6ec837998f43?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -599,11 +611,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - ac148f0 ops(topics): /loop iter10 FINAL +5 (147→152, K 24%, 62 cats) — agent declared exhaustion
-  - 48bb2ab ops(topics): /loop iter9 +7 seasonal-ROI + resegment (140→147, K 25%, 59 cats)
-  - 43e7ee5 ops(topics): /loop iter8 +7 super-super-niche (133→140, K 27%, 55 cats)
-  - c3932e6 ops(topics): /loop iter7 +8 super-niche persona/super-local (125→133, K 30%→28%, 48 cats)
-  - a5ccf84 ops(topics): /loop iter6 final +8 virgin categories (117→125, K 32%→30%, 40 categories)
+  - (no commits in last 48h)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
