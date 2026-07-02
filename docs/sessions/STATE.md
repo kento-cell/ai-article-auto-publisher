@@ -6,10 +6,52 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-06-30 07:30 JST
+2026-07-02 08:45 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
+
+- 7-2 (在宅化 + claude-in-chrome 突破 + Gemini 画像 PoC):
+  1. **スケジューラ全停止**: 在宅勤務開始で ai-publish-slot-{MON..FRI} 5個 Disable。
+     memory `feedback_no_scheduler` 更新済。
+  2. **タイトル『嘘だった』根本修正** commit `9b0de41`: prompt 側で必殺
+     テンプレ #1 の『そのまま使え』 → 『型は真似てよいが表現は毎回変える』、
+     煽り節に『嘘だった』 封印明記、 数字予告系ブラケットから【100人に聞いた】
+     【99%が知らない】 除去 (publish deny 済との整合)。
+  3. **catchup 配信** (6-22 → 7-2 の 10日分): 22 items / 4 Slack msgs /
+     avg 433字 / refusal 0。
+  4. **claude-in-chrome (Chrome 拡張) が Playwright/CDP の壁を突破**:
+     - Playwright/CDP は `isTrusted=false` イベントで note の React state に
+       登録されず失敗し続けていた。 claude-in-chrome は実ブラウザ拡張で
+       trusted human gesture (isTrusted=true) を発生。
+     - **コンテスト応募 2件完了**: n444be2daa2ef (contest #1) と
+       n6300a1a2f77e (contest #2) 両方で #AIで遊ぼう 参加 → 「記事が公開
+       されました」 モーダル + バナー青枠 persist 確認。 fresh tab で重い
+       記事 (12,565字) の renderer 凍結を回避する pattern 確立。
+     - **重要発見**: コンテスト参加は「ハッシュタグ」 ではなく公開設定
+       画面「お題/コンテストに参加」 セクションのバナー click → 「内容に
+       同意して応募」 → 「更新する」 という別機構だった。 6-17 以来「タグ
+       追加」 として全滅していたのは根本的に間違った UI を叩いていた。
+     - **membership 累積 10件全消化**: Jackery / Breville / Matter / 猫種 /
+       iPhone / バナナ / リュック / 洗面所 / いびき / Galaxy Watch を全て
+       「すべてのプラン (全員に公開)」 プランに「追加済」。 UI 変わっていて
+       「選択モード」 ではなく per-article モーダルの簡易 flow に。
+     - memory `project_ai_de_asobou_contest` 更新済。
+  5. **画像生成先を ChatGPT → Gemini に切替する PoC 成功**:
+     - user が 7/15 で ChatGPT サブスク解約 → 現状の画像 pipeline が実質
+       broken。 Gemini 3.5 Flash (無料) で代替検討。
+     - 案 C (完全 Claude in Chrome) は blob URL の <a download> が拡張
+       sandbox で発火せず、 base64 経由だと 1画像 90K token = $1-2 で
+       月 $1200 級コストになり不成立と確定。
+     - **案 B (画像だけ Gemini + Playwright、 note publish は Playwright
+       継続)** に pivot。 `scripts/_gemini_poc.py` で Playwright + Brave
+       CDP で Gemini 3.5 Flash に「画像を生成してください: <en prompt>」
+       送信 → blob img → **canvas.toDataURL で CORS 回避 → base64 →
+       PNG 1024×572 保存**、 25秒/枚 で成功実証 (token 0)。
+     - **残実装** (次セッション): `generators/gemini_batch_helper.py`
+       (chatgpt_batch_helper 2543行 の流用+スリム化、 目標 500-800行) +
+       `main.py` に `USE_GEMINI_IMAGES=1` env 導入 + dry-run 1記事通し。
+     - ChatGPT 経路は残す (rollback 可能に)。
 
 - 6-30 朝 `/routine` (snr_001 初当選、 「嘘だった」 系 6件目):
   learn(280 samples/**648 chunks** ← 4日前 641+7) → generate **7 合格/0
@@ -598,11 +640,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [ネット騒然･･･「電源タップのあり方」を根本から変えてきやがった…](https://note.com/kento_kanazawa/n/nc59c42ccb47e?app_launch=false)
-- [リュックを「背負ってるほうが涼しい」に変えてくれた！使い勝手を損なわないのが嬉しいよ…](https://note.com/kento_kanazawa/n/n927ad4830398?app_launch=false)
-- [物価高の味方、「バナナ」。山崎実業のスタンドに吊るしたら、いつもより黒ずみが少なく甘くなりました…](https://note.com/kento_kanazawa/n/nb5da77797edd?app_launch=false)
-- [内閣府防災・消防庁・首相官邸『災害に対するご家庭での備え』 を一次ソースに、 単身 / 2 人 …](https://note.com/kento_kanazawa/n/n0a17e64c4c22?app_launch=false)
-- [日本でHSP概念を広めた武田友紀著の代表作1冊『「繊細さん」の本』を軸に、専門カウンセラーの背景…](https://note.com/kento_kanazawa/n/n6ec837998f43?app_launch=false)
+- [山崎実業×100均で「出し入れしやすいヘアアイロン置き場」が誕生！ 朝の準備がラクになったよ…](https://note.com/kento_kanazawa/n/n23947bb2e923?app_launch=false)
+- [いびきの悩み、まずは知ることから。記録と止めるサポートもしてくれる睡眠ガジェットがあるよ…](https://note.com/kento_kanazawa/n/n4c8806ae67b2?app_launch=false)
+- [ドライヤーの“置き場迷子”が解決。山崎実業のホルダーで毎朝のプチストレスが消えたよ…](https://note.com/kento_kanazawa/n/n7793ca8ea17d?app_launch=false)
+- [布団のジメジメ、敷くだけで終了。干せば何度でも復活する除湿シートが8％オフ…](https://note.com/kento_kanazawa/n/n38859ff3c26f?app_launch=false)
+- [コクヨ『もしもの時に役立つノート LES-E101』(¥1,540)を軸に、法的拘束力なしのエン…](https://note.com/kento_kanazawa/n/n68e9edbdb20c?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -611,7 +653,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - (no commits in last 48h)
+  - 669e502 ops(routine): 6-30 routine 完了 — snr_001 初当選、 「嘘だった」 6件目
 <!-- /AUTO:pipeline -->
 
 ## Pointers
