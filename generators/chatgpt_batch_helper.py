@@ -46,6 +46,28 @@ def is_chatgpt_image_gen_enabled() -> bool:
     return val not in {"", "0", "false", "no", "off"}
 
 
+def is_gemini_image_gen_enabled() -> bool:
+    """``USE_GEMINI_IMAGES`` toggle — swaps the image backend from
+    ChatGPT to Gemini (gemini.google.com).
+
+    When ON, chatgpt_image_batch instantiates GeminiImageGenerator
+    instead of ChatGPTImageGenerator. All prompt building, style
+    selection, dup detection, and Pollinations/Unsplash fallback
+    remain unchanged — only the LLM UI target flips.
+
+    Introduced 2026-07-02 after ChatGPT Plus was cancelled and Free
+    tier's DALL-E cap dropped to ~2-3 images/day (insufficient for
+    daily 4-article × 4-5 image batch). Gemini 3.5 Flash generates
+    images with the 「画像を生成してください:」 prefix on the Free
+    tier without a hard daily cap (verified PoC 2026-07-02).
+
+    Default: OFF. Explicit opt-in via .env keeps the existing ChatGPT
+    path as rollback if Gemini rate-limits or UI changes break things.
+    """
+    val = os.environ.get("USE_GEMINI_IMAGES", "0").strip().lower()
+    return val in {"1", "true", "yes", "on"}
+
+
 def is_pollinations_fallback_enabled() -> bool:
     """``USE_POLLINATIONS_FALLBACK`` toggle (default OFF).
 
@@ -554,10 +576,18 @@ def chatgpt_image_batch(
         )
         return None, []
 
+    # 2026-07-02: USE_GEMINI_IMAGES=1 swaps the backend. Gate on
+    # chatgpt_usable so USE_CHATGPT_IMAGES=0 still fully disables the
+    # image path (both env flags OFF → skip to Pollinations/Unsplash).
+    use_gemini = chatgpt_usable and is_gemini_image_gen_enabled()
+
     try:
         from generators.visual_prompt_builder import build_visual_prompt
         if chatgpt_usable:
-            from generators.chatgpt_image_generator import ChatGPTImageGenerator
+            if use_gemini:
+                from generators.gemini_image_generator import GeminiImageGenerator
+            else:
+                from generators.chatgpt_image_generator import ChatGPTImageGenerator
     except ImportError as exc:
         logger.warning("image gen unavailable: %s", exc)
         return None, []
@@ -702,12 +732,16 @@ def chatgpt_image_batch(
     ]
 
     if chatgpt_usable:
+        backend_label = "Gemini" if use_gemini else "ChatGPT"
         logger.info(
-            "Calling ChatGPT image gen (%d images, ~%d sec)…",
-            len(all_prompts), len(all_prompts) * 60,
+            "Calling %s image gen (%d images, ~%d sec)…",
+            backend_label, len(all_prompts), len(all_prompts) * 60,
         )
         try:
-            gen = ChatGPTImageGenerator(headless=False)
+            if use_gemini:
+                gen = GeminiImageGenerator(headless=False)
+            else:
+                gen = ChatGPTImageGenerator(headless=False)
             results = gen.generate_batch(
                 prompts=all_prompts, size="landscape", out_paths=out_paths,
                 topic=title, style_block=style_block,
@@ -715,8 +749,9 @@ def chatgpt_image_batch(
             )
         except Exception as exc:  # noqa: BLE001 — fail open to fallback
             logger.warning(
-                "ChatGPT generate_batch raised (%s) — "
-                "feeding empty results to Pollinations stage", exc,
+                "%s generate_batch raised (%s) — "
+                "feeding empty results to Pollinations stage",
+                backend_label, exc,
             )
             results = [None] * len(all_prompts)
     else:
@@ -841,6 +876,7 @@ def chatgpt_image_batch(
         "cover_ok": bool(cover),
         "inline_ok": len(inlines),
         "inline_requested": inline_count,
+        "backend": "gemini" if use_gemini else "chatgpt",
     }
     try:
         import json as _json
