@@ -48,10 +48,23 @@
        CDP で Gemini 3.5 Flash に「画像を生成してください: <en prompt>」
        送信 → blob img → **canvas.toDataURL で CORS 回避 → base64 →
        PNG 1024×572 保存**、 25秒/枚 で成功実証 (token 0)。
-     - **残実装** (次セッション): `generators/gemini_batch_helper.py`
-       (chatgpt_batch_helper 2543行 の流用+スリム化、 目標 500-800行) +
-       `main.py` に `USE_GEMINI_IMAGES=1` env 導入 + dry-run 1記事通し。
-     - ChatGPT 経路は残す (rollback 可能に)。
+     - **✅ 実装完了** (同セッション continuation):
+       * `generators/gemini_image_generator.py` (~330行) 新規作成 —
+         ChatGPTImageGenerator.generate_batch 互換 interface。
+       * `chatgpt_batch_helper.py` に `is_gemini_image_gen_enabled()` 追加、
+         backend 選択の 1 箇所分岐 (残りの prompt 組立/dup チェック/
+         Pollinations fallback/image_usage.jsonl は全て流用維持)。
+       * `.env` に `USE_GEMINI_IMAGES=1` 追加。
+       * dry-run `scripts/_gemini_batch_dryrun.py` で cover+inline×2 の
+         **3/3 全成功** (平均 43秒/枚、 各 1.4MB PNG、 backend=gemini、
+         合計 118 秒 で ChatGPT 3×60秒=180秒 より高速)。
+     - **重要な修正** (2枚目 timeout → fresh tab 化): 同一 page で `/app`
+       再 navigate だと Gemini SPA state が残って image-gen ルーティング
+       が再入せず 2枚目以降 timeout していた。 `_navigate_fresh_chat` で
+       毎回 `new_page()` して完全にリセット、 これで 3/3 成功。
+     - ChatGPT 経路は残す (`USE_GEMINI_IMAGES=0` で rollback 可能)。
+     - user に生成3枚を SendUserFile で共有、 品質判断待ち。
+       OK なら次の `/routine` から実本番運用。
 
 - 6-30 朝 `/routine` (snr_001 初当選、 「嘘だった」 系 6件目):
   learn(280 samples/**648 chunks** ← 4日前 641+7) → generate **7 合格/0
