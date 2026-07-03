@@ -6,7 +6,7 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-03 20:19 JST
+2026-07-03 23:41 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
@@ -95,6 +95,28 @@
      - 監査後 dry-run: temp-chat 経由 cover+inline 2/2 成功 (27-41秒/枚)。
        AUTO_LAUNCH_BRAVE_CDP=1 も初実地発火で機能確認 (port cold →
        bat 起動 → 1 秒で CDP up)。
+
+- 7-4 深夜 `/routine` (**Gemini backend 初本番 15/15 全成功** + zenn push 修復):
+  learn(280 samples/**655 chunks**) → generate **4 合格/3 不合格** →
+  bulk_approve → publish:
+  - **note 3件**: ¥0 nadefc13e0f15 無印イ草スリッパ、 ¥0 n384ddb9fdc27
+    Xiaomi ミニファン、 ¥500 n12677b342526 冷やしピーマン (全 GetNavi/RSS
+    由来、 knowledge_topics 当選なしの日)
+  - **zenn 1件**: Claude Sonnet 5 React (scrap + 後述の push 修復で
+    article too — 20260703-reactclaude-sonnet-5llm が queue 入り)
+  - **🎉 Gemini backend 初本番**: image_usage.jsonl で確定 —
+    3 記事 × (cover 1 + inline 4) = **15/15 全成功、 backend=gemini、
+    Unsplash/Pollinations fallback ゼロ**。 一時チャット + 監査 v2 修正込み。
+    ※ Gemini/batch のログが publish ログに出ない (画像ファイル+jsonl で
+    検証は可能)。 ログ配管は cosmetic 課題。
+  - **⚠️ zenn push 滞留の真因発見&修復**: zenn-content repo の remote が
+    force-update (8a89dfc→87c8f70) されて以降、 **14 commit が non-fast-
+    forward で push 失敗し続けていた** (最近の zenn 全 scrap fallback の
+    真犯人)。 `git stash -u → pull --rebase (14 commits) → push` で修復、
+    `6cbfd04` push 済。 publishers/CLAUDE.md の「False は cap でなく
+    ローカル git 問題」 が的中。 次回 routine から zenn article publish が
+    復活する見込み。
+  - membership 手動追加: n12677b342526 (ピーマン ¥500) 1件。
 
 - 6-30 朝 `/routine` (snr_001 初当選、 「嘘だった」 系 6件目):
   learn(280 samples/**648 chunks** ← 4日前 641+7) → generate **7 合格/0
@@ -696,6 +718,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
+  - b8030c1 fix(gemini): audit v2 — 5 defects fixed, all live-verified
   - 5194e0c feat(images): Gemini backend for image_batch (dry-run 3/3 成功)
   - 94841a3 poc(gemini): Playwright+CDP で Gemini 3.5 Flash 画像生成→ローカル保存を実証
   - 9b0de41 fix(prompts): タイトル『嘘だった』連日反復の根本原因を除去
