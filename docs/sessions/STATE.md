@@ -6,7 +6,7 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-02 08:45 JST
+2026-07-03 20:19 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
@@ -65,6 +65,36 @@
      - ChatGPT 経路は残す (`USE_GEMINI_IMAGES=0` で rollback 可能)。
      - user に生成3枚を SendUserFile で共有、 品質判断待ち。
        OK なら次の `/routine` から実本番運用。
+
+  6. **7-3 全体監査 → Gemini backend v2 (5 欠陥修正、 全実地検証済)**:
+     - **P0-1 改行→Enter 途中送信**: prompt を `"\n".join` して keyboard.
+       type していた — `\n` は Enter キー入力になり style_block (複数行)
+       で確実に途中送信。 `_flatten()` で全空白を単一スペース化して修正。
+       (v1 dry-run が通ったのは style_block=None の偶然)
+     - **P0-2 cover がバナー化されない**: ChatGPT 版 `_build_prompt(is_
+       cover)` 相当が無く raw prompt 素通し → 「文字入り煽りサムネ」 の
+       識別性を喪失していた。 `_compose_prompt()` で 3 分岐 (styled cover
+       / click-bait banner / inline) を移植。
+     - **P0-3 size 無視**: `_SIZE_PHRASE` (16:9 横長等) を全 prompt に
+       付与。 実測 1024×572 で 16:9 確認。
+     - **P1-4 blob 取り違え**: `_extract_png(blob_url)` で waiter が
+       見つけた URL と同一の img だけを canvas 抽出。
+     - **P1-5 履歴リーク (memory: 画像生成会話は必ず削除)**:
+       **一時チャット (Temporary Chat) モードで構造的に解決** —
+       `button[aria-label='一時チャット']` を fresh tab ごとにクリック、
+       会話が保存されないので削除自動化そのものが不要。 一時チャット内で
+       画像生成が動くことを実地検証済。 button が見つからない場合の
+       fallback として `_cleanup_current_chat` (サイドバー展開 `side-nav-
+       sparkle-button` → `gem-nav-list-item[data-test-id='conversation']`
+       hover → ⋮ → 削除 → confirm、 DOM 実地調査済) を実装、 **残骸
+       6 チャットの実削除で 6/6 動作検証済**。 `GEMINI_CLEANUP_CHATS`
+       env (default ON)。
+     - おまけ修正: v1 の `close()` が CDP attach した user の browser
+       context を閉じていた (実 Brave の全ウィンドウが閉じるリスク) —
+       page だけ閉じるよう修正。
+     - 監査後 dry-run: temp-chat 経由 cover+inline 2/2 成功 (27-41秒/枚)。
+       AUTO_LAUNCH_BRAVE_CDP=1 も初実地発火で機能確認 (port cold →
+       bat 起動 → 1 秒で CDP up)。
 
 - 6-30 朝 `/routine` (snr_001 初当選、 「嘘だった」 系 6件目):
   learn(280 samples/**648 chunks** ← 4日前 641+7) → generate **7 合格/0
@@ -666,7 +696,9 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - 669e502 ops(routine): 6-30 routine 完了 — snr_001 初当選、 「嘘だった」 6件目
+  - 5194e0c feat(images): Gemini backend for image_batch (dry-run 3/3 成功)
+  - 94841a3 poc(gemini): Playwright+CDP で Gemini 3.5 Flash 画像生成→ローカル保存を実証
+  - 9b0de41 fix(prompts): タイトル『嘘だった』連日反復の根本原因を除去
 <!-- /AUTO:pipeline -->
 
 ## Pointers

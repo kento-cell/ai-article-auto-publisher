@@ -11,6 +11,25 @@ Gemini 3.5 Flash generates images natively when the prompt starts with
 the DOM as a ``blob:`` URL with naturalWidth >= 512; we grab it via
 canvas.toDataURL to bypass fetch()'s cross-origin CORS barrier.
 
+2026-07-02 audit fixes (v2):
+
+* Newlines in the effective prompt are flattened to spaces before
+  ``keyboard.type`` — a literal ``\\n`` is typed as an Enter *keypress*
+  which submits the half-typed prompt (multi-line style_blocks made
+  this a guaranteed failure; the v1 dry-run only passed because the
+  ghibli path had no style_block).
+* The cover slot now gets the same click-bait infographic-banner
+  treatment as ChatGPTImageGenerator._build_prompt(is_cover=True) —
+  v1 sent the raw prompt so covers lost the「文字入り煽りサムネ」
+  identity entirely.
+* ``size`` is honoured via an explicit aspect-ratio directive
+  (v1 ignored it and relied on Gemini's default being landscape).
+* ``_extract_png`` targets the exact blob URL found by the waiter
+  instead of re-querying for "any big blob img".
+* Best-effort per-image chat deletion (``GEMINI_CLEANUP_CHATS``,
+  default ON) — mirrors the ChatGPT per-image session-delete policy:
+  article titles/content must not accumulate in the Gemini sidebar.
+
 Public API mirrors ChatGPTImageGenerator so chatgpt_batch_helper.py can
 just swap backends behind USE_GEMINI_IMAGES.
 """
@@ -19,6 +38,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -40,6 +60,49 @@ _MIN_VALID_IMAGE_BYTES = 10_000
 # least 512. Poll until we see one or hit this timeout.
 _GEN_TIMEOUT_SECONDS = 90
 _POLL_INTERVAL_MS = 1500
+
+# Aspect-ratio directives appended to every prompt. Gemini has no size
+# API; the natural-language directive is the only control we have. The
+# v1 dry-run happened to return 1024x559 by default but that is not
+# guaranteed across model updates.
+_SIZE_PHRASE: dict[str, str] = {
+    "landscape": "アスペクト比 16:9 の横長で生成してください。",
+    "portrait": "アスペクト比 9:16 の縦長で生成してください。",
+    "square": "アスペクト比 1:1 の正方形で生成してください。",
+}
+
+# Inline-image default style — mirrors ChatGPTImageGenerator's
+# default_style (ghibli watercolor). Kept in sync manually; if you
+# change one, change the other.
+_DEFAULT_STYLE = (
+    "宮崎駿、新海誠、細田守のような日本のアニメ監督の作風を参考に、"
+    "温かみのある手描き水彩アニメーション調で。"
+    "手描き水彩タッチ、優しいパステルカラー、温かい光、"
+    "夢幻的・ノスタルジックな雰囲気。"
+    "テキスト・読める文字・ロゴ・透かし・UIスクリーンショットは描かない。"
+    "中央に被写体を配置、シネマティックな構図。"
+)
+
+
+def _is_cleanup_enabled() -> bool:
+    """``GEMINI_CLEANUP_CHATS`` toggle (default ON).
+
+    Mirrors the ChatGPT per-image session-delete policy (memory:
+    画像生成で作った会話は必ず削除 — article titles and section text
+    otherwise accumulate in the Gemini sidebar history).
+    """
+    val = os.environ.get("GEMINI_CLEANUP_CHATS", "1").strip().lower()
+    return val not in {"", "0", "false", "no", "off"}
+
+
+def _flatten(text: str) -> str:
+    """Collapse all whitespace runs (incl. newlines) to single spaces.
+
+    ``page.keyboard.type`` interprets a literal newline as an Enter
+    keypress, which submits the half-typed prompt in Gemini. Prompts
+    assembled from multi-line style_blocks MUST pass through here.
+    """
+    return re.sub(r"\s+", " ", text).strip()
 
 
 class GeminiImageGenerator:
@@ -90,15 +153,15 @@ class GeminiImageGenerator:
             # Reuse the existing (user-logged-in) context so the Google
             # session cookies are already loaded.
             self._context = contexts[0]
-        self._page = self._context.new_page()
+        # NOTE: no page here — _navigate_fresh_chat opens one per image.
 
     def close(self) -> None:
-        for attr in ("_page", "_context", "_browser"):
-            obj = getattr(self, attr, None)
-            if obj is None:
-                continue
+        # Do NOT close self._context / self._browser: in CDP-attach mode
+        # they belong to the user's live Brave session — closing the
+        # context would close the user's real windows.
+        if self._page is not None:
             try:
-                obj.close()
+                self._page.close()
             except Exception:  # noqa: BLE001 — best-effort teardown
                 pass
         if self._playwright is not None:
@@ -112,17 +175,92 @@ class GeminiImageGenerator:
         self._browser = None
 
     # ------------------------------------------------------------------
+    # Prompt composition (mirrors ChatGPTImageGenerator._build_prompt)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _compose_prompt(
+        raw_prompt: str,
+        *,
+        is_cover: bool,
+        size: str,
+        style_block: str | None,
+        cover_styled: bool,
+    ) -> str:
+        """Build the full Gemini prompt for one slot.
+
+        Three branches, same as the ChatGPT builder:
+
+        1. cover + cover_styled + style_block → styled cover (the
+           preset carries the look).
+        2. cover (default) → click-bait infographic banner with large
+           Japanese title text — the thumbnail is the click-driver.
+        3. inline → subject illustration in style_block or the default
+           ghibli watercolor. Calm complement to the body text.
+
+        The returned string still contains newlines for readability;
+        the caller flattens it before typing.
+        """
+        size_phrase = _SIZE_PHRASE.get(size, _SIZE_PHRASE["landscape"])
+        if is_cover and cover_styled and style_block:
+            return (
+                f"画像を生成してください: note記事のサムネイル画像 1枚。"
+                f"{size_phrase} "
+                f"描いてほしいシーン: {raw_prompt} "
+                f"スタイル指定: {style_block} "
+                f"テキスト・読める文字・ロゴ・透かしは描かない。"
+                f"出力は画像1枚のみ、前置き・質問は不要。"
+            )
+        if is_cover:
+            # 煽動的・文字入りサムネ (ChatGPT 版 2026-05-07 と同一方針)。
+            # Gemini (Imagen 系) は日本語テキスト描画が ChatGPT (DALL-E/
+            # gpt-image) より不安定なので、キーワードを 3-5 語に絞る指示を
+            # 強調している。
+            return (
+                f"画像を生成してください: note記事のアイキャッチ・サムネ画像 1枚。"
+                f"{size_phrase} "
+                f"目的: クリック率を最大化する煽動的・文字入りバナー。 "
+                f"メインキャッチ文字を画像中央〜上部に巨大な日本語極太ゴシック体で描く: "
+                f"「{raw_prompt[:60]}」 の主要キーワード3〜5語を抜き出して"
+                f"一番大きく目立つように。 "
+                f"強コントラスト配色 (黒地+白文字 / 赤地+黄文字 など)、"
+                f"縁取り+ドロップシャドウで文字はくっきり読めること。 "
+                f"左右どちらかに表情豊かなアニメ風キャラ or 象徴イラストを大きく配置し"
+                f"視線を文字に誘導。 "
+                f"背景はビビッドな単色 or 2色グラデ + 集中線・きらめき等の装飾1-2個。 "
+                f"YouTube サムネ・雑誌の煽り広告型のインフォグラフィック構図。 "
+                f"既存IPの商標ロゴ・実在キャラの直接描写は避ける。 "
+                f"出力は画像1枚のみ、前置き・質問は不要。"
+            )
+        style = style_block if style_block else _DEFAULT_STYLE
+        return (
+            f"画像を生成してください: 記事のインライン挿絵 1枚。"
+            f"{size_phrase} "
+            f"記事の被写体・場面（これをそのまま描いてください）: {raw_prompt} "
+            f"スタイル指定: {style} "
+            f"出力は画像1枚のみ、前置き・質問は不要。"
+        )
+
+    # ------------------------------------------------------------------
     # Per-image flow
     # ------------------------------------------------------------------
-    def _navigate_fresh_chat(self) -> None:
+    def _navigate_fresh_chat(self) -> bool:
         """Open a brand-new tab for every image so Gemini's SPA state
-        doesn't carry over between prompts.
+        doesn't carry over between prompts, then switch into 一時チャット
+        (temporary chat) so nothing is saved to the sidebar history.
 
         2026-07-02 dry-run showed that same-page ``goto(/app)`` between
         prompts leaves image-gen routing off for the 2nd+ prompt (only
         image #1 succeeded, #2 and #3 stayed in text mode and timed
         out). A fresh tab (new Page) fully resets SPA state and image
-        routing re-engages on the ``画像を生成してください:`` trigger."""
+        routing re-engages on the ``画像を生成してください:`` trigger.
+
+        2026-07-03 audit: 一時チャット mode verified to support image
+        generation. It solves the history-leak problem structurally —
+        prompts embed article titles/content, and temp chats are never
+        persisted, so no fragile delete-flow automation is needed.
+        Returns True when temp-chat mode was activated (caller skips
+        the cleanup fallback in that case).
+        """
         assert self._context is not None
         # Close prior page if any — keeps Chrome resource footprint down
         # across a 5-image batch.
@@ -144,10 +282,35 @@ class GeminiImageGenerator:
                 self._page.wait_for_timeout(400)
         except Exception:  # noqa: BLE001
             pass
+        # Switch into temporary chat. aria-label verified 2026-07-03;
+        # keep an English fallback for account-language drift.
+        for sel in (
+            "button[aria-label='一時チャット']",
+            "button[aria-label*='Temporary chat']",
+            "button[aria-label*='temporary chat']",
+        ):
+            try:
+                btn = self._page.locator(sel).first
+                if btn.is_visible(timeout=1500):
+                    btn.click()
+                    self._page.wait_for_timeout(2000)
+                    return True
+            except Exception:  # noqa: BLE001
+                continue
+        logger.warning(
+            "gemini: 一時チャット button not found — falling back to a "
+            "normal chat + post-generation delete",
+        )
+        return False
 
     def _send_prompt(self, prompt: str) -> bool:
-        """Fill the Gemini textarea and press Enter. Returns True on
-        successful send."""
+        """Fill the Gemini textbox and press Enter. Returns True on
+        successful send.
+
+        ``prompt`` MUST already be newline-free (see :func:`_flatten`)
+        — keyboard.type presses Enter for a literal ``\\n`` which would
+        submit the half-typed prompt.
+        """
         assert self._page is not None
         page = self._page
         selectors = [
@@ -165,7 +328,7 @@ class GeminiImageGenerator:
                     # Real keystrokes so React onChange fires (mirrors
                     # PoC-verified pattern; Gemini rejects programmatic
                     # value assignment silently).
-                    page.keyboard.type(prompt, delay=12)
+                    page.keyboard.type(prompt, delay=8)
                     entered = True
                     break
             except Exception:  # noqa: BLE001
@@ -203,17 +366,21 @@ class GeminiImageGenerator:
             page.wait_for_timeout(_POLL_INTERVAL_MS)
         return None
 
-    def _extract_png(self) -> bytes | None:
+    def _extract_png(self, blob_url: str) -> bytes | None:
         """Read the generated image via canvas.toDataURL — bypasses
-        fetch()'s CORS boundary against blob: URLs. Returns raw PNG
-        bytes or None."""
+        fetch()'s CORS boundary against blob: URLs.
+
+        Targets the exact ``blob_url`` the waiter found, so a stray
+        second blob image (avatar previews, earlier attachments) can't
+        be captured by mistake. Returns raw PNG bytes or None.
+        """
         assert self._page is not None
         try:
             b64 = self._page.evaluate("""
-                () => {
+                (blobUrl) => {
                   const img = Array.from(document.querySelectorAll('img'))
-                    .find(i => i.src.startsWith('blob:') && i.naturalWidth >= 512);
-                  if (!img) return null;
+                    .find(i => i.src === blobUrl);
+                  if (!img || img.naturalWidth < 512) return null;
                   const c = document.createElement('canvas');
                   c.width = img.naturalWidth;
                   c.height = img.naturalHeight;
@@ -222,7 +389,7 @@ class GeminiImageGenerator:
                   const dataUrl = c.toDataURL('image/png');
                   return dataUrl.split(',')[1] || null;
                 }
-            """)
+            """, blob_url)
         except PlaywrightError as exc:
             logger.warning("gemini: canvas extract failed: %s", exc)
             return None
@@ -233,6 +400,118 @@ class GeminiImageGenerator:
         except (ValueError, TypeError) as exc:
             logger.warning("gemini: base64 decode failed: %s", exc)
             return None
+
+    def _cleanup_current_chat(self) -> bool:
+        """Best-effort delete of the conversation just created.
+
+        Mirrors the ChatGPT per-image session-delete policy: image
+        prompts embed article titles/section text, and leaving them in
+        the sidebar both leaks content and (in ChatGPT's case) polluted
+        later generations via Memory. Never raises; returns True when
+        the delete flow completed.
+
+        Flow (current Gemini UI, DOM verified 2026-07-03): sidebar is
+        COLLAPSED in a fresh tab, so first expand it via the
+        ``side-nav-sparkle-button`` (aria-label サイドバーを開く). The
+        freshly created conversation is then the first
+        ``gem-nav-list-item[data-test-id='conversation']`` row. Hover
+        it → actions button (⋮) → 削除 → confirm dialog 削除.
+
+        NOTE: this is a FALLBACK — the primary privacy mechanism is
+        一時チャット mode (see _navigate_fresh_chat), which never saves
+        the conversation in the first place. This path only runs when
+        the temp-chat button wasn't found.
+        """
+        assert self._page is not None
+        page = self._page
+        try:
+            # Sidebar is collapsed in a fresh tab — conversation rows
+            # exist in the DOM but are not visible until expanded.
+            for sel in (
+                "button[data-test-id='side-nav-sparkle-button']",
+                "button[aria-label*='サイドバーを開く']",
+                "button[aria-label*='Open sidebar']",
+            ):
+                try:
+                    btn = page.locator(sel).first
+                    if btn.is_visible(timeout=1200):
+                        btn.click()
+                        page.wait_for_timeout(1000)
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+            # The conversation list item (custom element, DOM verified
+            # 2026-07-03: gem-nav-list-item[data-test-id='conversation']).
+            row = None
+            for sel in (
+                "gem-nav-list-item[data-test-id='conversation']",
+                "[data-test-id='conversation']",
+                ".conversation",
+            ):
+                loc = page.locator(sel).first
+                try:
+                    if loc.is_visible(timeout=1500):
+                        row = loc
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+            if row is None:
+                logger.warning("gemini cleanup: no conversation row found")
+                return False
+            row.hover()
+            page.wait_for_timeout(300)
+            # The row's action menu button.
+            menu_btn = None
+            for sel in (
+                "[data-test-id='actions-menu-button']",
+                "button[aria-label*='アクション']",
+                "button[aria-label*='その他']",
+                "button[aria-label*='More']",
+            ):
+                loc = row.locator(sel).first
+                try:
+                    if loc.is_visible(timeout=800):
+                        menu_btn = loc
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+            if menu_btn is None:
+                # Menu button may be a sibling rendered on hover at the
+                # page level rather than inside the row.
+                loc = page.locator("button[aria-label*='アクション']").first
+                try:
+                    if loc.is_visible(timeout=800):
+                        menu_btn = loc
+                except Exception:  # noqa: BLE001
+                    pass
+            if menu_btn is None:
+                logger.debug("gemini cleanup: actions menu button not found")
+                return False
+            menu_btn.click()
+            page.wait_for_timeout(400)
+            del_item = page.locator(
+                "[role='menuitem']:has-text('削除'), "
+                "button:has-text('削除')",
+            ).first
+            if not del_item.is_visible(timeout=1500):
+                logger.debug("gemini cleanup: 削除 menu item not found")
+                page.keyboard.press("Escape")
+                return False
+            del_item.click()
+            page.wait_for_timeout(500)
+            # Confirm dialog.
+            confirm = page.locator(
+                "[role='dialog'] button:has-text('削除'), "
+                "mat-dialog-container button:has-text('削除')",
+            ).first
+            if confirm.is_visible(timeout=1500):
+                confirm.click()
+                page.wait_for_timeout(600)
+            logger.info("gemini cleanup: chat deleted")
+            return True
+        except Exception as exc:  # noqa: BLE001 — never block the batch
+            logger.debug("gemini cleanup failed (non-fatal): %s", exc)
+            return False
 
     # ------------------------------------------------------------------
     # Public API (mirrors ChatGPTImageGenerator.generate_batch)
@@ -247,15 +526,10 @@ class GeminiImageGenerator:
         cover_styled: bool = False,
     ) -> list[Path | None]:
         """Generate one image per prompt. Returns paths (or None per
-        failed slot).
-
-        - ``size``: accepted for interface parity; Gemini doesn't take
-          size directives so we bake orientation into the prompt.
-        - ``topic`` / ``style_block`` / ``cover_styled``: same. We
-          concatenate the style_block into each prompt when given, since
-          Gemini otherwise defaults to a generic aesthetic.
+        failed slot). Slot 0 is treated as the cover (same convention
+        as chatgpt_image_batch's prompt list ordering).
         """
-        _ = size, topic  # noqa — kept for signature parity
+        _ = topic  # noqa — kept for signature parity
         if not prompts:
             return []
         if out_paths is None or len(out_paths) != len(prompts):
@@ -270,34 +544,23 @@ class GeminiImageGenerator:
             logger.warning("gemini: session start failed: %s", exc)
             return [None] * len(prompts)
 
+        cleanup = _is_cleanup_enabled()
         try:
             for idx, (raw_prompt, dest) in enumerate(zip(prompts, out_paths)):
-                # Build the effective prompt: mandatory 「画像を生成して
-                # ください:」 trigger + optional style block + user prompt.
-                # Whether or not this is the cover, the trigger phrase is
-                # what flips Gemini into the image-gen path (verified
-                # 2026-07-02 PoC — English-only prompts stayed in text
-                # mode and produced no image).
-                parts = ["画像を生成してください:"]
-                if style_block:
-                    is_cover = idx == 0
-                    if is_cover and not cover_styled:
-                        # Cover intentionally NOT styled by the preset —
-                        # this is the "infographic banner" default from
-                        # ChatGPT flow. Skip style_block here.
-                        pass
-                    else:
-                        parts.append(style_block.strip())
-                parts.append(raw_prompt.strip())
-                effective = "\n".join(p for p in parts if p)
-
+                effective = _flatten(self._compose_prompt(
+                    raw_prompt,
+                    is_cover=(idx == 0),
+                    size=size,
+                    style_block=style_block,
+                    cover_styled=cover_styled,
+                ))
                 logger.info(
-                    "gemini: image %d/%d (out=%s)",
-                    idx + 1, len(prompts), dest.name,
+                    "gemini: image %d/%d (cover=%s, prompt=%d chars, out=%s)",
+                    idx + 1, len(prompts), idx == 0, len(effective), dest.name,
                 )
                 slot_ok = False
                 try:
-                    self._navigate_fresh_chat()
+                    temp_chat = self._navigate_fresh_chat()
                     if not self._send_prompt(effective):
                         results.append(None)
                         continue
@@ -309,7 +572,7 @@ class GeminiImageGenerator:
                         )
                         results.append(None)
                         continue
-                    png = self._extract_png()
+                    png = self._extract_png(blob_url)
                     if not png:
                         results.append(None)
                         continue
@@ -330,6 +593,10 @@ class GeminiImageGenerator:
                     )
                     slot_ok = True
                     results.append(dest)
+                    # Temp chats are never saved — deletion only needed
+                    # when we fell back to a normal (persisted) chat.
+                    if cleanup and not temp_chat:
+                        self._cleanup_current_chat()
                 except PlaywrightTimeoutError as exc:
                     logger.warning("gemini: image %d timeout: %s", idx + 1, exc)
                     results.append(None)

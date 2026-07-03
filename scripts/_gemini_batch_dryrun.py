@@ -60,7 +60,7 @@ def main() -> int:
     cover, inlines = chatgpt_image_batch(
         title=TITLE,
         content=CONTENT,
-        inline_count=2,
+        inline_count=1,
         slug_hint="gemini_dryrun_kanyou",
         genre_hint="lifestyle / interior plants",
     )
