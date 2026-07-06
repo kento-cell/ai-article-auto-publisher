@@ -6,7 +6,7 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-03 23:41 JST
+2026-07-07 07:07 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
@@ -95,6 +95,21 @@
      - 監査後 dry-run: temp-chat 経由 cover+inline 2/2 成功 (27-41秒/枚)。
        AUTO_LAUNCH_BRAVE_CDP=1 も初実地発火で機能確認 (port cold →
        bat 起動 → 1 秒で CDP up)。
+
+- 7-7 朝 `/routine` + catchup (Gemini 2回目 15/15、 zenn git 修復効果確認):
+  catchup (22 items/3 msgs/avg 451字/refusal 0、 gemma4 競合回避のため
+  generate は catchup 完了後に順序制御) → learn(280/660 chunks) →
+  generate **4 合格/3 不合合** → publish:
+  - **note 3件**: ¥0 n43e5668ec7f9 30代女性転職 5サービス (**wc_002 採用**)、
+    ¥0 nc4466bd46253 中洲屋台 (**hg_010 採用**)、 ¥500 n4ee23a25f80e
+    山崎実業 玄関ドア (GetNavi ⚠️membership 手動)
+  - **zenn**: Codex MV 量産 — **git push 成功 (97ecc19、 7-4 修復が有効)**。
+    URL 404 は既知 slow-walk queue の表示遅延で、 article queue 入り +
+    保険 scrap の dual-track は正常動作。
+  - **Gemini backend 2回目本番も 15/15 全成功** (3記事 × cover+inline4、
+    fallback ゼロ)。 2 日連続 30/30 = 実運用安定を確認。
+  - knowledge_topics 由来 2/3 (wc_002 女性キャリア初当選、 hg_010 福岡屋台
+    初当選 — ともに 6-21 loop 追加分)。
 
 - 7-4 深夜 `/routine` (**Gemini backend 初本番 15/15 全成功** + zenn push 修復):
   learn(280 samples/**655 chunks**) → generate **4 合格/3 不合格** →
@@ -705,11 +720,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
+- [生のピーマンを切って氷水に漬けるだけ。苦味ゼロでパリッパリの「冷やしピーマン」、無限に食べられる…](https://note.com/<NOTE_USER>/n/n12677b342526?app_launch=false)
+- [卓上でありハンディ、しかも首振り。Xiaomiの「充電式ミニファン」は無双です…](https://note.com/<NOTE_USER>/n/n384ddb9fdc27?app_launch=false)
+- [5年間愛用し続けている、無印良品のイ草スリッパ。「畳の上にいるみたいな気持ちよさ」は代わりが見つ…](https://note.com/<NOTE_USER>/n/nadefc13e0f15?app_launch=false)
+- [【速報】Claude Sonnet 5のReact習熟度はOpus 4.8に匹敵…](https://zenn.dev/kento_cell/scraps/216ce0a5a8ff03)
 - [山崎実業×100均で「出し入れしやすいヘアアイロン置き場」が誕生！ 朝の準備がラクになったよ…](https://note.com/<NOTE_USER>/n/n23947bb2e923?app_launch=false)
-- [いびきの悩み、まずは知ることから。記録と止めるサポートもしてくれる睡眠ガジェットがあるよ…](https://note.com/<NOTE_USER>/n/n4c8806ae67b2?app_launch=false)
-- [ドライヤーの“置き場迷子”が解決。山崎実業のホルダーで毎朝のプチストレスが消えたよ…](https://note.com/<NOTE_USER>/n/n7793ca8ea17d?app_launch=false)
-- [布団のジメジメ、敷くだけで終了。干せば何度でも復活する除湿シートが8％オフ…](https://note.com/<NOTE_USER>/n/n38859ff3c26f?app_launch=false)
-- [コクヨ『もしもの時に役立つノート LES-E101』(¥1,540)を軸に、法的拘束力なしのエン…](https://note.com/<NOTE_USER>/n/n68e9edbdb20c?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -718,10 +733,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - b8030c1 fix(gemini): audit v2 — 5 defects fixed, all live-verified
-  - 5194e0c feat(images): Gemini backend for image_batch (dry-run 3/3 成功)
-  - 94841a3 poc(gemini): Playwright+CDP で Gemini 3.5 Flash 画像生成→ローカル保存を実証
-  - 9b0de41 fix(prompts): タイトル『嘘だった』連日反復の根本原因を除去
+  - (no commits in last 48h)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
