@@ -10,6 +10,7 @@ Login state is persisted via a Playwright user data directory located at
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from pathlib import Path
@@ -248,15 +249,33 @@ class NotePublisher:
                 "python scripts/note_login.py を実行してください"
             )
         self._playwright = sync_playwright().start()
+        launch_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--no-first-run",
+        ]
+        # 2026-07-07: keep the automation window off-screen so routine
+        # runs don't steal the user's screen (works from home on this
+        # PC now). Playwright drives the page via CDP + focus emulation,
+        # so rendering and clipboard keep working without OS-visible
+        # focus. The backgrounding flags stop Chromium from throttling
+        # rasterization of the occluded window (image upload previews
+        # and ProseMirror rendering must stay live). NOTE_OFFSCREEN=0
+        # restores the old visible-window behaviour if anything (e.g.
+        # the clipboard paste path) turns out to need real focus.
+        if os.environ.get(
+            "NOTE_OFFSCREEN", "1",
+        ).strip().lower() not in {"", "0", "false", "no", "off"}:
+            launch_args += [
+                "--window-position=-32000,-32000",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+            ]
         self._context = self._playwright.chromium.launch_persistent_context(
             user_data_dir=str(self._profile_dir),
             channel="msedge",
             headless=self._headless,
             viewport={"width": 1280, "height": 900},
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-first-run",
-            ],
+            args=launch_args,
         )
         self._context.add_init_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
