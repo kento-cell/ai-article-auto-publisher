@@ -12,7 +12,7 @@ from publishers.slack_notifier import SlackNotifier
 
 from .dedup import Dedup
 from .digest import build
-from .sources import fetch_all
+from .sources import fetch_all_parallel
 from .summarizer import summarize
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,12 @@ def _cap(items: list[dict]) -> list[dict]:
         by_tier.setdefault(it.get("tier", 3), []).append(it)
     for t in by_tier:
         by_tier[t].sort(
-            key=lambda it: it.get("published_at") or 0, reverse=True
+            key=lambda it: (
+                it.get("published_at").timestamp()
+                if it.get("published_at") is not None
+                else 0.0
+            ),
+            reverse=True,
         )
     out: list[dict] = []
     for t in (1, 2, 3):
@@ -75,13 +80,27 @@ def run(dry_run: bool = False) -> dict:
         dry_run: If True, skip Slack post and skip marking items as sent.
     """
     logger.info("catchup: fetching sources...")
-    raw = fetch_all()
+    raw = fetch_all_parallel()
     logger.info("catchup: %d raw items fetched", len(raw))
 
     dedup = Dedup()
     try:
         new = dedup.filter_new(raw)
         logger.info("catchup: %d new items after dedup", len(new))
+
+        # The same story often arrives via several sources (e.g. one URL
+        # matching two HN keyword queries). Keep the first (highest-tier
+        # after _cap sorting happens later) occurrence per URL.
+        seen_urls: set[str] = set()
+        uniq: list[dict] = []
+        for it in new:
+            if it["url"] in seen_urls:
+                continue
+            seen_urls.add(it["url"])
+            uniq.append(it)
+        if len(uniq) < len(new):
+            logger.info("catchup: dropped %d same-URL duplicates", len(new) - len(uniq))
+        new = uniq
 
         capped = _cap(new)
         logger.info("catchup: %d items will be summarised", len(capped))
