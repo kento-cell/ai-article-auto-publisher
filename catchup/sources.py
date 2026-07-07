@@ -1,4 +1,5 @@
-"""Source fetchers: pull recent items from RSS, HN Algolia, Reddit, arXiv.
+"""Source fetchers: pull recent items from RSS, HN Algolia, Reddit, arXiv,
+Bluesky, HF Daily Papers, Techmeme, and GitHub new-repo search.
 
 Each fetcher returns a list of normalised dicts:
     {
@@ -36,14 +37,32 @@ SOURCES: list[tuple[str, str, str, int]] = [
     ("NVIDIA Developer", "rss", "https://developer.nvidia.com/blog/feed/", 1),
     ("HuggingFace", "rss", "https://huggingface.co/blog/feed.xml", 2),
     # HN keyword searches — catches official-lab news even when no RSS exists.
-    ("HN · AI", "hn", "https://hn.algolia.com/api/v1/search?tags=story&query=AI&hitsPerPage=25", 2),
-    ("HN · Anthropic", "hn", "https://hn.algolia.com/api/v1/search?tags=story&query=Anthropic&hitsPerPage=10", 1),
-    ("HN · OpenAI", "hn", "https://hn.algolia.com/api/v1/search?tags=story&query=OpenAI&hitsPerPage=10", 1),
-    ("HN · Meta AI", "hn", "https://hn.algolia.com/api/v1/search?tags=story&query=%22Meta+AI%22&hitsPerPage=5", 1),
+    ("HN · AI", "hn", "https://hn.algolia.com/api/v1/search_by_date?tags=story&query=AI&hitsPerPage=25", 2),
+    ("HN · Anthropic", "hn", "https://hn.algolia.com/api/v1/search_by_date?tags=story&query=Anthropic&hitsPerPage=10", 1),
+    ("HN · OpenAI", "hn", "https://hn.algolia.com/api/v1/search_by_date?tags=story&query=OpenAI&hitsPerPage=10", 1),
+    ("HN · Meta AI", "hn", "https://hn.algolia.com/api/v1/search_by_date?tags=story&query=%22Meta+AI%22&hitsPerPage=5", 1),
     # Community feeds.
     ("Reddit r/LocalLLaMA", "reddit", "https://www.reddit.com/r/LocalLLaMA/.rss", 3),
     ("Reddit r/MachineLearning", "reddit", "https://www.reddit.com/r/MachineLearning/.rss", 3),
     ("arXiv cs.AI", "arxiv", "https://export.arxiv.org/rss/cs.AI", 3),
+    # Curated industry news — editor-picked, fastest general tech aggregator.
+    ("Techmeme", "rss", "https://www.techmeme.com/feed.xml", 2),
+    # Industry press with an AI-dedicated feed — funding / product launches
+    # land here fast, free RSS. (VentureBeat's AI feed was evaluated too but
+    # it stopped updating in 2026-05, so it is intentionally absent.)
+    ("TechCrunch AI", "rss", "https://techcrunch.com/category/artificial-intelligence/feed/", 2),
+    # Japanese engineer-oriented news — the digest is JP, yet every other
+    # source is EN; Publickey covers cloud/OSS/AI for the JP audience.
+    ("Publickey", "rss", "https://www.publickey1.jp/atom.xml", 2),
+    # Community-curated top papers of the day — far better S/N than raw arXiv.
+    ("HF Daily Papers", "hf_papers", "https://huggingface.co/api/daily_papers?limit=15", 2),
+    # Bluesky public search — AI researchers post here first-hand; free, no auth.
+    ("Bluesky · Anthropic", "bluesky", "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=Anthropic&sort=top&limit=15", 3),
+    ("Bluesky · OpenAI", "bluesky", "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=OpenAI&sort=top&limit=15", 3),
+    ("Bluesky · LLM", "bluesky", "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=LLM&sort=top&limit=15", 3),
+    # New AI repos gaining stars fast — official GitHub Search API, no auth.
+    # {since} is replaced at fetch time with (now - 7 days).
+    ("GitHub New AI Repos", "github", "https://api.github.com/search/repositories?q=llm+OR+ai+created:%3E{since}+stars:%3E50&sort=stars&order=desc&per_page=15", 3),
 ]
 
 # Reject items older than this — widen to 72h so weekend news survives,
@@ -85,6 +104,14 @@ def _findattr(el: ET.Element, names: tuple[str, ...], attr: str) -> str:
 def _parse_date(s: str) -> datetime | None:
     if not s:
         return None
+    # ISO 8601 first (Bluesky / HF / GitHub all emit it, often with ms + "Z").
+    try:
+        d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return d
+    except ValueError:
+        pass
     try:
         d = parsedate_to_datetime(s)
         if d.tzinfo is None:
@@ -191,6 +218,109 @@ def _strip_html(s: str) -> str:
     return s.strip()
 
 
+def _parse_hf_papers(name: str, tier: int, url: str) -> list[dict[str, Any]]:
+    """HF Daily Papers — community-upvoted papers, JSON API, no auth."""
+    r = requests.get(url, headers={"User-Agent": _USER_AGENT}, timeout=_TIMEOUT)
+    r.raise_for_status()
+    items: list[dict[str, Any]] = []
+    for entry in r.json():
+        paper = entry.get("paper") or {}
+        pid = paper.get("id") or ""
+        title = paper.get("title") or ""
+        published = _parse_date(entry.get("publishedAt") or "")
+        if not pid or not title:
+            continue
+        if not _is_fresh(published):
+            continue
+        items.append(
+            {
+                "source": name,
+                "tier": tier,
+                "item_id": pid,
+                "title": title.strip(),
+                "url": f"https://huggingface.co/papers/{pid}",
+                "published_at": published,
+                "raw_summary": (paper.get("summary") or "")[:1500],
+                "score": paper.get("upvotes"),
+            }
+        )
+    return items
+
+
+def _parse_bluesky(name: str, tier: int, url: str) -> list[dict[str, Any]]:
+    """Bluesky public search (app.bsky.feed.searchPosts) — no auth needed."""
+    r = requests.get(url, headers={"User-Agent": _USER_AGENT}, timeout=_TIMEOUT)
+    r.raise_for_status()
+    items: list[dict[str, Any]] = []
+    for post in r.json().get("posts", []):
+        record = post.get("record") or {}
+        text = (record.get("text") or "").strip()
+        uri = post.get("uri") or ""
+        handle = (post.get("author") or {}).get("handle") or ""
+        published = _parse_date(record.get("createdAt") or "")
+        if not text or not uri or not handle:
+            continue
+        if not _is_fresh(published):
+            continue
+        # at://did:plc:xxx/app.bsky.feed.post/<rkey> → public web URL.
+        rkey = uri.rsplit("/", 1)[-1]
+        # Single-line title for the digest; full text goes to raw_summary.
+        title = re.sub(r"\s+", " ", text)[:120]
+        items.append(
+            {
+                "source": name,
+                "tier": tier,
+                "item_id": uri,
+                "title": f"{title} (@{handle})",
+                "url": f"https://bsky.app/profile/{handle}/post/{rkey}",
+                "published_at": published,
+                "raw_summary": text[:1500],
+                "score": (post.get("likeCount") or 0) + (post.get("repostCount") or 0),
+            }
+        )
+    return items
+
+
+# GitHub "trending" proxy: repos *created* in the last week that already
+# crossed the star floor. Uses its own window instead of _MAX_AGE — a repo
+# created 6 days ago that is exploding right now is exactly the signal.
+_GITHUB_WINDOW_DAYS = 7
+
+
+def _parse_github(name: str, tier: int, url: str) -> list[dict[str, Any]]:
+    """GitHub Search API for fast-rising new AI repos — no auth needed."""
+    since = (
+        datetime.now(timezone.utc) - timedelta(days=_GITHUB_WINDOW_DAYS)
+    ).date().isoformat()
+    r = requests.get(
+        url.format(since=since),
+        headers={"User-Agent": _USER_AGENT, "Accept": "application/vnd.github+json"},
+        timeout=_TIMEOUT,
+    )
+    r.raise_for_status()
+    items: list[dict[str, Any]] = []
+    for repo in r.json().get("items", []):
+        full_name = repo.get("full_name") or ""
+        link = repo.get("html_url") or ""
+        if not full_name or not link:
+            continue
+        stars = repo.get("stargazers_count") or 0
+        desc = (repo.get("description") or "").strip()
+        items.append(
+            {
+                "source": name,
+                "tier": tier,
+                "item_id": full_name,
+                "title": f"{full_name} (★{stars})",
+                "url": link,
+                "published_at": _parse_date(repo.get("created_at") or ""),
+                "raw_summary": desc[:1500],
+                "score": stars,
+            }
+        )
+    return items
+
+
 def fetch_all() -> list[dict[str, Any]]:
     """Fetch every configured source and return a flat item list.
 
@@ -204,6 +334,12 @@ def fetch_all() -> list[dict[str, Any]]:
                 items = _parse_rss(name, tier, url)
             elif kind == "hn":
                 items = _parse_hn(name, tier, url)
+            elif kind == "hf_papers":
+                items = _parse_hf_papers(name, tier, url)
+            elif kind == "bluesky":
+                items = _parse_bluesky(name, tier, url)
+            elif kind == "github":
+                items = _parse_github(name, tier, url)
             else:
                 logger.warning("Unknown source kind: %s", kind)
                 continue
