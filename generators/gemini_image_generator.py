@@ -270,7 +270,47 @@ class GeminiImageGenerator:
                 prior.close()
             except Exception:  # noqa: BLE001
                 pass
-        self._page = self._context.new_page()
+        # 2026-07-07: open the tab in the BACKGROUND via raw CDP.
+        # Playwright's context.new_page() activates the new tab, which
+        # steals the user's current tab for a moment when they are
+        # actively using this Brave window. Target.createTarget with
+        # background:true keeps the user's tab focused; we then adopt
+        # the resulting Page object via expect_page(). Falls back to
+        # new_page() if the CDP call fails (e.g. non-Chromium).
+        page = None
+        try:
+            assert self._browser is not None
+            session = self._browser.new_browser_cdp_session()
+            with self._context.expect_page(timeout=10_000) as pinfo:
+                session.send("Target.createTarget", {
+                    "url": "about:blank",
+                    "background": True,
+                })
+            page = pinfo.value
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "gemini: background tab create failed (%s) — "
+                "falling back to foreground new_page()", exc,
+            )
+            page = self._context.new_page()
+        self._page = page
+        # Background tabs report document.hidden=true, and Gemini's SPA
+        # may pause its generation polling on that signal. Spoof the
+        # visibility API before any app script runs so the SPA behaves
+        # as if the tab were foregrounded. (Timer throttling itself is
+        # disabled via --disable-background-timer-throttling in
+        # launch_brave_cdp.bat.)
+        try:
+            self._page.add_init_script(
+                "Object.defineProperty(document, 'visibilityState',"
+                " {get: () => 'visible'});"
+                "Object.defineProperty(document, 'hidden',"
+                " {get: () => false});"
+                "document.addEventListener('visibilitychange',"
+                " e => e.stopImmediatePropagation(), true);"
+            )
+        except Exception:  # noqa: BLE001
+            pass
         self._page.goto(_GEMINI_URL, wait_until="domcontentloaded")
         self._page.wait_for_timeout(3500)
         # 留意点 (privacy notice) dialog appears on first load per Chrome
