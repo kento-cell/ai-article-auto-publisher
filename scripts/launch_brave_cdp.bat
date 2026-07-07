@@ -27,7 +27,7 @@ REM To use Brave yourself, just click it in the taskbar as usual.
 echo Restarting Brave (minimized) with CDP debug port 9222...
 taskkill /F /IM brave.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
-start "" /min "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222 --disable-backgrounding-occluded-windows --disable-renderer-backgrounding
+start "" /min "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222 --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling
 echo.
 echo Brave is now running MINIMIZED with CDP on port 9222.
 echo It stays in the taskbar; automation attaches without stealing
