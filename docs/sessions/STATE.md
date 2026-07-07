@@ -341,7 +341,7 @@
   捏造deny clean。 user が「実際にベクトルとはどういうものか見せてあげて」 と
   ユニークな着想で、 コンテスト記事の最強差別化要素 (技術可視化 + 透明性) を強化
 - 6-17 深夜 (cron 自走): **`#AIで遊ぼう` エントリー publish 完了**
-  (n444be2daa2ef、 https://note.com/kento_kanazawa/n/n444be2daa2ef、 ¥0/can_read=True、
+  (n444be2daa2ef、 https://note.com/<NOTE_USER>/n/n444be2daa2ef、 ¥0/can_read=True、
   ChatGPT cover+inline 4/4、 文字数 8545、 AIフェス言及 9回)。
   ① cron `8ab171fe` 6-17 00:07 fire → Brave CDP 落下→自動 launch ポーリング→UP→
   `publish_custom_post.py` 実行。 ② ChatGPT 画像 全成功 (cover 2.5MB + inline 4枚)。
@@ -720,11 +720,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [生のピーマンを切って氷水に漬けるだけ。苦味ゼロでパリッパリの「冷やしピーマン」、無限に食べられる…](https://note.com/kento_kanazawa/n/n12677b342526?app_launch=false)
-- [卓上でありハンディ、しかも首振り。Xiaomiの「充電式ミニファン」は無双です…](https://note.com/kento_kanazawa/n/n384ddb9fdc27?app_launch=false)
-- [5年間愛用し続けている、無印良品のイ草スリッパ。「畳の上にいるみたいな気持ちよさ」は代わりが見つ…](https://note.com/kento_kanazawa/n/nadefc13e0f15?app_launch=false)
+- [生のピーマンを切って氷水に漬けるだけ。苦味ゼロでパリッパリの「冷やしピーマン」、無限に食べられる…](https://note.com/<NOTE_USER>/n/n12677b342526?app_launch=false)
+- [卓上でありハンディ、しかも首振り。Xiaomiの「充電式ミニファン」は無双です…](https://note.com/<NOTE_USER>/n/n384ddb9fdc27?app_launch=false)
+- [5年間愛用し続けている、無印良品のイ草スリッパ。「畳の上にいるみたいな気持ちよさ」は代わりが見つ…](https://note.com/<NOTE_USER>/n/nadefc13e0f15?app_launch=false)
 - [【速報】Claude Sonnet 5のReact習熟度はOpus 4.8に匹敵…](https://zenn.dev/kento_cell/scraps/216ce0a5a8ff03)
-- [山崎実業×100均で「出し入れしやすいヘアアイロン置き場」が誕生！ 朝の準備がラクになったよ…](https://note.com/kento_kanazawa/n/n23947bb2e923?app_launch=false)
+- [山崎実業×100均で「出し入れしやすいヘアアイロン置き場」が誕生！ 朝の準備がラクになったよ…](https://note.com/<NOTE_USER>/n/n23947bb2e923?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
