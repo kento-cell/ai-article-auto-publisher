@@ -96,6 +96,20 @@
        AUTO_LAUNCH_BRAVE_CDP=1 も初実地発火で機能確認 (port cold →
        bat 起動 → 1 秒で CDP up)。
 
+- 7-7 夜 `/routine` 2回目 (Mac 改良取込み + 7記事全合格 + zenn article 完全復活):
+  Mac から PR #2 (catchup 新ソース 6種: Bluesky×3/HF Papers/Techmeme/
+  TechCrunch/Publickey/GitHub Repos) + #3 (並列 fetch/URL dedup/sort
+  crash 修正) を pull。 fetch smoke: **957 items / 13.3秒 / 16 sources**
+  (旧 31 items) — user の Mac 開発フローが初成立。
+  learn(663 chunks) → generate **7 合格/0 不合格 (初の全合格)** → publish:
+  - **zenn 2 本とも article 投稿成功** (Git failed なし = 7-4 修復完全有効):
+    Observability 設計、 Fable5→Opus/Sonnet 引き継ぎ
+  - **note 1件**: ¥0 n72dbbaa066a0 手帳 ほぼ日 vs LEUCHTTURM (**sl_004
+    採用**、 Gemini cover+inline 4/4)
+  - **持ち越し 4 本** (cap 到達、 明日自動): kc_006 フォトカード $500M、
+    割れないグラス、 Anker 防犯カメラ、 スクワットイス
+  Gemini backend 3 日連続成功 (通算 35/35 fallback ゼロ)。
+
 - 7-7 朝 `/routine` + catchup (Gemini 2回目 15/15、 zenn git 修復効果確認):
   catchup (22 items/3 msgs/avg 451字/refusal 0、 gemma4 競合回避のため
   generate は catchup 完了後に順序制御) → learn(280/660 chunks) →
