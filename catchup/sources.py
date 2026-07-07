@@ -321,8 +321,29 @@ def _parse_github(name: str, tier: int, url: str) -> list[dict[str, Any]]:
     return items
 
 
+_PARSERS = {
+    "rss": _parse_rss,
+    "reddit": _parse_rss,
+    "arxiv": _parse_rss,
+    "hn": _parse_hn,
+    "hf_papers": _parse_hf_papers,
+    "bluesky": _parse_bluesky,
+    "github": _parse_github,
+}
+
+
+def _fetch_one(name: str, kind: str, url: str, tier: int) -> list[dict[str, Any]]:
+    parser = _PARSERS.get(kind)
+    if parser is None:
+        logger.warning("Unknown source kind: %s", kind)
+        return []
+    items = parser(name, tier, url)
+    logger.info("[%s] %d items", name, len(items))
+    return items
+
+
 def fetch_all() -> list[dict[str, Any]]:
-    """Fetch every configured source and return a flat item list.
+    """Fetch every configured source sequentially.
 
     Per-source failures are logged and skipped so one dead feed doesn't
     take down the whole catchup.
@@ -330,21 +351,27 @@ def fetch_all() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for name, kind, url, tier in SOURCES:
         try:
-            if kind == "rss" or kind == "reddit" or kind == "arxiv":
-                items = _parse_rss(name, tier, url)
-            elif kind == "hn":
-                items = _parse_hn(name, tier, url)
-            elif kind == "hf_papers":
-                items = _parse_hf_papers(name, tier, url)
-            elif kind == "bluesky":
-                items = _parse_bluesky(name, tier, url)
-            elif kind == "github":
-                items = _parse_github(name, tier, url)
-            else:
-                logger.warning("Unknown source kind: %s", kind)
-                continue
-            logger.info("[%s] %d items", name, len(items))
-            out.extend(items)
+            out.extend(_fetch_one(name, kind, url, tier))
         except Exception as exc:  # noqa: BLE001 - keep loop alive
             logger.warning("[%s] fetch failed: %s", name, exc)
+    return out
+
+
+def fetch_all_parallel(max_workers: int = 8) -> list[dict[str, Any]]:
+    """Fetch every configured source concurrently (network bound — a
+    thread pool cuts wall-clock from ~sum to ~max of source latencies).
+    Same fail-soft semantics as :func:`fetch_all`."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    out: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {
+            pool.submit(_fetch_one, name, kind, url, tier): name
+            for name, kind, url, tier in SOURCES
+        }
+        for fut in as_completed(futures):
+            try:
+                out.extend(fut.result())
+            except Exception as exc:  # noqa: BLE001 - keep loop alive
+                logger.warning("[%s] fetch failed: %s", futures[fut], exc)
     return out
