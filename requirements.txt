@@ -27,3 +27,4 @@ slack-sdk>=3.41.0
 
 # Content conversion (note.com)
 playwright>=1.58.0
+edge-tts==7.2.8  # catchup voice digest (free MS neural TTS, no API key)

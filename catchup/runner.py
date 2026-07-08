@@ -140,6 +140,16 @@ def run(dry_run: bool = False) -> dict:
                 "catchup: posted %d items in %d Slack message(s)",
                 len(capped), len(chunks),
             )
+            # 2026-07-08: voice digest — gemma4 reading script → edge-tts
+            # mp3 → windowless auto-play on this PC. Non-fatal by design;
+            # CATCHUP_TTS=0 disables. Runs only on a successful post so
+            # the audio always matches what actually reached Slack.
+            try:
+                from catchup.tts import is_enabled as _tts_enabled, run_tts
+                if _tts_enabled():
+                    run_tts(capped)
+            except Exception as _exc:  # noqa: BLE001
+                logger.warning("catchup: tts skipped (%s)", _exc)
         else:
             logger.error("catchup: slack post FAILED — items NOT marked as sent")
         return {
