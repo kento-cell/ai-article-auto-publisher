@@ -6,7 +6,7 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-07 07:07 JST
+2026-07-08 16:34 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
@@ -734,11 +734,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [生のピーマンを切って氷水に漬けるだけ。苦味ゼロでパリッパリの「冷やしピーマン」、無限に食べられる…](https://note.com/<NOTE_USER>/n/n12677b342526?app_launch=false)
-- [卓上でありハンディ、しかも首振り。Xiaomiの「充電式ミニファン」は無双です…](https://note.com/<NOTE_USER>/n/n384ddb9fdc27?app_launch=false)
-- [5年間愛用し続けている、無印良品のイ草スリッパ。「畳の上にいるみたいな気持ちよさ」は代わりが見つ…](https://note.com/<NOTE_USER>/n/nadefc13e0f15?app_launch=false)
-- [【速報】Claude Sonnet 5のReact習熟度はOpus 4.8に匹敵…](https://zenn.dev/kento_cell/scraps/216ce0a5a8ff03)
-- [山崎実業×100均で「出し入れしやすいヘアアイロン置き場」が誕生！ 朝の準備がラクになったよ…](https://note.com/<NOTE_USER>/n/n23947bb2e923?app_launch=false)
+- [佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に…](https://note.com/<NOTE_USER>/n/necf05440c363?app_launch=false)
+- [美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacina…](https://note.com/<NOTE_USER>/n/n19b342c320e2?app_launch=false)
+- [Agentic RLにおけるMITOとTITO…](https://zenn.dev/kento_cell/scraps/ebb5bd3af49dc3)
+- [座ってスクワットができる不思議なイスを見つけたよ。梅雨も真夏もおうち時間に最適すぎる…](https://note.com/<NOTE_USER>/n/nd7f7edc2afcc?app_launch=false)
+- [電気代不要で360°見守れる。Ankerの防犯カメラが便利だった…](https://note.com/<NOTE_USER>/n/nbe658bae66ef?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -747,7 +747,11 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - (no commits in last 48h)
+  - c07d6ad Merge pull request #5 from kento-cell/feat/catchup-tts-detached
+  - 5e8b4c7 perf(tts): detach voice digest into its own process — catchup wall-clock unchanged
+  - 24bb2ea feat(catchup): voice digest — gemma4 台本化 + edge-tts バックグラウンド読み上げ
+  - 2c83a05 ops(routine): 7-7 夜 routine — Mac 改良取込み、 7記事全合格、 zenn article 完全復活
+  - 85a5dcc Parallelize catchup fetching, dedupe same-URL stories, fix cap sort crash (#3)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
