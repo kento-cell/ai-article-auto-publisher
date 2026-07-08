@@ -1,28 +1,39 @@
 """Text-to-speech for the catchup digest.
 
-Pipeline: summarized items → gemma4 reading-script (English→katakana,
-difficult kanji→hiragana, numbers→spelled out) → edge-tts neural mp3 →
-windowless background playback on this PC → old-file cleanup.
+Pipeline: summarized items -> gemma4 reading-script (English->katakana,
+difficult kanji->hiragana, numbers->spelled out) -> edge-tts neural mp3
+-> desktop shortcut the user double-clicks whenever they want to listen.
 
-Design notes (2026-07-08, user requirements):
+Design history (2026-07-08):
 
-* Playback must NOT steal the screen — no media-player window. We spawn
-  a hidden PowerShell that drives System.Windows.Media.MediaPlayer and
-  exits by itself when the clip ends.
-* Disk hygiene: only the newest ``_KEEP_FILES`` mp3s are kept under
-  data/audio/.
-* Rate defaults to +25% (user: "もう少し速く").
-* Everything is free: gemma4 is local, edge-tts needs no API key.
+* v1: windowless background auto-play right after generation. User
+  reported it never actually reached their ears in practice (easy to
+  miss a silent playback that starts on its own).
+* v2: dropped autoplay, added Slack upload instead. Blocked on the
+  bot needing a channel invite (`not_in_channel`), and user decided
+  Slack can't "read aloud" anyway (Slack has no auto-play — a user
+  still has to tap play manually, same friction as just double-
+  clicking a local file).
+* v3: desktop shortcut ("AIキャッチアップを聞く.lnk") the user
+  double-clicks whenever convenient. Still ran gemma4+edge-tts
+  AUTOMATICALLY at the end of every catchup run, regardless of
+  whether the user actually intended to listen that day.
+* v4 (this revision, per user 2026-07-08 explicit request — "毎回
+  自動で回るのはもったいない"): voice generation is now OPT-IN.
+  ``runner.py`` no longer calls into this module at all; it only
+  stashes the delivered item list via :func:`stash_last_delivered`.
+  The user runs ``py -m catchup.tts --last`` (or double-clicks
+  ``run_catchup_voice.bat``) only on the days they actually want to
+  listen — gemma4/edge-tts never run unless a human asked for it.
 
 Env toggles:
-  CATCHUP_TTS=0        disable entirely (default on)
   CATCHUP_TTS_RATE     e.g. "+25%" (default) / "+40%" / "-10%"
   CATCHUP_TTS_VOICE    default "ja-JP-NanamiNeural" (male: ja-JP-KeitaNeural)
-  CATCHUP_TTS_AUTOPLAY=0  generate mp3 but skip local playback
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import subprocess
@@ -34,22 +45,38 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _AUDIO_DIR = _REPO_ROOT / "data" / "audio"
 _KEEP_FILES = 3
+_SHORTCUT_NAME = "AIキャッチアップを聞く.lnk"
+_LAST_DELIVERED_PATH = _AUDIO_DIR / "last_delivered.json"
 
 # gemma4 gets the items in batches this size — small enough to stay
 # well inside the context window, large enough to amortise inference.
 _SCRIPT_BATCH = 6
 
 
-def is_enabled() -> bool:
-    return os.environ.get("CATCHUP_TTS", "1").strip().lower() not in {
-        "", "0", "false", "no", "off",
-    }
+def stash_last_delivered(items: list[dict]) -> None:
+    """Save exactly what the most recent catchup run posted to Slack,
+    so a later opt-in voice pass doesn't need to re-fetch/re-summarise
+    anything. Overwrites — only the latest run is kept. Non-fatal."""
+    try:
+        _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+        _LAST_DELIVERED_PATH.write_text(
+            json.dumps(items, ensure_ascii=False, default=str),
+            encoding="utf-8",
+        )
+        logger.info("tts: stashed %d delivered items for opt-in voice", len(items))
+    except OSError as exc:
+        logger.warning("tts: stash failed (non-fatal): %s", exc)
 
 
-def _is_autoplay() -> bool:
-    return os.environ.get("CATCHUP_TTS_AUTOPLAY", "1").strip().lower() not in {
-        "", "0", "false", "no", "off",
-    }
+def load_last_delivered() -> list[dict] | None:
+    """Load the items stashed by the most recent catchup run, or None
+    if none exists yet."""
+    if not _LAST_DELIVERED_PATH.exists():
+        return None
+    try:
+        return json.loads(_LAST_DELIVERED_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
 
 
 # ----------------------------------------------------------------------
@@ -129,49 +156,69 @@ def synthesize(script: str) -> Path | None:
 
 
 # ----------------------------------------------------------------------
-# 3. Windowless background playback (auto-exits when done)
+# 3. Desktop shortcut — the ONE thing the user interacts with.
 # ----------------------------------------------------------------------
-_PS_PLAY = r"""
-Add-Type -AssemblyName PresentationCore
-$p = New-Object System.Windows.Media.MediaPlayer
-$p.Open([uri]('file:///' + ($args[0] -replace '\\','/')))
-$p.Play()
-$deadline = (Get-Date).AddSeconds(20)
-while (-not $p.NaturalDuration.HasTimeSpan) {
-    if ((Get-Date) -gt $deadline) { exit 1 }
-    Start-Sleep -Milliseconds 200
-}
-$dur = $p.NaturalDuration.TimeSpan.TotalSeconds
-Start-Sleep -Seconds ([math]::Ceiling($dur) + 1)
-$p.Close()
-"""
+def _desktop_dir() -> Path:
+    # OneDrive can relocate the Desktop folder; USERPROFILE\Desktop is
+    # correct on this machine (checked against existing paths in repo
+    # docs) but fall back gracefully if it doesn't exist.
+    candidates = [
+        Path(os.environ.get("USERPROFILE", "")) / "Desktop",
+        Path(os.environ.get("USERPROFILE", "")) / "OneDrive" / "デスクトップ",
+        Path(os.environ.get("USERPROFILE", "")) / "OneDrive" / "Desktop",
+    ]
+    for c in candidates:
+        if c.is_dir():
+            return c
+    return candidates[0]
 
 
-def play_background(path: Path) -> bool:
-    """Play *path* with no window; the helper process exits by itself
-    right after the clip finishes. Fire-and-forget (does not block)."""
+def refresh_desktop_shortcut(mp3: Path) -> Path | None:
+    """(Re)point the single desktop shortcut at *mp3*.
+
+    Windows-only (uses WScript.Shell COM via PowerShell — no extra
+    pip dependency). Overwrites the same .lnk every run so there is
+    always exactly one icon, never a pile of shortcuts.
+    """
+    if os.name != "nt":
+        logger.info("tts: desktop shortcut skipped (non-Windows)")
+        return None
+    desktop = _desktop_dir()
+    if not desktop.is_dir():
+        logger.warning("tts: desktop dir not found — skipping shortcut")
+        return None
+    link_path = desktop / _SHORTCUT_NAME
+    ps = (
+        "$W = New-Object -ComObject WScript.Shell; "
+        f"$S = $W.CreateShortcut('{link_path}'); "
+        f"$S.TargetPath = '{mp3}'; "
+        f"$S.Description = 'AIキャッチアップ 音声版 (聴き終わったら削除してOK)'; "
+        "$S.Save()"
+    )
     try:
-        subprocess.Popen(
-            [
-                "powershell", "-NoProfile", "-WindowStyle", "Hidden",
-                "-Command", _PS_PLAY, str(path),
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps],
+            check=True, capture_output=True, timeout=15,
         )
-        logger.info("tts: background playback started (%s)", path.name)
-        return True
+        logger.info("tts: desktop shortcut refreshed -> %s", link_path)
+        return link_path
     except Exception as exc:  # noqa: BLE001
-        logger.warning("tts: playback spawn failed: %s", exc)
-        return False
+        logger.warning("tts: shortcut creation failed: %s", exc)
+        return None
 
 
 # ----------------------------------------------------------------------
-# 4. Disk hygiene
+# 4. Disk hygiene — prune OLD generations only, never the current one.
 # ----------------------------------------------------------------------
 def cleanup_old(keep: int = _KEEP_FILES) -> int:
-    """Delete all but the newest *keep* mp3s. Returns count removed."""
+    """Delete all but the newest *keep* mp3s. Returns count removed.
+
+    The newest file (the one the desktop shortcut points at) is always
+    inside the keep window, so this never removes what the user is
+    about to listen to. Deleting the CURRENT file is the user's call
+    (delete it themselves from the desktop / data/audio after
+    listening) — never automatic, per explicit user request.
+    """
     if not _AUDIO_DIR.exists():
         return 0
     files = sorted(
@@ -205,8 +252,7 @@ def run_tts(items: list[dict]) -> Path | None:
         mp3 = synthesize(script)
         if mp3 is None:
             return None
-        if _is_autoplay():
-            play_background(mp3)
+        refresh_desktop_shortcut(mp3)
         cleanup_old()
         return mp3
     except Exception as exc:  # noqa: BLE001
@@ -214,24 +260,18 @@ def run_tts(items: list[dict]) -> Path | None:
         return None
 
 
-def spawn_detached(items: list[dict]) -> bool:
-    """Launch the TTS pass in a DETACHED child process and return
-    immediately (~50ms), so catchup's wall-clock time is unaffected.
+def spawn_detached_for_last() -> bool:
+    """Launch an opt-in voice pass over the most recently delivered
+    catchup, in a DETACHED child process (returns in ~50ms instead of
+    blocking the terminal for the ~1-2 min gemma4+edge-tts takes).
 
-    2026-07-08 user feedback: the synchronous v1 added 3-5 min to every
-    catchup run (gemma4 script batches + synthesis). The child re-runs
-    this module via ``py -m catchup.tts <items.json>``; gemma4 inference
-    happens inside the child, overlapping with whatever the user does
-    next. The tempfile is removed by the child.
+    This is the function ``run_catchup_voice.bat`` calls. It does
+    nothing (and spends nothing) unless the user explicitly runs it.
     """
-    import json
-    import sys
-    import tempfile
-
+    if load_last_delivered() is None:
+        logger.warning("tts: no stashed catchup run to voice — run catchup first")
+        return False
     try:
-        fd, tmp = tempfile.mkstemp(suffix=".json", prefix="catchup_tts_")
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(items, fh, ensure_ascii=False, default=str)
         flags = 0
         if os.name == "nt":
             flags = (
@@ -239,37 +279,36 @@ def spawn_detached(items: list[dict]) -> bool:
                 | subprocess.DETACHED_PROCESS
             )
         subprocess.Popen(
-            [sys.executable, "-m", "catchup.tts", tmp],
+            [__import__("sys").executable, "-m", "catchup.tts", "--last"],
             cwd=str(_REPO_ROOT),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             creationflags=flags,
         )
-        logger.info("tts: detached worker spawned (%d items)", len(items))
+        logger.info("tts: detached worker spawned for last-delivered digest")
         return True
     except Exception as exc:  # noqa: BLE001
         logger.warning("tts: detach failed (%s) — falling back to sync", exc)
-        run_tts(items)
+        items = load_last_delivered()
+        if items:
+            run_tts(items)
         return False
 
 
 def _worker_main() -> int:
-    """Entry for ``py -m catchup.tts <items.json>`` (detached child)."""
-    import json
+    """CLI entry point.
+
+    ``py -m catchup.tts --last``  — opt-in: voice the most recently
+        delivered catchup run (stashed by runner.py). This is the only
+        supported mode now — gemma4/edge-tts run ONLY when a human
+        explicitly asks, never automatically after a catchup run.
+    """
     import sys
 
-    if len(sys.argv) < 2:
+    if "--last" not in sys.argv:
+        print("Usage: py -m catchup.tts --last", file=sys.stderr)
         return 1
-    tmp = Path(sys.argv[1])
-    try:
-        items = json.loads(tmp.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return 1
-    finally:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
+
     # .env is needed for OLLAMA_API_URL etc. when launched detached.
     env_file = _REPO_ROOT / ".env"
     if env_file.exists():
@@ -277,9 +316,26 @@ def _worker_main() -> int:
             if "=" in ln and not ln.startswith("#"):
                 k, v = ln.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
-    logging.basicConfig(level=logging.INFO)
-    run_tts(items)
-    return 0
+    # spawn_detached_for_last() redirects this process's stdout/stderr
+    # to DEVNULL, so basicConfig(stream=stdout) would be silent — log
+    # to a file instead so the run is inspectable after the fact.
+    log_dir = _REPO_ROOT / "data" / "audio"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        filename=str(log_dir / "tts_worker.log"),
+        filemode="a",
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+
+    items = load_last_delivered()
+    if not items:
+        logger.warning("tts: no stashed catchup run found — run catchup first")
+        return 1
+    logger.info("tts worker started (%d items, opt-in --last)", len(items))
+    mp3 = run_tts(items)
+    logger.info("tts worker finished (mp3=%s)", mp3)
+    return 0 if mp3 else 1
 
 
 if __name__ == "__main__":
