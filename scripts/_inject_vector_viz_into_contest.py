@@ -24,7 +24,7 @@ log = logging.getLogger("inject_viz")
 
 from publishers.note_publisher import NotePublisher  # noqa: E402
 
-NOTE_URL = "https://note.com/<NOTE_USER>/n/n444be2daa2ef"
+NOTE_URL = f"https://note.com/{os.environ['NOTE_USER']}/n/n444be2daa2ef"
 BODY_PATH = _REPO / "data" / "custom_posts" / "2026-06-21_ai_de_asobou_body.md"
 IMG_DIR = _REPO / "data" / "images" / "contest"
 COVER_PATH = (_REPO / "data" / "images" / "covers"
