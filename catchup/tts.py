@@ -212,3 +212,75 @@ def run_tts(items: list[dict]) -> Path | None:
     except Exception as exc:  # noqa: BLE001
         logger.warning("tts: pipeline failed (non-fatal): %s", exc)
         return None
+
+
+def spawn_detached(items: list[dict]) -> bool:
+    """Launch the TTS pass in a DETACHED child process and return
+    immediately (~50ms), so catchup's wall-clock time is unaffected.
+
+    2026-07-08 user feedback: the synchronous v1 added 3-5 min to every
+    catchup run (gemma4 script batches + synthesis). The child re-runs
+    this module via ``py -m catchup.tts <items.json>``; gemma4 inference
+    happens inside the child, overlapping with whatever the user does
+    next. The tempfile is removed by the child.
+    """
+    import json
+    import sys
+    import tempfile
+
+    try:
+        fd, tmp = tempfile.mkstemp(suffix=".json", prefix="catchup_tts_")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(items, fh, ensure_ascii=False, default=str)
+        flags = 0
+        if os.name == "nt":
+            flags = (
+                subprocess.CREATE_NO_WINDOW
+                | subprocess.DETACHED_PROCESS
+            )
+        subprocess.Popen(
+            [sys.executable, "-m", "catchup.tts", tmp],
+            cwd=str(_REPO_ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=flags,
+        )
+        logger.info("tts: detached worker spawned (%d items)", len(items))
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tts: detach failed (%s) — falling back to sync", exc)
+        run_tts(items)
+        return False
+
+
+def _worker_main() -> int:
+    """Entry for ``py -m catchup.tts <items.json>`` (detached child)."""
+    import json
+    import sys
+
+    if len(sys.argv) < 2:
+        return 1
+    tmp = Path(sys.argv[1])
+    try:
+        items = json.loads(tmp.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 1
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+    # .env is needed for OLLAMA_API_URL etc. when launched detached.
+    env_file = _REPO_ROOT / ".env"
+    if env_file.exists():
+        for ln in env_file.read_text(encoding="utf-8").splitlines():
+            if "=" in ln and not ln.startswith("#"):
+                k, v = ln.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+    logging.basicConfig(level=logging.INFO)
+    run_tts(items)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_worker_main())

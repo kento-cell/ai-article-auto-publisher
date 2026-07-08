@@ -144,10 +144,12 @@ def run(dry_run: bool = False) -> dict:
             # mp3 → windowless auto-play on this PC. Non-fatal by design;
             # CATCHUP_TTS=0 disables. Runs only on a successful post so
             # the audio always matches what actually reached Slack.
+            # spawn_detached: audio runs in its own process so catchup's
+            # wall-clock time is unchanged (v1 sync added 3-5 min).
             try:
-                from catchup.tts import is_enabled as _tts_enabled, run_tts
+                from catchup.tts import is_enabled as _tts_enabled, spawn_detached
                 if _tts_enabled():
-                    run_tts(capped)
+                    spawn_detached(capped)
             except Exception as _exc:  # noqa: BLE001
                 logger.warning("catchup: tts skipped (%s)", _exc)
         else:
