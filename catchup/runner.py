@@ -140,18 +140,25 @@ def run(dry_run: bool = False) -> dict:
                 "catchup: posted %d items in %d Slack message(s)",
                 len(capped), len(chunks),
             )
-            # 2026-07-08: voice digest is OPT-IN, not automatic. Running
-            # gemma4 (4 batches) + edge-tts on every catchup regardless
-            # of whether the user actually listens is wasted local
-            # compute (user feedback: "毎回自動で回るのはもったいない").
-            # Instead, stash exactly what was delivered so a later,
-            # explicit `py -m catchup.tts --last` can voice THIS run
-            # without re-fetching/re-summarising anything.
+            # 2026-07-08: voice digest — automatic, but DETACHED so this
+            # run's completion (and the Slack post above) is never
+            # delayed by gemma4+edge-tts. Never auto-plays or auto-
+            # deletes: refreshes the "AIキャッチアップを聞く" desktop
+            # shortcut and stops there — the user decides when to
+            # listen and when to delete. CATCHUP_TTS=0 disables the
+            # automatic pass (stash still runs so `--last` keeps
+            # working standalone).
             try:
-                from catchup.tts import stash_last_delivered
+                from catchup.tts import (
+                    is_enabled as _tts_enabled,
+                    spawn_detached_for_last,
+                    stash_last_delivered,
+                )
                 stash_last_delivered(capped)
+                if _tts_enabled():
+                    spawn_detached_for_last()
             except Exception as _exc:  # noqa: BLE001
-                logger.warning("catchup: tts stash skipped (%s)", _exc)
+                logger.warning("catchup: tts skipped (%s)", _exc)
         else:
             logger.error("catchup: slack post FAILED — items NOT marked as sent")
         return {

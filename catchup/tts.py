@@ -2,7 +2,8 @@
 
 Pipeline: summarized items -> gemma4 reading-script (English->katakana,
 difficult kanji->hiragana, numbers->spelled out) -> edge-tts neural mp3
--> desktop shortcut the user double-clicks whenever they want to listen.
+-> desktop shortcut ("AIキャッチアップを聞く.lnk") the user double-
+clicks whenever they want to listen.
 
 Design history (2026-07-08):
 
@@ -14,19 +15,25 @@ Design history (2026-07-08):
   Slack can't "read aloud" anyway (Slack has no auto-play — a user
   still has to tap play manually, same friction as just double-
   clicking a local file).
-* v3: desktop shortcut ("AIキャッチアップを聞く.lnk") the user
-  double-clicks whenever convenient. Still ran gemma4+edge-tts
-  AUTOMATICALLY at the end of every catchup run, regardless of
-  whether the user actually intended to listen that day.
-* v4 (this revision, per user 2026-07-08 explicit request — "毎回
-  自動で回るのはもったいない"): voice generation is now OPT-IN.
-  ``runner.py`` no longer calls into this module at all; it only
-  stashes the delivered item list via :func:`stash_last_delivered`.
-  The user runs ``py -m catchup.tts --last`` (or double-clicks
-  ``run_catchup_voice.bat``) only on the days they actually want to
-  listen — gemma4/edge-tts never run unless a human asked for it.
+* v3: desktop shortcut, but still ran gemma4+edge-tts automatically at
+  the end of every catchup run.
+* v4: made voice generation fully opt-in (`py -m catchup.tts --last`)
+  because running gemma4+edge-tts on every catchup regardless of
+  whether the user planned to listen felt wasteful.
+* v5 (this revision, per user 2026-07-08 follow-up — "全自動に戻して
+  ほしい，MP3をデスクトップに置くまで"): back to automatic, but kept
+  the two things v1-v3 got wrong: (a) runs DETACHED so the catchup
+  post to Slack is never delayed, (b) never auto-plays or auto-
+  deletes — the desktop shortcut is refreshed and the user decides
+  when to listen / when to delete. The "wasteful" concern from v4 was
+  about local compute running unconditionally; gemma4+edge-tts cost
+  nothing in API terms, so running once per catchup (not per listen)
+  is the right trade-off.
+  `py -m catchup.tts --last` still works standalone for reruns/debug.
 
 Env toggles:
+  CATCHUP_TTS=0        disable the automatic post-catchup voice pass
+                        (stash_last_delivered still runs so --last works)
   CATCHUP_TTS_RATE     e.g. "+25%" (default) / "+40%" / "-10%"
   CATCHUP_TTS_VOICE    default "ja-JP-NanamiNeural" (male: ja-JP-KeitaNeural)
 """
@@ -53,17 +60,29 @@ _LAST_DELIVERED_PATH = _AUDIO_DIR / "last_delivered.json"
 _SCRIPT_BATCH = 6
 
 
+def is_enabled() -> bool:
+    """``CATCHUP_TTS`` toggle for the AUTOMATIC post-catchup voice pass.
+
+    Default ON. Setting this to 0 stops the automatic mp3 generation
+    triggered by runner.py, but stash_last_delivered() still runs so
+    a manual ``py -m catchup.tts --last`` keeps working.
+    """
+    return os.environ.get("CATCHUP_TTS", "1").strip().lower() not in {
+        "", "0", "false", "no", "off",
+    }
+
+
 def stash_last_delivered(items: list[dict]) -> None:
     """Save exactly what the most recent catchup run posted to Slack,
-    so a later opt-in voice pass doesn't need to re-fetch/re-summarise
-    anything. Overwrites — only the latest run is kept. Non-fatal."""
+    so a voice pass doesn't need to re-fetch/re-summarise anything.
+    Overwrites — only the latest run is kept. Non-fatal."""
     try:
         _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
         _LAST_DELIVERED_PATH.write_text(
             json.dumps(items, ensure_ascii=False, default=str),
             encoding="utf-8",
         )
-        logger.info("tts: stashed %d delivered items for opt-in voice", len(items))
+        logger.info("tts: stashed %d delivered items", len(items))
     except OSError as exc:
         logger.warning("tts: stash failed (non-fatal): %s", exc)
 
@@ -261,12 +280,14 @@ def run_tts(items: list[dict]) -> Path | None:
 
 
 def spawn_detached_for_last() -> bool:
-    """Launch an opt-in voice pass over the most recently delivered
-    catchup, in a DETACHED child process (returns in ~50ms instead of
-    blocking the terminal for the ~1-2 min gemma4+edge-tts takes).
+    """Launch a voice pass over the most recently delivered catchup, in
+    a DETACHED child process (returns in ~50ms instead of blocking for
+    the ~1-2 min gemma4+edge-tts takes).
 
-    This is the function ``run_catchup_voice.bat`` calls. It does
-    nothing (and spends nothing) unless the user explicitly runs it.
+    Called automatically by runner.py after every successful catchup
+    post (so the Slack post is never delayed), and also callable
+    standalone — this is what ``run_catchup_voice.bat`` and
+    ``py -m catchup.tts --last`` both trigger for reruns/debugging.
     """
     if load_last_delivered() is None:
         logger.warning("tts: no stashed catchup run to voice — run catchup first")
@@ -298,10 +319,10 @@ def spawn_detached_for_last() -> bool:
 def _worker_main() -> int:
     """CLI entry point.
 
-    ``py -m catchup.tts --last``  — opt-in: voice the most recently
-        delivered catchup run (stashed by runner.py). This is the only
-        supported mode now — gemma4/edge-tts run ONLY when a human
-        explicitly asks, never automatically after a catchup run.
+    ``py -m catchup.tts --last``  — voice the most recently delivered
+        catchup run (stashed by runner.py). Invoked automatically
+        (detached, via spawn_detached_for_last) after every catchup
+        post, and also runnable standalone for reruns/debugging.
     """
     import sys
 
@@ -332,7 +353,7 @@ def _worker_main() -> int:
     if not items:
         logger.warning("tts: no stashed catchup run found — run catchup first")
         return 1
-    logger.info("tts worker started (%d items, opt-in --last)", len(items))
+    logger.info("tts worker started (%d items)", len(items))
     mp3 = run_tts(items)
     logger.info("tts worker finished (mp3=%s)", mp3)
     return 0 if mp3 else 1
