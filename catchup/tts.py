@@ -277,8 +277,22 @@ def _worker_main() -> int:
             if "=" in ln and not ln.startswith("#"):
                 k, v = ln.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
-    logging.basicConfig(level=logging.INFO)
-    run_tts(items)
+    # 2026-07-08: spawn_detached() redirects this process's stdout/stderr
+    # to DEVNULL, so basicConfig(stream=stdout) silently vanished —
+    # there was no way to confirm the worker actually ran (found while
+    # verifying whether playback really started). Log to a rotating
+    # file instead so run_tts's start/success/failure is inspectable.
+    log_dir = _REPO_ROOT / "data" / "audio"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        filename=str(log_dir / "tts_worker.log"),
+        filemode="a",
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+    logger.info("tts worker started (%d items)", len(items))
+    mp3 = run_tts(items)
+    logger.info("tts worker finished (mp3=%s)", mp3)
     return 0
 
 
