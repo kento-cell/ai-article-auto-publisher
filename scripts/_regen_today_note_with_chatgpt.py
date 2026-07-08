@@ -68,7 +68,7 @@ def _today_note_targets() -> list[str]:
                 continue
             d = json.loads(path.read_text(encoding="utf-8"))
             url = (d.get("published_url") or d.get("note_url") or "")
-            if "note.com" in url and "kanazawa" in url:
+            if "note.com" in url and os.environ.get("NOTE_USER", "") in url:
                 out.append(path.stem)
         except Exception:  # noqa: BLE001
             continue

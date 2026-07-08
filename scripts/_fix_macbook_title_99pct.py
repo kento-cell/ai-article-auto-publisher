@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger("fix_title")
 from publishers.note_publisher import NotePublisher
 
-NOTE_URL = "https://note.com/kento_kanazawa/n/nc5d53fdebaf9"
+NOTE_URL = f"https://note.com/{os.environ['NOTE_USER']}/n/nc5d53fdebaf9"
 NEW_TITLE = "【警告】【永久保存版】MacBookにタッチ機能が来る？ サプライチェーン情報で見えてきた開発の裏事情"
 
 pub = NotePublisher(headless=False)
