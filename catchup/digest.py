@@ -56,7 +56,11 @@ def _line(it: dict) -> str:
         # The summary is already multi-line (6-9 lines); keep the line
         # breaks so each fact reads on its own row in Slack.
         body += f"{summary}\n"
-    body += f"{it['source']} — <{it['url']}|原文を読む>"
+    src = it["source"]
+    also = it.get("also_sources") or []
+    if also:
+        src += f" ほか{len(also)}ソースでも報道"
+    body += f"{src} — <{it['url']}|原文を読む>"
     return body
 
 

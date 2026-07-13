@@ -14,6 +14,7 @@ from .dedup import Dedup
 from .digest import build
 from .sources import fetch_all_parallel
 from .summarizer import summarize
+from .topic_dedup import collapse_duplicates
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,8 @@ def _chunk(msg: str, limit: int = _SLACK_CHUNK_CHARS) -> list[str]:
     return chunks or [msg]
 
 
-def _cap(items: list[dict]) -> list[dict]:
-    """Take Tier1 first, then 2, then 3, until we hit _MAX_TO_SUMMARISE."""
+def _cap(items: list[dict], limit: int = _MAX_TO_SUMMARISE) -> list[dict]:
+    """Take Tier1 first, then 2, then 3, until we hit *limit*."""
     by_tier = {1: [], 2: [], 3: []}
     for it in items:
         by_tier.setdefault(it.get("tier", 3), []).append(it)
@@ -67,7 +68,7 @@ def _cap(items: list[dict]) -> list[dict]:
     out: list[dict] = []
     for t in (1, 2, 3):
         for it in by_tier.get(t, []):
-            if len(out) >= _MAX_TO_SUMMARISE:
+            if len(out) >= limit:
                 return out
             out.append(it)
     return out
@@ -102,7 +103,17 @@ def run(dry_run: bool = False) -> dict:
             logger.info("catchup: dropped %d same-URL duplicates", len(new) - len(uniq))
         new = uniq
 
-        capped = _cap(new)
+        # Same-story collapsing (2026-07-12, user feedback: "同じような
+        # 内容のニュースを何個も取り上げている"). Cap provisionally a
+        # little above the final limit so slots freed by collapsed
+        # duplicates are refilled by other stories, then trim.
+        provisional = _cap(new, _MAX_TO_SUMMARISE + 8)
+        kept, dropped_dups = collapse_duplicates(provisional)
+        if dropped_dups:
+            logger.info(
+                "catchup: collapsed %d same-story duplicate(s)", len(dropped_dups)
+            )
+        capped = kept[:_MAX_TO_SUMMARISE]
         logger.info("catchup: %d items will be summarised", len(capped))
 
         summarize(capped)
@@ -135,7 +146,9 @@ def run(dry_run: bool = False) -> dict:
                 logger.error("catchup: slack chunk %d/%d FAILED", i, len(chunks))
                 break
         if ok:
-            dedup.mark_sent(capped)
+            # Dropped duplicates count as delivered too (their story went
+            # out via the kept item) — otherwise they resurface tomorrow.
+            dedup.mark_sent(capped + dropped_dups)
             logger.info(
                 "catchup: posted %d items in %d Slack message(s)",
                 len(capped), len(chunks),
