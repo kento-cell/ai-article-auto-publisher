@@ -5643,6 +5643,35 @@ def _run_pipeline_inner(config: dict, prompts: dict, mode: str):
     sheets = SheetsManager()
     feedback = FeedbackRecorder()
 
+    # RAG 鮮度チェック (2026-07-13 RSI process audit 指摘 e / backlog #6):
+    # ops_incidents.md 等の knowledge 正典が RAG index より新しい =
+    # 再ingest を忘れている。[ops-banner] が古い知識のまま発火し新事故を
+    # 警告できないので、目立つ WARNING で人間に知らせる (blocking はしない
+    # — index が無い環境でも generate 自体は動かせるべき)。
+    try:
+        _rag_dir = Path("data/rag_index")
+        _knowledge_sources = [
+            Path("docs/knowledge/ops_incidents.md"),
+            Path("docs/knowledge/hallucination_registry.md"),
+        ]
+        if _rag_dir.is_dir():
+            _index_mtime = max(
+                (p.stat().st_mtime for p in _rag_dir.rglob("*") if p.is_file()),
+                default=0.0,
+            )
+            _stale = [
+                str(p) for p in _knowledge_sources
+                if p.exists() and p.stat().st_mtime > _index_mtime
+            ]
+            if _stale:
+                logger.warning(
+                    "[rag-staleness] knowledge 正典が RAG index より新しい "
+                    "(再ingest 忘れ): %s — `py scripts/build_rag_index.py` を実行",
+                    ", ".join(_stale),
+                )
+    except Exception as _exc:  # noqa: BLE001
+        logger.debug("rag-staleness check skipped: %s", _exc)
+
     if mode == "generate":
         # 収集 → 生成 → スコアリング → Sheets登録 → Gmail通知
         collected = collect_articles(config)

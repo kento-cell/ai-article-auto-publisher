@@ -216,6 +216,25 @@ def sanitize(content: str) -> tuple[str, list[str]]:
 
     cleaned = _AI_DISCLOSURE_LINE_RE.sub(_kill_disclosure, cleaned)
 
+    # 3b. Drop disclaimer/disclosure headings whose section became
+    #     EMPTY after the line-kills above. Observed 2026-07-13
+    #     (割れないグラス記事, review backlog #2): the LLM wrote
+    #     「## ⚠️ 免責事項」 + an AI-disclosure line; step 3 killed the
+    #     line and left a dangling empty heading, which also makes
+    #     _ensure_ai_disclaimer skip (it sees the 免責 heading and
+    #     assumes content exists).
+    _empty_disclaimer_heading = re.compile(
+        r"^#{1,4}[^\n]*(?:免責事項|免責|ご利用にあたって|ディスクレーマー"
+        r"|disclaimer)[^\n]*\n+(?=#{1,4}\s|\Z)",
+        re.MULTILINE | re.IGNORECASE,
+    )
+
+    def _kill_empty_disclaimer(m: re.Match[str]) -> str:
+        removed.append(f"empty_disclaimer_heading: {m.group(0).strip()[:60]!r}")
+        return ""
+
+    cleaned = _empty_disclaimer_heading.sub(_kill_empty_disclaimer, cleaned)
+
     # 4. Tidy up: collapse 3+ consecutive blank lines to 2.
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
 
