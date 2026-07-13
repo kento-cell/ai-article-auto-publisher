@@ -6,11 +6,36 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-08 16:34 JST
+2026-07-13 10:25 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- **7-13 朝 routine (learn→generate→承認→publish 完走)**:
+  - learn: 280件学習、 RAG 676 chunks re-index (anti_patterns 8 / successes 8 /
+    hallucinations 18 / ops_incidents 16 / generation_guides 70 / past_articles
+    541 / thumbnail_styles 15)
+  - generate: 7件生成、 スコアリング 合格7/不合格0 (zenn2 + note5、 全て総合B/
+    証拠LvA)。 dup-check 1件 warning (「ループエンジニアリング…」 sim 0.888、
+    後続確認で別記事と判定し publish 続行)
+  - bulk_approve: 7/7 承認 (グレードC/SNS ハルシガード 引っかかり無し)
+  - publish (`--free-first 2`, `NOTE_DAILY_LIMIT=4`):
+    - note 4件 投稿 (**cadence cap 上限到達で今回新規5件は明日以降に持ち越し**、
+      先に古い承認待ち4件が優先消化された想定通りの動作):
+      1. n65306d782b03 K-POPトレカ市場 ¥0/can_read=True
+      2. n62fa415c97a8 割れないグラス ¥0/can_read=True
+      3. n660937d81cdd 真のマッコリ ¥500/can_read=False
+      4. n1ad6c673fc7b 本気のカメラ比較 ¥500/can_read=False
+      (live API 4件とも price/can_read 想定通り確認済)
+    - zenn 2件 投稿: queue 満杯 (404) → scrap fallback 両方成功
+      (a97d79a71be870 CAD設計, 71addcdd3a0ecd ループエンジニアリング、
+      両方 HTTP 200 生存確認済)
+    - **note membership 自動追加 4件とも失敗** (`membership modal open failed:
+      Locator.scroll_into_view_if_needed Timeout`) → 下記 Next Actions #1 に追記
+    - タイトル 6件、 捏造系 deny パターン (N人に聞いた等) 該当無し確認済
+  - 明日以降持ち越し (cadence cap): 京都西陣・伏見旅、 Seoul Fashion Week、
+    ケルヒャー高圧洗浄機、 眉毛アイブロウ、 マーナメッシュエコバッグ (note 5件)、
+    プライムデーPS5 (前日持ち越し分、 note 1件)
 - 7-2 (在宅化 + claude-in-chrome 突破 + Gemini 画像 PoC):
   1. **スケジューラ全停止**: 在宅勤務開始で ai-publish-slot-{MON..FRI} 5個 Disable。
      memory `feedback_no_scheduler` 更新済。
@@ -686,7 +711,9 @@
    (o) 6-17 Nothing ヘッドホン (n21bac7596937 ¥500)、
    (p) 6-17 ドライヤー dreame (ndefcc8612746 ¥500)、
    (q) 6-18 SIXPAD Medical Core (n34739e03cbd7 ¥500)、
-   (r) 6-18 印刷現場 (neb29b095c5a6 ¥500)。
+   (r) 6-18 印刷現場 (neb29b095c5a6 ¥500)、
+   (s) 7-13 真のマッコリ巡り (n660937d81cdd ¥500)、
+   (t) 7-13 本気のカメラ比較 X100VI/α7CR/GR IIIx (n1ad6c673fc7b ¥500)。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様。
    ⚠️ (m) は公開タイトル末尾に「（35文字）」混入 (コードは `2bd045c` で修正済、
@@ -734,11 +761,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に…](https://note.com/<NOTE_USER>/n/necf05440c363?app_launch=false)
-- [美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacina…](https://note.com/<NOTE_USER>/n/n19b342c320e2?app_launch=false)
+- [佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に…](https://note.com/kento_kanazawa/n/necf05440c363?app_launch=false)
+- [美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacina…](https://note.com/kento_kanazawa/n/n19b342c320e2?app_launch=false)
 - [Agentic RLにおけるMITOとTITO…](https://zenn.dev/kento_cell/scraps/ebb5bd3af49dc3)
-- [座ってスクワットができる不思議なイスを見つけたよ。梅雨も真夏もおうち時間に最適すぎる…](https://note.com/<NOTE_USER>/n/nd7f7edc2afcc?app_launch=false)
-- [電気代不要で360°見守れる。Ankerの防犯カメラが便利だった…](https://note.com/<NOTE_USER>/n/nbe658bae66ef?app_launch=false)
+- [座ってスクワットができる不思議なイスを見つけたよ。梅雨も真夏もおうち時間に最適すぎる…](https://note.com/kento_kanazawa/n/nd7f7edc2afcc?app_launch=false)
+- [電気代不要で360°見守れる。Ankerの防犯カメラが便利だった…](https://note.com/kento_kanazawa/n/nbe658bae66ef?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -747,11 +774,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - c07d6ad Merge pull request #5 from kento-cell/feat/catchup-tts-detached
-  - 5e8b4c7 perf(tts): detach voice digest into its own process — catchup wall-clock unchanged
-  - 24bb2ea feat(catchup): voice digest — gemma4 台本化 + edge-tts バックグラウンド読み上げ
-  - 2c83a05 ops(routine): 7-7 夜 routine — Mac 改良取込み、 7記事全合格、 zenn article 完全復活
-  - 85a5dcc Parallelize catchup fetching, dedupe same-URL stories, fix cap sort crash (#3)
+  - (no commits in last 48h)
 <!-- /AUTO:pipeline -->
 
 ## Pointers
