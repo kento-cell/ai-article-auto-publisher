@@ -35,11 +35,6 @@ while IFS= read -r f; do
     esac
 done <<< "$changed"
 
-if [[ "$need_run" == "0" ]]; then
-    echo "pre-commit: no source files changed — regression skipped"
-    exit 0
-fi
-
 # Pick the same python the rest of the project uses (Windows: py
 # launcher, otherwise python3).
 if command -v py >/dev/null 2>&1; then
@@ -48,6 +43,31 @@ elif command -v python3 >/dev/null 2>&1; then
     PY=python3
 else
     PY=python
+fi
+
+# PII scan on the staged diff — runs on EVERY commit, including the
+# docs-only ones that skip the regression suite below. 2026-07-13:
+# the note handle re-entered tracked STATE.md via a docs-only commit
+# and reached 5 pushed commits before a human noticed;
+# scripts/_pii_scan_diff.py existed but was never wired here.
+echo "pre-commit: PII scan on staged diff ..."
+# --added-only: removal-of-PII commits must not self-block.
+# --skip: labels that are public by design here (zenn handle == the
+#         GitHub org name; the repo's own E:\ path appears throughout
+#         tracked docs including CLAUDE.md).
+if ! git diff --cached | "$PY" scripts/_pii_scan_diff.py \
+        --added-only --skip=owner-handle-frag,win-repo-path \
+        >/tmp/pre-commit-pii.log 2>&1; then
+    echo "pre-commit: FAILED — PII patterns found in staged diff:"
+    tail -20 /tmp/pre-commit-pii.log
+    echo
+    echo "Mask or remove the PII above before committing."
+    exit 1
+fi
+
+if [[ "$need_run" == "0" ]]; then
+    echo "pre-commit: no source files changed — regression skipped"
+    exit 0
 fi
 
 echo "pre-commit: running scripts/test_hallucination_deny.py ..."

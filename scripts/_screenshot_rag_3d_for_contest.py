@@ -21,7 +21,7 @@ sys.path.insert(0, str(_REPO))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger("rag3d_shot")
 
-SRC_HTML = Path(r"C:\Users\kanaz\OneDrive\デスクトップ\rag_graph_3d.html")
+SRC_HTML = Path.home() / "OneDrive" / "デスクトップ" / "rag_graph_3d.html"
 OUT_DIR = _REPO / "data" / "images" / "contest"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

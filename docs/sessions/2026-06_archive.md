@@ -383,7 +383,7 @@
 - 6-11: **公開7repo セキュリティ再監査 + 全件対応 (Fable5 契機)**。 3 subagent 並列
   (PII/secrets 全履歴 / 脆弱性 / dotfiles+残). **実キー漏洩ゼロ確認**。 対応:
   ① **ai-article 履歴書き換え** — author 漢字フルネーム31commit→「Kento」統一 +
-  `C:\Users\kanaz`→`C:\Users\user` (blob+message)、 git filter-repo (mailmap +
+  `C:\Users\<user>`→`C:\Users\user` (blob+message)、 git filter-repo (mailmap +
   replace-text/-message)、 branch protection 一時解除→force push→即復元、 リモート
   GitHub API で 0 件検証、 ローカル stale branch 削除+gc。
   ② **SWELL** (HIGH) — CORS 反射→allowlist (localhost+*.manuspre.computer) +

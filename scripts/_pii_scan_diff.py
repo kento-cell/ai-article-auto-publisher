@@ -31,7 +31,9 @@ _EXTRA_PATH = _REPO / "config" / "pii_scan_extra.json"
 PATTERNS: dict[str, str] = {
     "email": r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b",
     "phone-jp": r"\b0\d{1,3}-\d{2,4}-\d{4}\b",
-    "win-user-path": r"C:\\Users\\[a-zA-Z0-9_]+",
+    # `C:\Users\user` / `C:\Users\<user>` are the sanctioned masks
+    # (used when documenting past PII fixes) — don't flag the mask itself.
+    "win-user-path": r"C:\\Users\\(?!user\b|<user>)[a-zA-Z0-9_]+",
     "win-repo-path": r"E:\\ai-article-auto-publisher",
     "posix-home": r"/c/Users/[a-zA-Z0-9_]+",
     "key-anthropic": r"sk-ant-[a-zA-Z0-9_-]{20,}",
@@ -52,9 +54,31 @@ def _load_extra() -> dict[str, str]:
 
 
 def main() -> int:
+    # Lightweight arg parsing (2026-07-13, pre-commit wiring):
+    #   --added-only      scan only the ADDED lines of a unified diff.
+    #                     Without this, the commit that REMOVES a leaked
+    #                     value is itself blocked (removal lines still
+    #                     contain the value).
+    #   --skip=a,b        pattern labels to ignore. Used by the hook for
+    #                     identifiers that are public by design in this
+    #                     repo (the zenn handle == the GitHub org name,
+    #                     the repo's own E:\ path in docs).
+    added_only = "--added-only" in sys.argv
+    skip: set[str] = set()
+    for a in sys.argv[1:]:
+        if a.startswith("--skip="):
+            skip.update(s.strip() for s in a[len("--skip="):].split(",") if s.strip())
+
     text = sys.stdin.read()
+    if added_only:
+        text = "\n".join(
+            ln for ln in text.splitlines()
+            if ln.startswith("+") and not ln.startswith("+++")
+        )
     patterns = dict(PATTERNS)
     patterns.update(_load_extra())
+    for label in skip:
+        patterns.pop(label, None)
 
     hits: dict[str, list[str]] = {}
     for name, pat in patterns.items():
