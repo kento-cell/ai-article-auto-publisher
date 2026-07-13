@@ -28,19 +28,23 @@ from publishers.note_publisher import NotePublisher
 
 _REPO = Path(__file__).resolve().parent.parent
 
+# PII policy: note handle comes from .env (NOTE_USER), never hardcoded
+# in this public repo.
+_NOTE_USER = os.environ.get("NOTE_USER", "")
+
 _TARGETS = {
     "kpop": {
-        "url": "https://note.com/kento_kanazawa/n/n65306d782b03",
+        "url": f"https://note.com/{_NOTE_USER}/n/n65306d782b03",
         "content_file": _REPO / "data" / "_fix_article1_content.txt",
         "make_free": False,  # already free
     },
     "makgeolli": {
-        "url": "https://note.com/kento_kanazawa/n/n660937d81cdd",
+        "url": f"https://note.com/{_NOTE_USER}/n/n660937d81cdd",
         "content_file": _REPO / "data" / "_fix_article3_content.txt",
         "make_free": True,  # was paid, downgrading to free
     },
     "camera": {
-        "url": "https://note.com/kento_kanazawa/n/n1ad6c673fc7b",
+        "url": f"https://note.com/{_NOTE_USER}/n/n1ad6c673fc7b",
         "content_file": _REPO / "data" / "_fix_article4_content.txt",
         "make_free": True,  # was paid, downgrading to free
     },

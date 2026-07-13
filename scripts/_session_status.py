@@ -33,6 +33,16 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 _REPO = Path(__file__).resolve().parent.parent
 STATE_PATH = _REPO / "docs" / "sessions" / "STATE.md"
 
+# .env loader — this script runs from a SessionStart hook where the
+# shell env has no NOTE_USER; without it the PII mask below silently
+# no-ops and the real note handle lands in tracked STATE.md.
+_ENV_FILE = _REPO / ".env"
+if _ENV_FILE.exists():
+    for _ln in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        if "=" in _ln and not _ln.startswith("#"):
+            _k, _v = _ln.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 
 def _now_jst() -> str:
     jst = _dt.timezone(_dt.timedelta(hours=9))
@@ -58,6 +68,15 @@ def _recent_publishes(limit: int = 5) -> list[dict]:
         url = (d.get("published_url") or d.get("note_url") or "").strip()
         if not url:
             continue
+        # PII policy (2026-07-13, feedback_public_repo_no_pii): STATE.md
+        # is tracked in a PUBLIC repo. Mask the note handle here at the
+        # source — a manual mask in STATE.md gets silently overwritten
+        # the next time this AUTO section regenerates (observed today:
+        # the morning's hand-masked lines came back with the real
+        # handle after the learn run).
+        _handle = os.environ.get("NOTE_USER", "").strip()
+        if _handle:
+            url = url.replace(f"note.com/{_handle}/", "note.com/<NOTE_USER>/")
         title = (d.get("title", "") or "")[:48]
         # Strip mojibake — published_url may be the readable field even
         # if title is corrupted in the JSON for windows cp932 reasons.

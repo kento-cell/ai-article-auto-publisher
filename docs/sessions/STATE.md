@@ -272,11 +272,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に…](https://note.com/kento_kanazawa/n/necf05440c363?app_launch=false)
-- [美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacina…](https://note.com/kento_kanazawa/n/n19b342c320e2?app_launch=false)
+- [佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に…](https://note.com/<NOTE_USER>/n/necf05440c363?app_launch=false)
+- [美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacina…](https://note.com/<NOTE_USER>/n/n19b342c320e2?app_launch=false)
 - [Agentic RLにおけるMITOとTITO…](https://zenn.dev/kento_cell/scraps/ebb5bd3af49dc3)
-- [座ってスクワットができる不思議なイスを見つけたよ。梅雨も真夏もおうち時間に最適すぎる…](https://note.com/kento_kanazawa/n/nd7f7edc2afcc?app_launch=false)
-- [電気代不要で360°見守れる。Ankerの防犯カメラが便利だった…](https://note.com/kento_kanazawa/n/nbe658bae66ef?app_launch=false)
+- [座ってスクワットができる不思議なイスを見つけたよ。梅雨も真夏もおうち時間に最適すぎる…](https://note.com/<NOTE_USER>/n/nd7f7edc2afcc?app_launch=false)
+- [電気代不要で360°見守れる。Ankerの防犯カメラが便利だった…](https://note.com/<NOTE_USER>/n/nbe658bae66ef?app_launch=false)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
