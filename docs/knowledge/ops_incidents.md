@@ -1,6 +1,6 @@
 # 運用インシデント・レジストリ
 
-_最終更新: 2026-05-22_
+_最終更新: 2026-07-13_
 
 ハルシネーション(`hallucination_registry.md`)とは別に、**運用上の手戻り**を
 1事案 1 H2 セクションで集約する。retry / re-publish / orphan / UI セレクタ
@@ -39,6 +39,8 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 19 | #18 と同じ捏造が `NOTE_ALLOW_NO_CODEX_BRIEF=1` bypass 残置で再発 (Cybertruck Wade Mode 記事、source backfill 失敗→Writer 全創作) | 2026-05-21 | `.env` の bypass を `=0` に変更、両方欠落時 fail-closed 復活。bypass フラグは捏造の最後の入口になり得るので再導入しないこと | ✅ 修正済 |
 | 20 | SheetsManager.add_article が無条件 append → 同 article_id の重複行 → 二重投稿リスク (5-21 row 71 で実害手前) | 2026-05-21 | utils/sheets_manager.py の add_article を idempotent 化 (既存 article_id を find して既存行 番号を返し append しない、warn ログ出力) | ✅ 修正済 |
 | 21 | _TITLE_BRACKETS の事実主張型ブラケット (【100人に聞いた】等) がタイトル捏造として zenn scrap に公開 (6-10 実害) | 2026-06-10 | bracket list から事実主張型 5 件除去 + forbidden_phrases/_PUBLISH_DENY 3 箇所同期で `\d+人に聞いた` deny + 公開済み scrap live 修正 | ✅ 修正済 (タイトル抽出の構造ギャップは残) |
+| 22 | knowledge_topic 記事で内部 URI (`knowledge_topic://kc_006`, `媒体名 — knowledge-topic://hg_007`) が出典として本文流出、scorer が citation と誤カウントし quality-gate 素通り (7-13 実害: note 3本) | 2026-07-13 | 公開済 3 本は edit_article で live 修正済。**恒久対策未**: 出典レンダラで `knowledge[-_]topic://` 出力禁止 + objective_scorer の内部 URI 除外 | 🔴 恒久対策未 |
+| 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | 3本 live 修正済 (有料2本は¥0降格+補完)。**恒久対策未**: publish 前の完結性ゲート (mid-sentence 終端/末尾空見出しで拒否、有料は完全ブロック) | 🔴 恒久対策未 |
 
 ---
 
@@ -446,6 +448,67 @@ DB移行で…」のタイトルで公開された。本文にアンケート実
 本文 H1 由来の公開タイトルにも title_fulfillment を効かせたい場合は、
 publish 前に extracted title を subjective evaluator に通す改修が候補。
 新ブラケット追加時は「本文で回収可能か (誇張 OK / 事実主張 NG)」を必ず判定。
+
+---
+
+## 22. knowledge_topic 内部 URI が出典として本文流出 + scorer 誤カウント
+
+**事象:** 2026-07-13 朝 routine で publish された note 3本 (K-POPトレカ /
+マッコリ / カメラ比較、いずれも source=knowledge_topics) の本文に、
+`（出典: knowledge_topic://kc_006）` `> 出典: 媒体名 — knowledge-topic://hg_007`
+という **内部トピック ID + プレースホルダー文字列がそのまま読者向け出典として
+5〜8 回露出**。マッコリ記事では blockquote 引用が「媒体名」という文字列ごと
+公開され、実在ソースに紐づかない捏造引用状態に。事後レビュー
+(article-reviewer subagent 初回運用) で発見。
+
+**原因 (2段):**
+1. prompts.yaml の出典テンプレ `出典: 媒体名 — {url}` に対し、knowledge_topics
+   記事は `source.url = knowledge-topic://xxx` しか持たないため、Writer が
+   その URI とテンプレの「媒体名」をそのまま埋めて出力した。
+2. objective_scorer が `knowledge_topic://` 形式を inline citation として
+   カウントするため、引用不足として弾かれず quality-gate を素通り。
+   evidence_required の実 URL 群は本文で一度も引用されていないのに
+   「Tier1-2=100%」表示 (total_sources=1、トピック自身) で見かけ上合格。
+
+**対策 (実施済):** 公開 3 本を `scripts/_fix_broken_articles_20260713.py` →
+`edit_article` で live 修正 (内部 URI 全除去、引用ブロックは地の文化 or 削除)。
+
+**恒久対策 (未実施、次回優先):**
+- Writer 出力の後処理で `knowledge[-_]topic://\S+` と「出典: 媒体名」を
+  detect → 該当引用行ごと除去 or 実 URL への置換 (evidence_required マップ)
+- objective_scorer の citation counter から内部 URI スキームを除外
+- `_PUBLISH_DENY_PATTERNS` に `knowledge[-_]topic://` を追加 (最終防衛線)
+
+**How to apply:** knowledge_topics ソース記事は「実在 URL を1本も持たない」
+構造なので、出典表記はテンプレ強制ではなく「evidence_required の実 URL を
+引用させる」か「出典行そのものを書かせない」の二択に振り切ること。
+
+---
+
+## 23. 長尺 note 本文の mid-sentence 切断がそのまま publish (有料2本含む)
+
+**事象:** 2026-07-13 の同じ 3 本で、本文が文の途中 (「**【パターンB：継続的・網」
+「鍾路3街駅の4番出口周辺から徒歩圏内に、」「### 💡 【図解】〜」の空見出し) で
+切断されたまま AFFILIATE_SECTION に接続され publish。**うち 2 本は ¥500 有料記事**
+— 課金読者が未完コンテンツを購入し得る状態が約 50 分継続した (返金/信用リスク)。
+
+**原因:** LLM 生成の length cap 到達で出力が途切れたが、切断検知が存在せず、
+affiliate_injector も品質ゲートも「本文が完結しているか」を見ないため
+そのまま publish フローを通過した。
+
+**対策 (実施済):** 3 本とも live 修正 (切断セクション補完)。有料 2 本は
+`NotePublisher.edit_article(make_free=True)` (今回新設の `_set_free()`) で
+¥0 に降格し課金リスクを排除。
+
+**恒久対策 (未実施、次回優先):** publish 直前の完結性ゲート:
+- 末尾 (AFFILIATE_SENTINEL 手前) が句点/閉じ記号/コードフェンス以外で終わる
+  mid-sentence 終端 → publish 拒否して再生成
+- 末尾が本文ゼロの見出し (`^#+ .+\n*$`) → 同上
+- **有料記事はこのゲートで完全ブロック** (無料は warn + 継続可も検討余地)
+
+**How to apply:** 「生成が終わった=本文が完成した」ではない。長尺 (5000字+)
+の note 記事ほど cap 到達率が上がるため、文字数を伸ばす施策を入れる時は
+必ずこの完結性ゲートとセットで。
 
 ---
 

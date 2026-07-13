@@ -11,6 +11,23 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- **7-13 投稿後レビュー (RSI、 article-reviewer subagent 初運用)**:
+  - `.claude/agents/article-reviewer.md` 新設 (投稿済記事を外部読者視点で
+    A〜G 7カテゴリ/31項目レビューする独立エージェント、 リサーチベース設計)
+  - 6記事レビュー結果: note 4本中 3本 🔴 / zenn 2本 🟡
+    - **事故 #22**: knowledge_topic 記事 3本で内部 URI
+      (`knowledge_topic://kc_006` 等) + 「媒体名」プレースホルダが出典として
+      本文流出、 scorer が citation 誤カウントで quality-gate 素通り
+    - **事故 #23**: 同 3本が mid-sentence 切断のまま publish
+      (**有料 ¥500×2本が未完状態で課金公開、 約50分継続**)
+  - 緊急対応 (全完了、 live API 検証済):
+    - K-POPトレカ (n65306d782b03): 本文補完+ID除去、 ¥0 のまま
+    - マッコリ (n660937d81cdd): **¥500→¥0 降格**+本文補完+プレースホルダ除去
+    - カメラ比較 (n1ad6c673fc7b): **¥500→¥0 降格**+本文補完+ID除去+まとめ追加
+  - `NotePublisher._set_free()` + `edit_article(make_free=True)` 新設
+    (有料→無料の緊急降格、 一発動作確認済)
+  - ops_incidents #22/#23 追記 + RAG 再ingest (685 chunks)
+  - **恒久対策は未実施** (下記 Next Actions #0 参照)
 - **7-13 朝 routine (learn→generate→承認→publish 完走)**:
   - learn: 280件学習、 RAG 676 chunks re-index (anti_patterns 8 / successes 8 /
     hallucinations 18 / ops_incidents 16 / generation_guides 70 / past_articles
@@ -695,6 +712,14 @@
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
+0. **🔴 事故 #22/#23 の恒久対策 (最優先、 7-13 レビューで検出)**:
+   (a) Writer 後処理で `knowledge[-_]topic://\S+` + 「出典: 媒体名」を除去/実URL置換、
+   (b) objective_scorer の citation counter から内部 URI 除外、
+   (c) `_PUBLISH_DENY_PATTERNS` に `knowledge[-_]topic://` 追加、
+   (d) publish 前完結性ゲート (mid-sentence 終端/末尾空見出しで拒否、 **有料は完全ブロック**)、
+   (e) アフィリ family ルーティング修正 (マッコリ記事にコーヒー豆が付いた)、
+   (f) stored title の "(a)…(b)…" scaffold 除去 (H1 を正式 title に)。
+   詳細: ops_incidents #22/#23 + article-reviewer の横断パターン 6 件
 1. **note membership 手動追加 — 有料記事** (auto-add 失敗、 手動確実):
    (a) 6-02 PDRN (n17f9115b4383)、 (b) 6-03 韓国コスメ アンチエイジング (n44ae338eca1e)、
    (c) 6-04 ダウンタイム/HIFU (n065ae332ccd4)、
@@ -712,8 +737,8 @@
    (p) 6-17 ドライヤー dreame (ndefcc8612746 ¥500)、
    (q) 6-18 SIXPAD Medical Core (n34739e03cbd7 ¥500)、
    (r) 6-18 印刷現場 (neb29b095c5a6 ¥500)、
-   (s) 7-13 真のマッコリ巡り (n660937d81cdd ¥500)、
-   (t) 7-13 本気のカメラ比較 X100VI/α7CR/GR IIIx (n1ad6c673fc7b ¥500)。
+   ~~(s) 7-13 真のマッコリ巡り~~ ~~(t) 7-13 本気のカメラ比較~~
+   → **不要化 (7-13 レビュー後 ¥0 降格、 事故 #23)**。
    `/notes`→記事 ⋮→「メンバーシップ特典追加・解除」→チェック→「メンバー全員に
    公開」の「追加」。 (無料記事は membership 不要)。 累計 backlog も同様。
    ⚠️ (m) は公開タイトル末尾に「（35文字）」混入 (コードは `2bd045c` で修正済、

@@ -1012,6 +1012,39 @@ class NotePublisher:
         except (PlaywrightTimeoutError, PlaywrightError):
             logger.debug("有料エリア設定 ボタンは出現せず（必須でない可能性）")
 
+    def _set_free(self) -> None:
+        """Switch an already-paid article back to 無料 (free).
+
+        Mirror of :meth:`_set_price`'s 有料 switch but selecting 無料
+        instead. Added 2026-07-13 for emergency downgrade of articles
+        published with broken/truncated content — the 記事タイプ 無料/
+        有料 radios follow the same hidden-input + label pattern as
+        the 有料 side (see _set_price docstring), so the label
+        selector must lead.
+        """
+        assert self._page is not None
+        page = self._page
+        free_radio_selectors = [
+            "label:has-text('無料')",
+            "label[for='free']",
+            "input[type='radio'][value='free']",
+            "input#free",
+            "label:has-text('無料') input[type='radio']",
+            "text=無料",
+        ]
+        for selector in free_radio_selectors:
+            try:
+                loc = page.locator(selector).first
+                if loc.is_visible(timeout=2_000):
+                    loc.scroll_into_view_if_needed(timeout=2_000)
+                    loc.click(timeout=3_000)
+                    logger.info("Switched to 無料 via: %s", selector)
+                    page.wait_for_timeout(500)
+                    return
+            except (PlaywrightTimeoutError, PlaywrightError):
+                continue
+        logger.warning("無料 ラジオが見つかりません。価格変更スキップ")
+
     def _add_to_memberships_via_dashboard(self, article_url: str) -> bool:
         """Add the just-published article to the default membership plan.
         Delegates to :meth:`add_articles_to_membership`. Best-effort;
@@ -1331,6 +1364,7 @@ class NotePublisher:
         new_content: str | None = None,
         inline_image_paths: list[str] | None = None,
         cover_image_path: str | None = None,
+        make_free: bool = False,
     ) -> bool:
         """Edit an existing note article (preserves URL and impressions).
 
@@ -1338,6 +1372,11 @@ class NotePublisher:
             url: Full note URL (https://note.com/user/n/xxxxx)
             new_title: New title (None = keep existing)
             new_content: New body content (None = keep existing)
+            make_free: If True, switch an already-paid article to 無料
+                (calls :meth:`_set_free` right after the publish-
+                settings page opens, mirroring where _set_price runs
+                in publish_article). Added for emergency price
+                downgrades — never raises the price, only lowers it.
             inline_image_paths: Optional list of local image files to
                 upload inline at the top of the body via note's
                 native ProseMirror paste-image handler. Each file is
@@ -1492,6 +1531,14 @@ class NotePublisher:
             # Dismiss personal info modal if any
             self._dismiss_personal_info_modal()
             page.wait_for_timeout(1500)
+
+            # Emergency downgrade: flip 有料 -> 無料 before the
+            # 有料エリア設定 step below, which only appears for 有料
+            # articles. Doing this first means that step becomes a
+            # no-op for the now-free article.
+            if make_free:
+                self._set_free()
+                page.wait_for_timeout(500)
 
             # Paid-article edit flow adds an extra step: the publish-settings
             # page shows "有料エリア設定" as the only enabled forward button.
