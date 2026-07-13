@@ -80,7 +80,13 @@ class ObjectiveScorer:
             ("title_fulfillment", title_fulfillment),
         ]
         _source_types = {str(s.get("source", "")).lower() for s in sources}
-        _citation_exempt = {"google_trends", "bluesky", "reddit", "arxiv"}
+        # 2026-07-13 追加: knowledge_topics は実在 URL を 1 本も持たない
+        # (source url = knowledge-topic:// 内部ID) ため、citation_count を
+        # ブロッキングにすると LLM が出典を捏造する圧力になる (incident #22
+        # の一因)。arXiv 等と同じ構造問題として exempt。
+        _citation_exempt = {
+            "google_trends", "bluesky", "reddit", "arxiv", "knowledge_topics",
+        }
         # 2026-04-27: note向けの一般読み物 (体験談 / 比較 / ハウツー) は
         # 引用URLが少ないのが普通。Zennの技術記事と同基準で弾くと、
         # 7連続却下の構造的な詰まりが発生していた (Opus/GPT比較、
@@ -301,11 +307,20 @@ class ObjectiveScorer:
         Returns:
             Dict with grade, count, and reason.
         """
-        # Blockquote citations: > 出典: or > Source: or > with URL
+        # Blockquote citations: > 出典: or > Source: or > with URL.
+        # 2026-07-13 incident #22: lines whose "source" is an internal
+        # knowledge-topic URI or the 媒体名 placeholder are NOT real
+        # citations — they previously counted here, letting placeholder-
+        # riddled articles sail through the quality gate. Match full
+        # lines and filter them out.
         blockquote_pattern = re.compile(
-            r"^>\s*(?:出典[:：]|Source:|https?://)", re.MULTILINE
+            r"^>\s*(?:出典[:：]|Source:|https?://)[^\n]*", re.MULTILINE
         )
-        blockquote_hits = blockquote_pattern.findall(article)
+        _internal_uri = re.compile(r"knowledge[-_]topic://|媒体名")
+        blockquote_hits = [
+            ln for ln in blockquote_pattern.findall(article)
+            if not _internal_uri.search(ln)
+        ]
 
         # Reference-section links: lines with [text](url) under a
         # reference heading

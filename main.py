@@ -3332,6 +3332,25 @@ def _generate_single_article(
             "根拠のない固有名詞/URL/ブランド名を創作してはいけない。"
             "参考リンクに placeholder (『ここに入力』『実際には〜URLを』) を残すと不合格。",
         )
+        # 2026-07-13 incident #22: this article's source "URL" is an
+        # INTERNAL topic ID (knowledge-topic://xxx), not a real URL.
+        # The generic citation rules elsewhere in the prompt say
+        # 「出典: 媒体名 — {url}」 which, template-substituted, told the
+        # model to cite the internal ID with the literal word 媒体名 —
+        # and it obeyed, leaking `（出典: knowledge_topic://kc_006）`
+        # into 3 published articles. Override those rules explicitly
+        # for knowledge-topic articles.
+        parts.append(
+            "【出典表記の上書きルール — このトピック専用・最優先】"
+            "この記事のソースURLは knowledge-topic:// 形式の内部管理IDで、"
+            "実在するURLではない。したがって: "
+            "(1) `knowledge_topic://` や `knowledge-topic://` を含む出典表記を"
+            "一切書かない。 (2) 『媒体名』というプレースホルダ文字列を書かない。 "
+            "(3) 実在URLを1本も持たないので、出典行 (`出典:` / `（出典: …）`) と"
+            "`## 参考文献` セクション自体を書かない。事実は出典表記なしの"
+            "地の文として述べる。 (4) 引用ブロック (>) を使う場合も出典行は"
+            "付けない。この上書きルールは他の出典ルールより優先する。",
+        )
         knowledge_block = "\n".join(parts) + "\n"
 
     # --- 生成 ---
@@ -3397,6 +3416,21 @@ def _generate_single_article(
             platform,
         )
 
+    # --- 完結性ガード (incident #23, 2026-07-13) ---
+    # length cap 到達で mid-sentence 切断された出力が、そのまま
+    # affiliate footer と結合されて publish された事故 (有料¥500×2本を
+    # 含む 3 本)。切断された末尾ブロック (文の途中で終わる段落 / 本文
+    # ゼロの見出し) をここで刈り取り、記事が「最後の完結したブロック」
+    # で終わる状態にしてから下流 (Places / affiliate / スコアリング)
+    # に流す。publish 側にも is_incomplete() の最終ゲートあり。
+    from generators.content_sanitizer import trim_incomplete_tail as _trim_tail
+    content, _trimmed_tail = _trim_tail(content)
+    if _trimmed_tail:
+        logger.warning(
+            "[%s] completeness guard: %d truncated block(s) trimmed — %s",
+            platform, len(_trimmed_tail), "; ".join(_trimmed_tail)[:200],
+        )
+
     # --- Google Places API によるスポット検証（note グルメ/地域記事のみ） ---
     # LLMが書いた店名を Google Places で検証し、実在しない店は丸ごと削除、
     # 実在する店は住所/営業時間/価格/公式URL を Places の正式データで上書き。
@@ -3438,9 +3472,37 @@ def _generate_single_article(
     try:
         from generators.affiliate_injector import AffiliateInjector
         _aff = AffiliateInjector()
-        content = _aff.inject(content, title=article.get("title", ""), platform=platform)
+        # 2026-07-13: knowledge_topics は affiliate_family を持つ。
+        # keyword 検出はソウル・マッコリ紀行に「カフェ」誤マッチで
+        # コーヒー豆リンクを付けた実績があるため、family があれば
+        # 明示ルーティングを優先する (incident #22 レビューの横断指摘)。
+        _kt = article.get("knowledge_topic") or {}
+        _aff_family = (
+            article.get("affiliate_family")
+            or (_kt.get("affiliate_family") if isinstance(_kt, dict) else None)
+        )
+        content = _aff.inject(
+            content, title=article.get("title", ""), platform=platform,
+            family=_aff_family,
+        )
     except Exception as exc:
         logger.warning("アフィリエイト挿入失敗: %s", exc)
+
+    # --- stored title の scaffold 除去 (incident #22 review 横断指摘 #3) ---
+    # knowledge_topics のシードタイトルは "(a) Jongno (鍾路) 区に12…" の
+    # ような promise 断片で、そのまま stored title / Sheets 行 / slug を
+    # 汚染していた (公開タイトルは H1 抽出で別物になるため読者には
+    # 出ないが、内部記録と OGP が生プロンプトのままになる)。生成本文の
+    # H1 を正式タイトルとして採用する。以降の画像クエリ・slug・Sheets
+    # 登録すべてがクリーンなタイトルで動く。
+    if str(article.get("source", "")) == "knowledge_topics":
+        _h1_title = _extract_japanese_title(content)
+        if _h1_title and len(_h1_title) >= 10:
+            logger.info(
+                "[%s] knowledge-topic title scaffold → H1 採用: %s",
+                platform, _h1_title[:50],
+            )
+            article["title"] = _h1_title
 
     # --- slug生成（図表処理・スコアリングで使用） ---
     # Short prefix for readability + 8-char hash of the full title to
@@ -4312,6 +4374,12 @@ def publish_approved(
         _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿から徹底"),
         _re.compile(r"(?:Bluesky|Threads|Mastodon)\s*投稿から読み解"),
         _re.compile(r"架空の\s*URL"),
+        # 2026-07-13 incident #22: 内部 knowledge-topic URI と 「媒体名」
+        # プレースホルダが出典として note 3本の本文に流出した。生成側
+        # (content_sanitizer + prompt override) で除去されるが、既存
+        # stored 記事や将来の regression に備えた最終防衛線。
+        _re.compile(r"knowledge[-_]topic://"),
+        _re.compile(r"出典[:：]\s*媒体名"),
         # 2026-05-07 一人飯記事で○○寿司/××焼鳥/□□ラーメン/△△バルが
         # 全店伏字で公開された実害事故。settings.yaml にも入っているが、
         # ここにハードコードして「外せない」状態にする (公開時の最終防衛線)。
@@ -4532,6 +4600,28 @@ def publish_approved(
                 sheets.update_status(article_id, "❌却下")
             except Exception as _exc:
                 logger.warning("sheet status update failed: %s", _exc)
+            continue
+
+        # --- 完結性ハードゲート (incident #23, 2026-07-13) ---
+        # 本文が mid-sentence 切断 / 本文ゼロの末尾見出しのまま publish
+        # された事故 (有料¥500×2本を含む3本、切断状態で約50分課金公開)。
+        # 生成側の trim_incomplete_tail で新規記事は先に刈られるが、
+        # 事故当時のような stored 済み記事の再発をここで完全ブロック。
+        # affiliate footer は常に完結形なので、判定はその手前の
+        # editorial 本文に対して行う。有料/無料を問わず publish 拒否
+        # (行は ✅承認 のまま残し、翌日 regen/修正の対象にする)。
+        try:
+            from generators.content_sanitizer import is_incomplete as _is_incomplete
+            _editorial = content.split("<!-- AFFILIATE_SECTION -->")[0]
+            _incomplete_reason = _is_incomplete(_editorial)
+        except Exception as _exc:  # noqa: BLE001
+            logger.warning("completeness gate check failed (%s) — passing", _exc)
+            _incomplete_reason = None
+        if _incomplete_reason:
+            logger.error(
+                "[%s] 完結性ゲート → publish 拒否 (行は承認のまま保持): %s — %s",
+                platform, title[:40], _incomplete_reason,
+            )
             continue
 
         try:

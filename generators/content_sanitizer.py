@@ -58,6 +58,45 @@ _AI_DISCLOSURE_LINE_RE: Final[re.Pattern[str]] = re.compile(
     re.MULTILINE | re.IGNORECASE,
 )
 
+# --- 2026-07-13 incident #22: internal knowledge-topic URIs leaked into
+# published bodies as reader-facing citations, e.g.
+#   （出典: knowledge_topic://kc_006）
+#   > 出典: 媒体名 — knowledge-topic://hg_007
+# Root cause: prompts.yaml's citation template `出典: 媒体名 — {url}` is
+# format-substituted with the article's source URL, which for
+# knowledge_topics articles IS the internal `knowledge-topic://xxx` ID —
+# and the literal "媒体名" example text gets copied verbatim. The prompt
+# has been fixed to forbid this, but LLM compliance is probabilistic, so
+# scrub here as well (runs BEFORE the scorer, so leaked citations can no
+# longer inflate citation_count either).
+_INTERNAL_URI_RE: Final[str] = r"knowledge[-_]topic://\S*"
+
+# Inline parenthetical citation containing an internal URI or the bare
+# 媒体名 placeholder: strip the whole parenthetical, keep the sentence.
+_INLINE_INTERNAL_CITE_RE: Final[re.Pattern[str]] = re.compile(
+    r"[（(]\s*出典[:：][^）)]*?"
+    r"(?:" + _INTERNAL_URI_RE + r"|媒体名)"
+    r"[^）)]*[）)]",
+)
+
+# Blockquote whose attribution line carries an internal URI / 媒体名
+# placeholder. The quote itself cannot be attributed to any real source,
+# so the ENTIRE blockquote block is removed (an unattributed quote is a
+# fabrication risk, worse than no quote).
+_BLOCKQUOTE_INTERNAL_CITE_RE: Final[re.Pattern[str]] = re.compile(
+    r"(?:^>[^\n]*\n)*"                       # preceding quote lines
+    r"^>\s*出典[:：][^\n]*?"
+    r"(?:" + _INTERNAL_URI_RE + r"|媒体名)"
+    r"[^\n]*$\n?",
+    re.MULTILINE,
+)
+
+# Any remaining bare internal URI (table cells, 参考文献 lines, etc.).
+_BARE_INTERNAL_URI_RE: Final[re.Pattern[str]] = re.compile(
+    r"(?:出典[:：]\s*)?(?:媒体名\s*[—ー–-]\s*)?" + _INTERNAL_URI_RE + r",?\s?",
+)
+
+
 # Pattern that detects 2+ consecutive bullet lines whose value after
 # `:` is blank or whitespace. We collapse the entire run.
 # Matches both `*` and `-` bullets, optional bold around the label.
@@ -133,6 +172,32 @@ def sanitize(content: str) -> tuple[str, list[str]]:
 
     cleaned = _EMPTY_BULLET_SINGLE_RE.sub(_replace_single, cleaned)
 
+    # 2c. Incident #22 (2026-07-13): strip citations that point at
+    #     internal knowledge-topic URIs or the 媒体名 placeholder.
+    #     Order matters: blockquote blocks first (they span lines),
+    #     then inline parentheticals, then any bare URI leftovers.
+    def _kill_internal_blockquote(m: re.Match[str]) -> str:
+        removed.append(
+            f"internal_uri_blockquote: {m.group(0).strip()[:80]!r}"
+        )
+        return ""
+
+    cleaned = _BLOCKQUOTE_INTERNAL_CITE_RE.sub(
+        _kill_internal_blockquote, cleaned,
+    )
+
+    def _kill_internal_inline(m: re.Match[str]) -> str:
+        removed.append(f"internal_uri_inline: {m.group(0)[:80]!r}")
+        return ""
+
+    cleaned = _INLINE_INTERNAL_CITE_RE.sub(_kill_internal_inline, cleaned)
+
+    def _kill_internal_bare(m: re.Match[str]) -> str:
+        removed.append(f"internal_uri_bare: {m.group(0)[:80]!r}")
+        return ""
+
+    cleaned = _BARE_INTERNAL_URI_RE.sub(_kill_internal_bare, cleaned)
+
     # 3. Strip AI-disclosure footer lines. The matching is line-scoped
     #    via `^...$` + re.MULTILINE so we don't accidentally swallow
     #    surrounding paragraphs.
@@ -157,3 +222,108 @@ def sanitize(content: str) -> tuple[str, list[str]]:
             logger.debug("content_sanitizer:   %s", r)
 
     return cleaned, removed
+
+
+# ----------------------------------------------------------------------
+# Incident #23 (2026-07-13): completeness guard.
+#
+# LLM output that hits the length cap ends mid-sentence
+# (「…4番出口周辺**から徒歩圏内に、」) or on a heading with no body
+# (「### 💡 【図解】用途別 カメラ選定」). Nothing in the pipeline
+# checked for this, so 3 articles — 2 of them PAID — shipped truncated.
+#
+# ``trim_incomplete_tail`` removes the broken trailing fragment so the
+# article ends at its last COMPLETE block. ``is_incomplete`` is the
+# read-only check used as a publish-time hard gate for already-stored
+# content.
+# ----------------------------------------------------------------------
+
+# Characters that legitimately terminate a final line. Sentence-final
+# punctuation, closing brackets/quotes, table pipes, code fences,
+# markdown emphasis closers, and image/link closers.
+_COMPLETE_TAIL_CHARS: Final[str] = "。．.!?！？…」』〉》】）)>|`*_~"
+
+_HEADING_ONLY_RE: Final[re.Pattern[str]] = re.compile(r"^#{1,6}\s*\S")
+_LIST_ITEM_RE: Final[re.Pattern[str]] = re.compile(r"^(?:[*+-]|\d+\.)\s")
+_HR_RE: Final[re.Pattern[str]] = re.compile(r"^(?:\*{3,}|-{3,}|_{3,})\s*$")
+
+
+def _line_is_incomplete_prose(line: str) -> bool:
+    """True when *line* looks like prose cut off mid-sentence."""
+    stripped = line.rstrip()
+    if not stripped:
+        return False
+    # Structural lines are considered complete as-is.
+    if (
+        _LIST_ITEM_RE.match(stripped)
+        or _HR_RE.match(stripped)
+        or stripped.startswith((">", "|", "!", "```", ":::"))
+    ):
+        return False
+    # Unbalanced bold marker = cut inside **emphasis** (e.g.
+    # 「**【パターンB：継続的・網」).
+    if stripped.count("**") % 2 == 1:
+        return True
+    # Comma-or-connector ending = clearly mid-sentence.
+    if stripped[-1] in "、，,：:；;—－の":
+        return True
+    # Prose that ends without any terminal punctuation.
+    return stripped[-1] not in _COMPLETE_TAIL_CHARS
+
+
+def trim_incomplete_tail(content: str) -> tuple[str, list[str]]:
+    """Drop trailing empty headings / mid-sentence fragments.
+
+    Iterates from the end: removes (1) headings with no body after
+    them, (2) the final paragraph when it reads as cut-off prose.
+    Bounded to a handful of iterations so a pathological input cannot
+    eat the whole article. Returns (cleaned, removal_log).
+    """
+    if not content:
+        return content, []
+    removed: list[str] = []
+    lines = content.rstrip().split("\n")
+    for _ in range(6):  # safety bound
+        # Find last non-empty line.
+        while lines and not lines[-1].strip():
+            lines.pop()
+        if not lines:
+            break
+        last = lines[-1].strip()
+        if _HEADING_ONLY_RE.match(last):
+            removed.append(f"trailing_empty_heading: {last[:80]!r}")
+            lines.pop()
+            continue
+        if _line_is_incomplete_prose(last):
+            removed.append(f"mid_sentence_tail: {last[:80]!r}")
+            lines.pop()
+            continue
+        break
+    cleaned = "\n".join(lines).rstrip() + "\n"
+    if removed:
+        logger.warning(
+            "trim_incomplete_tail: %d truncated block(s) removed: %s",
+            len(removed), "; ".join(removed),
+        )
+    return cleaned, removed
+
+
+def is_incomplete(content: str) -> str | None:
+    """Publish-time read-only check. Returns a human-readable reason
+    when *content* ends mid-sentence or on an empty heading, else None.
+
+    Callers should strip any affiliate footer first — the injected
+    「## 関連リンク」 section always ends cleanly and would mask a
+    truncated editorial body.
+    """
+    if not content:
+        return None
+    lines = [ln for ln in content.rstrip().split("\n") if ln.strip()]
+    if not lines:
+        return None
+    last = lines[-1].strip()
+    if _HEADING_ONLY_RE.match(last):
+        return f"末尾が本文ゼロの見出し: {last[:60]!r}"
+    if _line_is_incomplete_prose(last):
+        return f"本文が文の途中で切断: {last[:60]!r}"
+    return None

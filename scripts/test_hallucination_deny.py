@@ -77,6 +77,11 @@ DENY_TEST_CASES: list[tuple[str, str, bool]] = [
     ("大きな話題",         "Vogue Korea がメディアで大きな話題を呼んでいます\n",  True),
     ("賛否両論",           "賛否両論が大きく交錯\n",                              True),
 
+    # ── 内部 knowledge-topic URI / 媒体名 placeholder (2026-07-13 事故#22) ──
+    ("内部URI-underscore", "根拠です（出典: knowledge_topic://kc_006）。\n",      True),
+    ("内部URI-hyphen",     "> 出典: 媒体名 — knowledge-topic://hg_007\n",         True),
+    ("媒体名placeholder",  "> 出典: 媒体名 — https://example.com\n",              True),
+
     # ── AI 開示 footer (2026-05-08 拡充) ──
     ("AI生成-本記事は",    "本文。\n\n本記事はAIで自動生成しました。\n",          True),
     ("AI生成-構成",        "本文。\n\n本記事の店舗情報はAIが構成しています。\n",  True),
@@ -124,6 +129,37 @@ SANITIZER_CASES: list[tuple[str, str, str | None]] = [
     ("既存-架空のURL",
      "本文\n\n架空のURL を残してしまった\n",
      "line_kill"),
+    # ── 2026-07-13 事故#22: 内部URI出典の3形態 ──
+    ("内部URI-inline",
+     "ハードルを下げているんです（出典: knowledge_topic://kc_006）。続き。\n",
+     "internal_uri_inline"),
+    ("内部URI-blockquote",
+     "> 「引用文です。」\n> 出典: 媒体名 — knowledge-topic://hg_007\n\n次の段落。\n",
+     "internal_uri_blockquote"),
+    ("内部URI-bare",
+     "（比較データは knowledge_topic://cmp_001 参照）という表記。\n",
+     "internal_uri_bare"),
+    ("正常-実URL出典",
+     "> 「引用文です。」\n> 出典: ROOMIE — https://www.roomie.jp/2026/07/1825126/\n",
+     None),
+]
+
+# 完結性ガード (2026-07-13 事故#23): (label, input, should_be_incomplete)
+COMPLETENESS_CASES: list[tuple[str, str, bool]] = [
+    ("切断-読点終端",
+     "## アクセス\n\n益善洞エリアは、**鍾路3街駅の4番出口周辺**から徒歩圏内に、", True),
+    ("切断-太字未閉",
+     "本文です。\n\n**【パターンB：継続的・網", True),
+    ("切断-空見出し",
+     "本文があります。\n\n### 💡 【図解】用途別 カメラ選定", True),
+    ("正常-句点終端",
+     "公式サイトで最新情報を確認しましょう。", False),
+    ("正常-テーブル終端",
+     "## まとめ\n\n本文。\n\n| A | B |\n| - | - |\n| 1 | 2 |", False),
+    ("正常-リスト終端",
+     "揃えたいアイテム:\n\n- 予備バッテリー\n- NDフィルター", False),
+    ("正常-コードフェンス終端",
+     "図解です。\n\n```mermaid\ngraph TD\n    A --> B\n```", False),
 ]
 
 
@@ -295,7 +331,35 @@ def main() -> int:
     except Exception as exc:
         print(f"    SKIP - RAG retriever unavailable: {exc}")
 
-    # 7. Summary.
+    # 7. Completeness guard (2026-07-13 incident #23): truncated tails
+    # must be detected; complete structural endings must not be.
+    print(f"[7] Running {len(COMPLETENESS_CASES)} completeness cases...")
+    from generators.content_sanitizer import is_incomplete, trim_incomplete_tail
+    for label, text, should_flag in COMPLETENESS_CASES:
+        reason = is_incomplete(text)
+        trimmed, removed = trim_incomplete_tail(text)
+        if should_flag:
+            if not reason:
+                failures.append(
+                    f"COMPLETENESS MISS [{label}]: is_incomplete=None "
+                    f"text tail={text[-60:]!r}"
+                )
+            elif not removed:
+                failures.append(
+                    f"COMPLETENESS TRIM MISS [{label}]: nothing trimmed"
+                )
+            else:
+                print(f"    [FLAG]  {label}: {reason[:50]}")
+        else:
+            if reason or removed:
+                failures.append(
+                    f"COMPLETENESS FALSE-POSITIVE [{label}]: "
+                    f"reason={reason!r} removed={removed}"
+                )
+            else:
+                print(f"    [PASS]  {label}")
+
+    # 8. Summary.
     print()
     if failures:
         print(f"FAIL: {len(failures)} test(s) failed:")
@@ -305,6 +369,7 @@ def main() -> int:
     print(
         f"PASS: all {len(DENY_TEST_CASES)} deny + "
         f"{len(SANITIZER_CASES)} sanitizer + "
+        f"{len(COMPLETENESS_CASES)} completeness + "
         f"{len(rag_results)} RAG cases OK"
     )
     return 0

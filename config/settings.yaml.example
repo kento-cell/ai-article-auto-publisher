@@ -125,6 +125,11 @@ evidence:
     # 「【100人に聞いた】」が zenn scrap に公開された実害事故。アンケート
     # 実施の事実がない記事でこの主張は捏造 (bracket list からも除去済み)。
     - "\\d+\\s*人に(?:聞いた|訊いた|アンケート)"
+    # 2026-07-13 事故#22: 内部 knowledge-topic URI / 「媒体名」placeholder
+    # が出典として note 3本の本文に流出 (うち有料2本)。sanitizer で除去
+    # されるが、3箇所同期 (forbidden_phrases + _PUBLISH_DENY) の最終防衛線。
+    - "knowledge[-_]topic://"
+    - "出典[:：]\\s*媒体名"
     - "月.*万円.*稼いだ"
     - "誰でも.*稼げる"
     - "簡単.*収益"

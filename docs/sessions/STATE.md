@@ -712,14 +712,15 @@
 
 ## Next Actions (優先度順、 各セッションで bump、 手動メンテ)
 
-0. **🔴 事故 #22/#23 の恒久対策 (最優先、 7-13 レビューで検出)**:
-   (a) Writer 後処理で `knowledge[-_]topic://\S+` + 「出典: 媒体名」を除去/実URL置換、
-   (b) objective_scorer の citation counter から内部 URI 除外、
-   (c) `_PUBLISH_DENY_PATTERNS` に `knowledge[-_]topic://` 追加、
-   (d) publish 前完結性ゲート (mid-sentence 終端/末尾空見出しで拒否、 **有料は完全ブロック**)、
-   (e) アフィリ family ルーティング修正 (マッコリ記事にコーヒー豆が付いた)、
-   (f) stored title の "(a)…(b)…" scaffold 除去 (H1 を正式 title に)。
-   詳細: ops_incidents #22/#23 + article-reviewer の横断パターン 6 件
+0. ~~🔴 事故 #22/#23 の恒久対策~~ **✅完了 (7-13 同日、 全6項目)**:
+   (a) prompt 上書き + sanitizer 内部URIスクラブ3形態、 (b) scorer 内部URI除外
+   + knowledge_topics citation exempt、 (c) deny 3箇所同期
+   (settings/example/_PUBLISH_DENY)、 (d) 完結性 2層ゲート (生成側 trim +
+   publish 側 hard block)、 (e) アフィリ family 明示ルーティング
+   (`_FAMILY_GENRE_MAP`、 未知 family は default 固定)、 (f) knowledge_topics
+   の stored title を本文 H1 で置換 (slug/Sheets/画像クエリもクリーン化)。
+   regression: 45 deny + 11 sanitizer + 7 completeness + 8 RAG 全PASS。
+   詳細: ops_incidents #22/#23 (✅修正済に更新済)
 1. **note membership 手動追加 — 有料記事** (auto-add 失敗、 手動確実):
    (a) 6-02 PDRN (n17f9115b4383)、 (b) 6-03 韓国コスメ アンチエイジング (n44ae338eca1e)、
    (c) 6-04 ダウンタイム/HIFU (n065ae332ccd4)、

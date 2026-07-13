@@ -39,8 +39,8 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 19 | #18 と同じ捏造が `NOTE_ALLOW_NO_CODEX_BRIEF=1` bypass 残置で再発 (Cybertruck Wade Mode 記事、source backfill 失敗→Writer 全創作) | 2026-05-21 | `.env` の bypass を `=0` に変更、両方欠落時 fail-closed 復活。bypass フラグは捏造の最後の入口になり得るので再導入しないこと | ✅ 修正済 |
 | 20 | SheetsManager.add_article が無条件 append → 同 article_id の重複行 → 二重投稿リスク (5-21 row 71 で実害手前) | 2026-05-21 | utils/sheets_manager.py の add_article を idempotent 化 (既存 article_id を find して既存行 番号を返し append しない、warn ログ出力) | ✅ 修正済 |
 | 21 | _TITLE_BRACKETS の事実主張型ブラケット (【100人に聞いた】等) がタイトル捏造として zenn scrap に公開 (6-10 実害) | 2026-06-10 | bracket list から事実主張型 5 件除去 + forbidden_phrases/_PUBLISH_DENY 3 箇所同期で `\d+人に聞いた` deny + 公開済み scrap live 修正 | ✅ 修正済 (タイトル抽出の構造ギャップは残) |
-| 22 | knowledge_topic 記事で内部 URI (`knowledge_topic://kc_006`, `媒体名 — knowledge-topic://hg_007`) が出典として本文流出、scorer が citation と誤カウントし quality-gate 素通り (7-13 実害: note 3本) | 2026-07-13 | 公開済 3 本は edit_article で live 修正済。**恒久対策未**: 出典レンダラで `knowledge[-_]topic://` 出力禁止 + objective_scorer の内部 URI 除外 | 🔴 恒久対策未 |
-| 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | 3本 live 修正済 (有料2本は¥0降格+補完)。**恒久対策未**: publish 前の完結性ゲート (mid-sentence 終端/末尾空見出しで拒否、有料は完全ブロック) | 🔴 恒久対策未 |
+| 22 | knowledge_topic 記事で内部 URI (`knowledge_topic://kc_006`, `媒体名 — knowledge-topic://hg_007`) が出典として本文流出、scorer が citation と誤カウントし quality-gate 素通り (7-13 実害: note 3本) | 2026-07-13 | live 3本修正 + 恒久対策 5層: ①knowledge_block prompt 上書き ②content_sanitizer 内部URI引用スクラブ (3形態) ③objective_scorer citation counter 内部URI除外 + knowledge_topics exempt ④forbidden_phrases/_PUBLISH_DENY 3箇所同期 ⑤deny 3 + sanitizer 4 ケースを regression test 追加 | ✅ 修正済 (同日) |
+| 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | live 3本修正 (有料2本 ¥0降格)。恒久対策 2層: ①生成側 trim_incomplete_tail (mid-sentence 段落/空見出しを刈って完結ブロック終端に) ②publish 側 is_incomplete ハードゲート (affiliate footer 手前の editorial 本文を検査、切断なら有料/無料問わず publish 拒否)。completeness 7 ケースを regression test 追加 | ✅ 修正済 (同日) |
 
 ---
 
@@ -473,11 +473,18 @@ publish 前に extracted title を subjective evaluator に通す改修が候補
 **対策 (実施済):** 公開 3 本を `scripts/_fix_broken_articles_20260713.py` →
 `edit_article` で live 修正 (内部 URI 全除去、引用ブロックは地の文化 or 削除)。
 
-**恒久対策 (未実施、次回優先):**
-- Writer 出力の後処理で `knowledge[-_]topic://\S+` と「出典: 媒体名」を
-  detect → 該当引用行ごと除去 or 実 URL への置換 (evidence_required マップ)
-- objective_scorer の citation counter から内部 URI スキームを除外
-- `_PUBLISH_DENY_PATTERNS` に `knowledge[-_]topic://` を追加 (最終防衛線)
+**恒久対策 (2026-07-13 同日実装済):**
+- main.py knowledge_block に出典表記の上書きルール追加 (内部ID/媒体名を
+  書くな + 実URLゼロなら出典行・参考文献自体を書かない) — 根本原因である
+  prompt テンプレ `出典: 媒体名 — {url}` への {url}=内部ID 代入を無効化
+- content_sanitizer に内部URI引用スクラブ 3形態 (blockquote 全体 /
+  インライン括弧 / bare URI) — scorer より前に走るので誤カウントも根絶
+- objective_scorer: citation counter から内部URI行を除外 +
+  knowledge_topics を citation_count blocking の exempt に追加
+  (実URLゼロのソースに引用を強制する構造圧力を除去)
+- forbidden_phrases (settings.yaml + .example) と _PUBLISH_DENY_PATTERNS
+  に `knowledge[-_]topic://` / `出典[:：]\s*媒体名` を 3箇所同期で追加
+- test_hallucination_deny.py に deny 3 + sanitizer 4 ケース追加 (45 deny)
 
 **How to apply:** knowledge_topics ソース記事は「実在 URL を1本も持たない」
 構造なので、出典表記はテンプレ強制ではなく「evidence_required の実 URL を
@@ -500,11 +507,16 @@ affiliate_injector も品質ゲートも「本文が完結しているか」を�
 `NotePublisher.edit_article(make_free=True)` (今回新設の `_set_free()`) で
 ¥0 に降格し課金リスクを排除。
 
-**恒久対策 (未実施、次回優先):** publish 直前の完結性ゲート:
-- 末尾 (AFFILIATE_SENTINEL 手前) が句点/閉じ記号/コードフェンス以外で終わる
-  mid-sentence 終端 → publish 拒否して再生成
-- 末尾が本文ゼロの見出し (`^#+ .+\n*$`) → 同上
-- **有料記事はこのゲートで完全ブロック** (無料は warn + 継続可も検討余地)
+**恒久対策 (2026-07-13 同日実装済、2層):**
+- 生成側: `content_sanitizer.trim_incomplete_tail()` を main.py の
+  post-processing (visual 注入直後、Places/affiliate/スコアリングの前) に
+  配線。mid-sentence 段落と本文ゼロの末尾見出しを連鎖的に刈り (上限6回)、
+  記事が「最後の完結したブロック」で終わる状態にする
+- publish 側: `content_sanitizer.is_incomplete()` ハードゲート。
+  AFFILIATE_SENTINEL 手前の editorial 本文を検査し、切断検知なら
+  **有料/無料問わず publish 拒否** (行は ✅承認 のまま保持し翌日対応)
+- 誤爆防止: テーブル行/リスト項目/コードフェンス/引用/画像終端は完結扱い。
+  regression test に completeness 7 ケース (切断3 + 正常4) 追加
 
 **How to apply:** 「生成が終わった=本文が完成した」ではない。長尺 (5000字+)
 の note 記事ほど cap 到達率が上がるため、文字数を伸ばす施策を入れる時は

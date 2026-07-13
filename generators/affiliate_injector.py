@@ -29,6 +29,25 @@ _ENV_VAR_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 # article bodies, and the heading text may drift).
 _AFFILIATE_SENTINEL = "<!-- AFFILIATE_SECTION -->"
 
+# 2026-07-13 (incident #22 review, cross-pattern #4): knowledge_topics
+# carry an explicit ``affiliate_family`` but it was never consumed —
+# genre fell through to keyword detection, which matched 「カフェ」 in a
+# Seoul-makgeolli travel piece and attached coffee-bean links. When a
+# family is provided, route it deterministically; families without a
+# sensible genre mapping go to ``default`` (generic links) instead of
+# letting keyword guessing pick something topically wrong.
+_FAMILY_GENRE_MAP: dict[str, str] = {
+    "k_beauty": "beauty_cosmetics",
+    "gourmet": "food",
+    "lifestyle_general": "lifestyle",
+    "money": "money",
+    "learning": "learning",
+    "tech": "tech",
+    "ai": "ai",
+    "wellness": "wellness_diet",
+    "gaming": "gaming",
+}
+
 
 class AffiliateInjector:
     """Insert affiliate links at the end of articles."""
@@ -67,13 +86,23 @@ class AffiliateInjector:
             return False
         return True
 
-    def inject(self, content: str, title: str = "", platform: str = "") -> str:
+    def inject(
+        self,
+        content: str,
+        title: str = "",
+        platform: str = "",
+        family: str | None = None,
+    ) -> str:
         """Append affiliate links matched to article content.
 
         Args:
             content: Article body markdown
             title: Article title (used for keyword matching)
             platform: "note" or "zenn" (future: platform-specific behavior)
+            family: Explicit ``affiliate_family`` from a knowledge topic.
+                When given it overrides keyword genre detection —
+                unmapped families resolve to the "default" genre so a
+                topically-wrong keyword match can never win.
 
         Returns:
             Content with affiliate section appended
@@ -92,7 +121,13 @@ class AffiliateInjector:
         # earlier injection do not bias the detector toward tech when
         # the article is actually about ramen / カフェ / etc.
         editorial = self._strip_affiliate_section(content)
-        genre = self._detect_genre(title + " " + editorial)
+        if family:
+            genre = _FAMILY_GENRE_MAP.get(str(family).strip(), "default")
+            logger.info(
+                "Affiliate genre via family routing: %s -> %s", family, genre,
+            )
+        else:
+            genre = self._detect_genre(title + " " + editorial)
         genre_config = self._config.get("genres", {}).get(genre, {})
         links = genre_config.get("links", [])
 
