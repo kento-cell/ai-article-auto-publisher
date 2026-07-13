@@ -1012,7 +1012,7 @@ class NotePublisher:
         except (PlaywrightTimeoutError, PlaywrightError):
             logger.debug("有料エリア設定 ボタンは出現せず（必須でない可能性）")
 
-    def _set_free(self) -> None:
+    def _set_free(self) -> bool:
         """Switch an already-paid article back to 無料 (free).
 
         Mirror of :meth:`_set_price`'s 有料 switch but selecting 無料
@@ -1021,6 +1021,11 @@ class NotePublisher:
         有料 radios follow the same hidden-input + label pattern as
         the 有料 side (see _set_price docstring), so the label
         selector must lead.
+
+        Returns True only when the click landed AND (where verifiable)
+        the free radio reports checked. Codex review 2026-07-13: an
+        emergency downgrade that silently fails leaves the broken
+        article PAID — the caller must treat False as abort.
         """
         assert self._page is not None
         page = self._page
@@ -1032,18 +1037,41 @@ class NotePublisher:
             "label:has-text('無料') input[type='radio']",
             "text=無料",
         ]
+        clicked = False
         for selector in free_radio_selectors:
             try:
                 loc = page.locator(selector).first
                 if loc.is_visible(timeout=2_000):
                     loc.scroll_into_view_if_needed(timeout=2_000)
                     loc.click(timeout=3_000)
+                    clicked = True
                     logger.info("Switched to 無料 via: %s", selector)
                     page.wait_for_timeout(500)
-                    return
+                    break
             except (PlaywrightTimeoutError, PlaywrightError):
                 continue
-        logger.warning("無料 ラジオが見つかりません。価格変更スキップ")
+        if not clicked:
+            logger.error("無料 ラジオが見つかりません — 価格変更失敗")
+            return False
+        # Post-click verification: the real hidden radio should now be
+        # checked. Best-effort — when the DOM has drifted and we can't
+        # find the input at all, trust the click but log it.
+        try:
+            state = page.evaluate(
+                """() => {
+                    const el = document.querySelector(
+                        "input#free, input[type='radio'][value='free']");
+                    return el ? el.checked : null;
+                }"""
+            )
+            if state is False:
+                logger.error("無料 ラジオ click 後も checked=false — 失敗扱い")
+                return False
+            if state is None:
+                logger.warning("無料 ラジオの checked 状態を検証できず (click は成功)")
+        except PlaywrightError as exc:
+            logger.warning("無料 ラジオ検証スキップ: %s", exc)
+        return True
 
     def _add_to_memberships_via_dashboard(self, article_url: str) -> bool:
         """Add the just-published article to the default membership plan.
@@ -1535,9 +1563,17 @@ class NotePublisher:
             # Emergency downgrade: flip 有料 -> 無料 before the
             # 有料エリア設定 step below, which only appears for 有料
             # articles. Doing this first means that step becomes a
-            # no-op for the now-free article.
+            # no-op for the now-free article. Fail-closed: if the
+            # switch didn't verifiably land, abort the whole edit —
+            # updating the body while silently leaving the article
+            # PAID would defeat the emergency downgrade's purpose.
             if make_free:
-                self._set_free()
+                if not self._set_free():
+                    logger.error(
+                        "edit_article: make_free failed — aborting edit "
+                        "(article left untouched, still paid)",
+                    )
+                    return False
                 page.wait_for_timeout(500)
 
             # Paid-article edit flow adds an extra step: the publish-settings

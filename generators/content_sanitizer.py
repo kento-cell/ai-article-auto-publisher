@@ -69,31 +69,39 @@ _AI_DISCLOSURE_LINE_RE: Final[re.Pattern[str]] = re.compile(
 # has been fixed to forbid this, but LLM compliance is probabilistic, so
 # scrub here as well (runs BEFORE the scorer, so leaked citations can no
 # longer inflate citation_count either).
-_INTERNAL_URI_RE: Final[str] = r"knowledge[-_]topic://\S*"
+# Codex review 2026-07-13: `\S*` was too greedy for Japanese text (no
+# spaces) — `knowledge_topic://id）。続き` would eat the closing paren,
+# the period, AND the next clause. Constrain to the actual ID alphabet.
+_INTERNAL_URI_RE: Final[str] = r"knowledge[-_]topic://[A-Za-z0-9_\-]*"
 
 # Inline parenthetical citation containing an internal URI or the bare
 # 媒体名 placeholder: strip the whole parenthetical, keep the sentence.
+# `[*＊\s]*` after the colon tolerates markdown bold (`**出典:** …`).
 _INLINE_INTERNAL_CITE_RE: Final[re.Pattern[str]] = re.compile(
-    r"[（(]\s*出典[:：][^）)]*?"
+    r"[（(]\s*(?:出典|Source)\s*[:：][^）)]*?"
     r"(?:" + _INTERNAL_URI_RE + r"|媒体名)"
     r"[^）)]*[）)]",
+    re.IGNORECASE,
 )
 
 # Blockquote whose attribution line carries an internal URI / 媒体名
 # placeholder. The quote itself cannot be attributed to any real source,
 # so the ENTIRE blockquote block is removed (an unattributed quote is a
-# fabrication risk, worse than no quote).
+# fabrication risk, worse than no quote). `Source:` included for parity
+# with objective_scorer's citation counter (Codex review 2026-07-13).
 _BLOCKQUOTE_INTERNAL_CITE_RE: Final[re.Pattern[str]] = re.compile(
     r"(?:^>[^\n]*\n)*"                       # preceding quote lines
-    r"^>\s*出典[:：][^\n]*?"
+    r"^>\s*[*＊]*(?:出典|Source)\s*[:：][^\n]*?"
     r"(?:" + _INTERNAL_URI_RE + r"|媒体名)"
     r"[^\n]*$\n?",
-    re.MULTILINE,
+    re.MULTILINE | re.IGNORECASE,
 )
 
 # Any remaining bare internal URI (table cells, 参考文献 lines, etc.).
 _BARE_INTERNAL_URI_RE: Final[re.Pattern[str]] = re.compile(
-    r"(?:出典[:：]\s*)?(?:媒体名\s*[—ー–-]\s*)?" + _INTERNAL_URI_RE + r",?\s?",
+    r"(?:(?:出典|Source)\s*[:：]\s*)?(?:媒体名\s*[—ー–-]\s*)?"
+    + _INTERNAL_URI_RE + r",?\s?",
+    re.IGNORECASE,
 )
 
 
@@ -253,22 +261,42 @@ def _line_is_incomplete_prose(line: str) -> bool:
     stripped = line.rstrip()
     if not stripped:
         return False
-    # Structural lines are considered complete as-is.
-    if (
+    # Structural lines (list items, table rows, quotes, images, fences)
+    # legitimately end without sentence-final punctuation, so only the
+    # STRONG truncation signals apply to them: a comma-like ending
+    # (`- 理由は、`) or an unbalanced bold marker. Codex review
+    # 2026-07-13: the previous blanket exemption made `| 店名 | 駅から、|`
+    # -style mid-cell cuts undetectable.
+    is_structural = bool(
         _LIST_ITEM_RE.match(stripped)
         or _HR_RE.match(stripped)
         or stripped.startswith((">", "|", "!", "```", ":::"))
-    ):
-        return False
+    )
     # Unbalanced bold marker = cut inside **emphasis** (e.g.
-    # 「**【パターンB：継続的・網」).
-    if stripped.count("**") % 2 == 1:
+    # 「**【パターンB：継続的・網」). Table rows excepted — `|**A**|**B**|`
+    # cell styling can legally produce odd counts on a complete row.
+    if not stripped.startswith("|") and stripped.count("**") % 2 == 1:
         return True
-    # Comma-or-connector ending = clearly mid-sentence.
+    # Comma-or-connector ending = clearly mid-sentence (structural too,
+    # but a trailing table pipe/fence char already passed above).
     if stripped[-1] in "、，,：:；;—－の":
         return True
+    if is_structural:
+        return False
     # Prose that ends without any terminal punctuation.
     return stripped[-1] not in _COMPLETE_TAIL_CHARS
+
+
+def _has_unclosed_code_fence(lines: list[str]) -> bool:
+    """Odd number of ``` fence lines = a code block was cut open.
+
+    Codex review 2026-07-13: a truncation inside a code block leaves
+    the opening fence dangling; the fence line itself ends in a
+    "complete" char so the prose heuristics never fire.
+    """
+    return sum(
+        1 for ln in lines if ln.lstrip().startswith("```")
+    ) % 2 == 1
 
 
 def trim_incomplete_tail(content: str) -> tuple[str, list[str]]:
@@ -283,6 +311,18 @@ def trim_incomplete_tail(content: str) -> tuple[str, list[str]]:
         return content, []
     removed: list[str] = []
     lines = content.rstrip().split("\n")
+    # Unclosed code fence: the truncation happened INSIDE a code block.
+    # Drop everything from the dangling opening fence to the end, then
+    # let the normal tail checks below clean up what remains.
+    if _has_unclosed_code_fence(lines):
+        for i in range(len(lines) - 1, -1, -1):
+            if lines[i].lstrip().startswith("```"):
+                removed.append(
+                    f"unclosed_code_fence: dropped {len(lines) - i} line(s) "
+                    f"from {lines[i].strip()[:40]!r}"
+                )
+                lines = lines[:i]
+                break
     for _ in range(6):  # safety bound
         # Find last non-empty line.
         while lines and not lines[-1].strip():
@@ -321,6 +361,8 @@ def is_incomplete(content: str) -> str | None:
     lines = [ln for ln in content.rstrip().split("\n") if ln.strip()]
     if not lines:
         return None
+    if _has_unclosed_code_fence(lines):
+        return "コードフェンスが未閉 (コードブロック内で切断)"
     last = lines[-1].strip()
     if _HEADING_ONLY_RE.match(last):
         return f"末尾が本文ゼロの見出し: {last[:60]!r}"

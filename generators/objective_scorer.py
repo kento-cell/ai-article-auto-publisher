@@ -83,10 +83,16 @@ class ObjectiveScorer:
         # 2026-07-13 追加: knowledge_topics は実在 URL を 1 本も持たない
         # (source url = knowledge-topic:// 内部ID) ため、citation_count を
         # ブロッキングにすると LLM が出典を捏造する圧力になる (incident #22
-        # の一因)。arXiv 等と同じ構造問題として exempt。
-        _citation_exempt = {
-            "google_trends", "bluesky", "reddit", "arxiv", "knowledge_topics",
-        }
+        # の一因)。arXiv 等と同じ構造問題として exempt — ただし Codex
+        # review 指摘: sources に実 http URL が 1 本でもあるなら引用は
+        # 可能なので exempt しない (下の _kt_has_real_url ガード)。
+        _kt_has_real_url = any(
+            str(s.get("url", "")).lower().startswith(("http://", "https://"))
+            for s in sources
+        )
+        _citation_exempt = {"google_trends", "bluesky", "reddit", "arxiv"}
+        if not _kt_has_real_url:
+            _citation_exempt = _citation_exempt | {"knowledge_topics"}
         # 2026-04-27: note向けの一般読み物 (体験談 / 比較 / ハウツー) は
         # 引用URLが少ないのが普通。Zennの技術記事と同基準で弾くと、
         # 7連続却下の構造的な詰まりが発生していた (Opus/GPT比較、
@@ -316,10 +322,18 @@ class ObjectiveScorer:
         blockquote_pattern = re.compile(
             r"^>\s*(?:出典[:：]|Source:|https?://)[^\n]*", re.MULTILINE
         )
-        _internal_uri = re.compile(r"knowledge[-_]topic://|媒体名")
+        _internal_uri = re.compile(
+            r"knowledge[-_]topic://|媒体名", re.IGNORECASE,
+        )
+        # Codex review 2026-07-13: also reject EMPTY attribution lines
+        # (`> 出典:` / `> Source:` with nothing usable after) — these
+        # are what remains when a placeholder URI was scrubbed upstream.
+        _empty_attr = re.compile(
+            r"^>\s*(?:出典[:：]|Source:)\s*[—ー–-]?\s*$", re.IGNORECASE,
+        )
         blockquote_hits = [
             ln for ln in blockquote_pattern.findall(article)
-            if not _internal_uri.search(ln)
+            if not _internal_uri.search(ln) and not _empty_attr.match(ln)
         ]
 
         # Reference-section links: lines with [text](url) under a

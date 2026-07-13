@@ -139,6 +139,14 @@ SANITIZER_CASES: list[tuple[str, str, str | None]] = [
     ("内部URI-bare",
      "（比較データは knowledge_topic://cmp_001 参照）という表記。\n",
      "internal_uri_bare"),
+    # Codex review 2026-07-13: Source: 形と、URI 直後に日本語が続く形
+    # (旧 \\S* 貪欲マッチだと「）。続き」まで食っていた)
+    ("内部URI-Source形",
+     "> \"quote text\"\n> Source: knowledge-topic://xy_001\n\n次の段落。\n",
+     "internal_uri_blockquote"),
+    ("内部URI-日本語後続",
+     "詳細は knowledge_topic://kc_006）。続きの文章は残るべき。\n",
+     "internal_uri_bare"),
     ("正常-実URL出典",
      "> 「引用文です。」\n> 出典: ROOMIE — https://www.roomie.jp/2026/07/1825126/\n",
      None),
@@ -152,6 +160,11 @@ COMPLETENESS_CASES: list[tuple[str, str, bool]] = [
      "本文です。\n\n**【パターンB：継続的・網", True),
     ("切断-空見出し",
      "本文があります。\n\n### 💡 【図解】用途別 カメラ選定", True),
+    # Codex review 2026-07-13 追加: 構造行の中の切断と未閉フェンス
+    ("切断-リスト項目読点",
+     "理由の一覧:\n\n- 一つ目の理由です。\n- 二つ目の理由は、", True),
+    ("切断-未閉コードフェンス",
+     "図解です。\n\n```mermaid\ngraph TD\n    A --> B", True),
     ("正常-句点終端",
      "公式サイトで最新情報を確認しましょう。", False),
     ("正常-テーブル終端",
@@ -238,6 +251,22 @@ def main() -> int:
                     f"SANITIZER MISS [{label}]: expected={expected!r} "
                     f"got removed={removed} text={text[:60]!r}"
                 )
+            # Codex review 2026-07-13: removal-log だけでなく cleaned
+            # output 側にも残骸 (内部URI / 媒体名 / 空の出典行) が
+            # 残っていないことを assert する。
+            elif expected.startswith("internal_uri"):
+                residue = re.search(
+                    r"knowledge[-_]topic://|媒体名"
+                    r"|^>\s*(?:出典[:：]|Source:)\s*$",
+                    cleaned, re.MULTILINE | re.IGNORECASE,
+                )
+                if residue:
+                    failures.append(
+                        f"SANITIZER RESIDUE [{label}]: "
+                        f"cleaned still contains {residue.group(0)!r}"
+                    )
+                else:
+                    print(f"    [STRIP] {label} (residue-free)")
             else:
                 print(f"    [STRIP] {label}")
 

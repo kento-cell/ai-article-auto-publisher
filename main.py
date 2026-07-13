@@ -3424,12 +3424,26 @@ def _generate_single_article(
     # で終わる状態にしてから下流 (Places / affiliate / スコアリング)
     # に流す。publish 側にも is_incomplete() の最終ゲートあり。
     from generators.content_sanitizer import trim_incomplete_tail as _trim_tail
+    _pre_trim_len = len(content)
     content, _trimmed_tail = _trim_tail(content)
     if _trimmed_tail:
         logger.warning(
             "[%s] completeness guard: %d truncated block(s) trimmed — %s",
             platform, len(_trimmed_tail), "; ".join(_trimmed_tail)[:200],
         )
+        # Codex review + RSI process audit 2026-07-13: トリムは「切断を
+        # 隠して短い記事に化けさせる」副作用を持つ。刈った後の本文が
+        # 実質的に薄くなった場合 (フロア 2000 字 or 元の 70% 未満) は
+        # 完成記事として通さず、生成失敗として扱う (呼び出し側の
+        # retry/skip 経路に乗る)。タイトル負け防止の最上位ルール準拠。
+        _post_trim_len = len(content)
+        if _post_trim_len < 2000 or _post_trim_len < _pre_trim_len * 0.7:
+            logger.error(
+                "[%s] completeness guard: trim後 %d 字 (元 %d 字) — "
+                "薄すぎるため生成失敗として棄却",
+                platform, _post_trim_len, _pre_trim_len,
+            )
+            return None
 
     # --- Google Places API によるスポット検証（note グルメ/地域記事のみ） ---
     # LLMが書いた店名を Google Places で検証し、実在しない店は丸ごと削除、
@@ -4378,8 +4392,9 @@ def publish_approved(
         # プレースホルダが出典として note 3本の本文に流出した。生成側
         # (content_sanitizer + prompt override) で除去されるが、既存
         # stored 記事や将来の regression に備えた最終防衛線。
-        _re.compile(r"knowledge[-_]topic://"),
-        _re.compile(r"出典[:：]\s*媒体名"),
+        _re.compile(r"knowledge[-_]topic://", _re.IGNORECASE),
+        # `**出典:** 媒体名` の markdown 装飾と全角スペース揺れも拾う
+        _re.compile(r"出典\s*[:：][\s*＊]*媒体名"),
         # 2026-05-07 一人飯記事で○○寿司/××焼鳥/□□ラーメン/△△バルが
         # 全店伏字で公開された実害事故。settings.yaml にも入っているが、
         # ここにハードコードして「外せない」状態にする (公開時の最終防衛線)。
@@ -4615,13 +4630,32 @@ def publish_approved(
             _editorial = content.split("<!-- AFFILIATE_SECTION -->")[0]
             _incomplete_reason = _is_incomplete(_editorial)
         except Exception as _exc:  # noqa: BLE001
-            logger.warning("completeness gate check failed (%s) — passing", _exc)
-            _incomplete_reason = None
+            # Codex review 2026-07-13: production gates are fail-closed
+            # in this repo (#19 の bypass 残置事故の教訓)。チェック自体が
+            # 壊れている時に publish を通すと、ゲートが静かに消滅する。
+            logger.error("completeness gate check broken (%s) — fail-closed", _exc)
+            _incomplete_reason = f"完結性チェック実行不能: {_exc}"
         if _incomplete_reason:
             logger.error(
                 "[%s] 完結性ゲート → publish 拒否 (行は承認のまま保持): %s — %s",
                 platform, title[:40], _incomplete_reason,
             )
+            # RSI process audit 2026-07-13: 拒否が logger.error のみだと
+            # 「✅承認のまま毎日拒否され続ける silent 無限持ち越し」になる。
+            # Slack に必ずエスカレーションして人間の目に入れる。
+            try:
+                from publishers.slack_notifier import SlackNotifier
+                SlackNotifier()._send({  # noqa: SLF001 - intentional reuse
+                    "text": (
+                        "🚨 完結性ゲートで publish 拒否 (要手動対応)\n"
+                        f"記事: {title[:60]}\n理由: {_incomplete_reason}\n"
+                        f"article_id: {article_id}\n"
+                        "Sheets 行は ✅承認 のままです。修正するまで毎日"
+                        "この拒否が繰り返されます。"
+                    ),
+                })
+            except Exception as _sexc:  # noqa: BLE001
+                logger.warning("completeness alert Slack send failed: %s", _sexc)
             continue
 
         try:

@@ -23,7 +23,15 @@ E:/ai-article-auto-publisher で learn→generate→全承認→publish を自�
 6. **検証**:
    - note 各記事を live API (`https://note.com/api/v3/notes/<key>`) で price / can_read 確認
    - 公開タイトルに捏造系 deny パターン (「N人に聞いた」等、ops_incidents #21 参照) が無いか確認
-7. **記録**: STATE.md の In Flight に結果を追記して commit & push
+7. **投稿後レビュー (必須、スキップ禁止 — 2026-07-13 事故#22/#23 の教訓)**:
+   - `article-reviewer` subagent (Agent tool, subagent_type: article-reviewer) に
+     今日 publish した全 article_id + published_url のリストを渡してレビューさせる
+   - 🔴 (CRITICAL) 判定が 1 件でもあれば: ①即座に Slack へ通知、
+     ②有料記事なら価格降格/修正を **ユーザーに提案** (無断で降格しない —
+     破壊的アクションは人間承認必須)、③ ops_incidents.md に追記 + RAG 再ingest
+   - 🟡/NOTE は `docs/knowledge/review_backlog.md` に追記
+     (前回レビューの open 項目との突き合わせも行う)
+8. **記録**: STATE.md の In Flight に結果を追記して commit & push
 
 ## 絶対ルール
 
