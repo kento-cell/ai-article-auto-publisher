@@ -179,6 +179,31 @@ def _strip_title_meta(title: str) -> str:
     return cleaned.rstrip("。、． 　").strip()
 
 
+# Incident #24 follow-up (2026-07-15, backlog #14): title_fulfillment
+# only judges bracket shapes — noun-level promises (「専門家が教える」
+# 「氷点下を体感」) sailed through while the body contained NEITHER word
+# (¥500 猛暑対策記事で実害)。Mechanical check: if the title uses one of
+# these claim keywords, the body must actually mention the probe term.
+_TITLE_CLAIM_PROBES: list[tuple[str, str]] = [
+    ("専門家", "専門家"),
+    ("医師", "医師"),
+    ("科学者", "科学者"),
+    ("研究者", "研究者"),
+    ("氷点下", "氷点下"),
+    ("データが示す", "データ"),
+    ("獣医", "獣医"),
+    ("管理栄養士", "管理栄養士"),
+]
+
+
+def _title_claims_unfulfilled(title: str, body: str) -> str | None:
+    """Return the first title claim keyword the body fails to back."""
+    for kw, probe in _TITLE_CLAIM_PROBES:
+        if kw in title and probe not in body:
+            return kw
+    return None
+
+
 def _extract_japanese_title(content: str) -> str:
     """Extract the Japanese article title from generated content.
 
@@ -3535,6 +3560,19 @@ def _generate_single_article(
         )
         article["title"] = _h1_title
 
+    # タイトルの名詞レベル約束チェック (backlog #14, 2026-07-15):
+    # 「専門家」「氷点下」等をタイトルで謳いながら本文に一度も出ない
+    # 記事は生成失敗として棄却 (¥500 猛暑対策記事のタイトル詐欺の再発防止)。
+    _unfulfilled = _title_claims_unfulfilled(
+        str(article.get("title", "")), content,
+    )
+    if _unfulfilled:
+        logger.error(
+            "[%s] タイトル約束「%s」が本文で未回収 — 生成棄却: %s",
+            platform, _unfulfilled, str(article.get("title", ""))[:40],
+        )
+        return None
+
     # --- slug生成（図表処理・スコアリングで使用） ---
     # Short prefix for readability + 8-char hash of the full title to
     # prevent collisions when two articles share the first 20 chars
@@ -4561,6 +4599,33 @@ def publish_approved(
         content = stored.get("content", "")
         source = stored.get("source", "")
 
+        # --- publish 時 re-sanitize (incident #26, 2026-07-15) ---
+        # 防御 (sanitizer / dangling 修復 / trim) は生成時に適用されるが、
+        # cadence-cap で持ち越された「承認済み在庫」は防御強化前の生成物の
+        # ままなので、publish がそのまま出すと旧欠陥が live 再流出する
+        # (7-15 実害: ブロワー記事のダングリング6+切断)。stored content の
+        # editorial 部分へ最新の防御を再適用してから下流ゲートに流す。
+        # affiliate footer は url_cleaner の allowlist 外リンク (Amazon等)
+        # を含むため分離して無傷で保持する。
+        try:
+            from generators.content_sanitizer import (
+                sanitize as _resan,
+                trim_incomplete_tail as _retrim,
+            )
+            from utils.url_cleaner import clean_article_urls as _reclean
+            _ed, _sep, _foot = content.partition("<!-- AFFILIATE_SECTION -->")
+            _ed2, _san_removed = _resan(_ed)
+            _ed2 = _reclean(_ed2)
+            _ed2, _trim_removed = _retrim(_ed2)
+            if _san_removed or _trim_removed or _ed2 != _ed:
+                logger.info(
+                    "[re-sanitize] carryover 防御再適用: sanitize=%d trim=%d (%s)",
+                    len(_san_removed), len(_trim_removed), title[:30],
+                )
+                content = _ed2 + ("\n\n" + _sep + _foot if _sep else "")
+        except Exception as _exc:  # noqa: BLE001
+            logger.warning("re-sanitize failed (%s) — using stored as-is", _exc)
+
         # Extract Japanese title from content H1/H2 if original is English
         jp_title = _extract_japanese_title(content) or title
         if jp_title != title:
@@ -4771,6 +4836,29 @@ def publish_approved(
                     logger.info(
                         "[free-mode] NOTE_FORCE_FREE=1 → price ¥%d → ¥0: %s",
                         note_price, title,
+                    )
+                    note_price = 0
+                # backlog #14 (2026-07-15): タイトルの名詞約束 (専門家/
+                # 氷点下等) が本文ゼロの carryover 在庫を publish 側でも
+                # 阻止 (生成側チェックは在庫に遡及しないため)。
+                _pub_unfulfilled = _title_claims_unfulfilled(title, content)
+                if _pub_unfulfilled:
+                    logger.error(
+                        "[note] タイトル約束「%s」未回収 → publish 拒否 "
+                        "(行は承認のまま保持): %s",
+                        _pub_unfulfilled, title[:40],
+                    )
+                    continue
+                # backlog #15 (2026-07-15): 実URL引用ゼロの記事は有料化
+                # 不可。#22 の citation exempt (捏造圧力の除去) の副作用で
+                # knowledge_topic 記事が無出典のまま ¥500 で出せていた。
+                # 「読者がお金を払う記事に検証可能な出典が1本も無い」のは
+                # D1 (課金価値) の最低ラインを割る — ¥0 に強制降格。
+                _editorial_for_cite = content.split("<!-- AFFILIATE_SECTION -->")[0]
+                if note_price > 0 and "https://" not in _editorial_for_cite:
+                    logger.warning(
+                        "[note] 実URL引用ゼロ → ¥%d を ¥0 に強制降格: %s",
+                        note_price, title[:40],
                     )
                     note_price = 0
                 # Incident #24 (2026-07-14): a ¥500 article went live

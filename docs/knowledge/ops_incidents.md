@@ -43,7 +43,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | live 3本修正 (有料2本 ¥0降格)。恒久対策 2層: ①生成側 trim_incomplete_tail (mid-sentence 段落/空見出しを刈って完結ブロック終端に) ②publish 側 is_incomplete ハードゲート (affiliate footer 手前の editorial 本文を検査、切断なら有料/無料問わず publish 拒否)。completeness 7 ケースを regression test 追加 | ✅ 修正済 (同日) |
 | 24 | #21 の残存構造ギャップが実害化: 本文 H1 が公開タイトルに昇格し、**¥500 有料記事の公開タイトルが「【完全無料】」で開始** (7-14 実害: note 4本全てで stored title と公開タイトル乖離、title_fulfillment は stored 側だけ評価して A 判定) | 2026-07-14 | live 2本タイトル修正 (¥500維持、user 判断)。恒久対策 3層 (同日): ①生成時 H1 を全ソースで stored title に採用 (ゲートが公開タイトルを評価) ②publish 時 タイトル-価格矛盾ゲート (無料系ワード×price>0 → 拒否+Slack) ③「科学(的に)証明」を deny 3箇所同期 | ✅ 修正済 (同日) |
 | 25 | url_cleaner の許可ホスト外 URL 剥離で「（出典: ROOMIE — 」の**ダングリング出典**が note 4本に多発 (1記事9箇所実証)。#22 の亜種 — 実名媒体+URL無し形は deny `出典:媒体名` を素通り | 2026-07-14 | live 4本中有料2本を修復 (無料2本は cosmetic 残置)。恒久対策 (同日): ①根本 = _BARE_URL_RE が全角文字を URL として食い閉じ括弧+後続文まで削除していた → 非ASCII 除外 ②_repair_dangling_citations で残骸を「（出典: X）」に自動修復 (実URL付き出典は `/` 除外で無傷保証) | ✅ 修正済 (同日) |
-| 26 | 修正デプロイ前に生成された承認済み記事 (carryover) が publish 時に再サニタイズされず、7-13/7-14 で潰した欠陥 (ダングリング出典6箇所+リスト項目内切断) が live 再流出 (7-15 実害: ブロワー記事¥0)。新規生成分では 7-14 対策の有効性を live 検証済 | 2026-07-15 | **恒久対策未**: publish 直前に stored content へ content_sanitizer + trim + dangling 修復を再適用する re-sanitize パス (生成時と publish 時の防御バージョン乖離を吸収) | 🔴 恒久対策未 |
+| 26 | 修正デプロイ前に生成された承認済み記事 (carryover) が publish 時に再サニタイズされず、7-13/7-14 で潰した欠陥 (ダングリング出典6箇所+リスト項目内切断) が live 再流出 (7-15 実害: ブロワー記事¥0)。新規生成分では 7-14 対策の有効性を live 検証済 | 2026-07-15 | live 4本修正 (7-15 同日) + 恒久対策: publish 直前に editorial 部分へ sanitize + url_cleaner + trim を再適用する re-sanitize パス実装 (affiliate footer は分離保持)。ゲート盲点も同時に封鎖: 長文リスト項目切断検知 / タイトル名詞約束チェック (生成+publish 2層) / 実URL引用ゼロ×有料の¥0強制 / 偽アンカーリンク line-kill | ✅ 修正済 (同日) |
 
 ---
 
@@ -571,10 +571,13 @@ title_fulfillment ゲートは stored title しか評価しないため全て A 
 7-14 対策の有効性が live で確認できており、問題は「生成時と publish 時の
 防御バージョン乖離」に局在する。
 
-**恒久対策 (未実施):** publish_approved のゲート群の直前に、stored content へ
-content_sanitizer.sanitize + trim_incomplete_tail + url_cleaner の
-dangling 修復を再適用する re-sanitize パスを追加する。防御を強化するたびに
-「承認済み在庫」が旧防御のまま出る問題を構造的に吸収する。
+**恒久対策 (2026-07-15 同日実装済):** publish_approved で stored content の
+editorial 部分 (AFFILIATE_SENTINEL 手前) に sanitize + clean_article_urls +
+trim_incomplete_tail を再適用。affiliate footer は allowlist 外リンク
+(Amazon等) を含むため分離して無傷保持。同時にレビューが検出したゲート盲点
+4種も封鎖: ①長文リスト項目 (40字+) の無終端切断検知 ②タイトル名詞約束
+(専門家/氷点下/データが示す等) の本文照合を生成+publish 2層に ③実URL引用
+ゼロ×price>0 は ¥0 強制降格 ④`](#…)` 偽アンカーリンク行の line-kill。
 
 **How to apply:** 防御ロジックを強化したら「その防御は publish 経路でも
 効くか (stored 在庫に遡及するか)」を必ず問うこと。生成側だけの防御は

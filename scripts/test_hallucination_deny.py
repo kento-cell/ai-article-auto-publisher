@@ -163,6 +163,13 @@ SANITIZER_CASES: list[tuple[str, str, str | None]] = [
     ("取得日の年ずれ",
      "> 出典: ROOMIE — https://roomie.jp/x (取得日: 2024年6月20日)\n",
      "retrieval_date_normalized"),
+    # ── 2026-07-15 backlog#16: LLM 偽アンカーリンク+架空オファー ──
+    ("偽アンカーリンク",
+     "本文。\n\n- [オルビス公式 — トライアルセット](# オルビス) - 初回購入¥1,000\n\n続き。\n",
+     "fake_anchor_link"),
+    ("正常-実URLリンク",
+     "- [ROOMIE](https://www.roomie.jp/abc) - 元記事\n",
+     None),
 ]
 
 # 完結性ガード (2026-07-13 事故#23): (label, input, should_be_incomplete)
@@ -176,6 +183,11 @@ COMPLETENESS_CASES: list[tuple[str, str, bool]] = [
     # Codex review 2026-07-13 追加: 構造行の中の切断と未閉フェンス
     ("切断-リスト項目読点",
      "理由の一覧:\n\n- 一つ目の理由です。\n- 二つ目の理由は、", True),
+    # 2026-07-15 backlog#13a: 長文リスト項目の mid-word 切断 (ブロワー実害)
+    ("切断-長文リスト項目",
+     "基準:\n\n1. **安全設計が最優先であること:** 単なる稼働時間だけでなく、過度な温度上昇を防ぐ機能や充電切れを未然に防", True),
+    ("正常-長文リスト項目完結",
+     "基準:\n\n1. **安全設計:** 過度な温度上昇を防ぐ自動停止機能を最初に確認しましょう。", False),
     ("切断-未閉コードフェンス",
      "図解です。\n\n```mermaid\ngraph TD\n    A --> B", True),
     ("正常-句点終端",

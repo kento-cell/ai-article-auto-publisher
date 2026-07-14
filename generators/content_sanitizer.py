@@ -235,6 +235,22 @@ def sanitize(content: str) -> tuple[str, list[str]]:
 
     cleaned = _empty_disclaimer_heading.sub(_kill_empty_disclaimer, cleaned)
 
+    # 2d. LLM-fabricated anchor links (2026-07-15, backlog #16):
+    #     `[オルビス公式 — トライアルセット](# オルビス トライアルセット)
+    #      - 30日間返品保証付き。初回購入¥1,000` — a dead "#" href with a
+    #     FABRICATED commercial offer attached. The whole line is
+    #     promotional fiction; kill it entirely (an anchor-style URL
+    #     `#fragment` never legitimately appears as a reference link
+    #     in generated articles).
+    _fake_anchor_line = re.compile(r"^[^\n]*\]\(\s*#[^)]*\)[^\n]*$\n?",
+                                   re.MULTILINE)
+
+    def _kill_fake_anchor(m: re.Match[str]) -> str:
+        removed.append(f"fake_anchor_link: {m.group(0).strip()[:70]!r}")
+        return ""
+
+    cleaned = _fake_anchor_line.sub(_kill_fake_anchor, cleaned)
+
     # 3c. Doubled heading markers 「## ## 参考文献」 (review backlog #4,
     #     re-observed 5x in the 7-14 Cursor scrap) — keep one marker.
     def _fix_double_hash(m: re.Match[str]) -> str:
@@ -330,6 +346,18 @@ def _line_is_incomplete_prose(line: str) -> bool:
     if stripped[-1] in "、，,：:；;—－の":
         return True
     if is_structural:
+        # 2026-07-15 (backlog #13a, ブロワー記事の実害): PROSE-STYLE list
+        # items (「1. **安全設計…:** 単なる稼働時間だけでなく、…未然に防」)
+        # can be cut mid-word too. Short noun items (「- 予備バッテリー」)
+        # legitimately end without punctuation, so only flag LONG list
+        # items — 40+ chars means it's a sentence, and a sentence needs
+        # a terminal char. Tables/quotes/fences stay exempt.
+        if (
+            _LIST_ITEM_RE.match(stripped)
+            and len(stripped) >= 40
+            and stripped[-1] not in _COMPLETE_TAIL_CHARS
+        ):
+            return True
         return False
     # Prose that ends without any terminal punctuation.
     return stripped[-1] not in _COMPLETE_TAIL_CHARS
