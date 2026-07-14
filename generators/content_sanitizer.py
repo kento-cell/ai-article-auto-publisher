@@ -235,6 +235,35 @@ def sanitize(content: str) -> tuple[str, list[str]]:
 
     cleaned = _empty_disclaimer_heading.sub(_kill_empty_disclaimer, cleaned)
 
+    # 3c. Doubled heading markers 「## ## 参考文献」 (review backlog #4,
+    #     re-observed 5x in the 7-14 Cursor scrap) — keep one marker.
+    def _fix_double_hash(m: re.Match[str]) -> str:
+        removed.append(f"double_hash_heading: {m.group(0).strip()[:40]!r}")
+        return m.group(1) + " "
+
+    cleaned = re.sub(r"^(#{1,6})\s+#{1,6}\s+", _fix_double_hash, cleaned,
+                     flags=re.MULTILINE)
+
+    # 3d. 取得日 (retrieval date) year drift — the LLM writes its
+    #     training-era year (「取得日: 2024年12月31日」 in 2026 articles,
+    #     7-14 review C2). 取得日 means "when WE fetched the source" =
+    #     generation day by definition, so normalise to today.
+    import datetime as _dt
+    _today = _dt.date.today()
+    _today_str = f"{_today.year}年{_today.month}月{_today.day}日"
+
+    def _fix_retrieval_date(m: re.Match[str]) -> str:
+        if m.group(1) != _today_str:
+            removed.append(
+                f"retrieval_date_normalized: {m.group(1)!r} -> {_today_str!r}"
+            )
+        return f"取得日: {_today_str}"
+
+    cleaned = re.sub(
+        r"取得日\s*[:：]\s*(20\d{2}年\d{1,2}月\d{1,2}日)",
+        _fix_retrieval_date, cleaned,
+    )
+
     # 4. Tidy up: collapse 3+ consecutive blank lines to 2.
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
 

@@ -1,6 +1,6 @@
 # 運用インシデント・レジストリ
 
-_最終更新: 2026-07-13_
+_最終更新: 2026-07-14_
 
 ハルシネーション(`hallucination_registry.md`)とは別に、**運用上の手戻り**を
 1事案 1 H2 セクションで集約する。retry / re-publish / orphan / UI セレクタ
@@ -41,8 +41,8 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 21 | _TITLE_BRACKETS の事実主張型ブラケット (【100人に聞いた】等) がタイトル捏造として zenn scrap に公開 (6-10 実害) | 2026-06-10 | bracket list から事実主張型 5 件除去 + forbidden_phrases/_PUBLISH_DENY 3 箇所同期で `\d+人に聞いた` deny + 公開済み scrap live 修正 | ✅ 修正済 (タイトル抽出の構造ギャップは残) |
 | 22 | knowledge_topic 記事で内部 URI (`knowledge_topic://kc_006`, `媒体名 — knowledge-topic://hg_007`) が出典として本文流出、scorer が citation と誤カウントし quality-gate 素通り (7-13 実害: note 3本) | 2026-07-13 | live 3本修正 + 恒久対策 5層: ①knowledge_block prompt 上書き ②content_sanitizer 内部URI引用スクラブ (3形態) ③objective_scorer citation counter 内部URI除外 + knowledge_topics exempt ④forbidden_phrases/_PUBLISH_DENY 3箇所同期 ⑤deny 3 + sanitizer 4 ケースを regression test 追加 | ✅ 修正済 (同日) |
 | 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | live 3本修正 (有料2本 ¥0降格)。恒久対策 2層: ①生成側 trim_incomplete_tail (mid-sentence 段落/空見出しを刈って完結ブロック終端に) ②publish 側 is_incomplete ハードゲート (affiliate footer 手前の editorial 本文を検査、切断なら有料/無料問わず publish 拒否)。completeness 7 ケースを regression test 追加 | ✅ 修正済 (同日) |
-| 24 | #21 の残存構造ギャップが実害化: 本文 H1 が公開タイトルに昇格し、**¥500 有料記事の公開タイトルが「【完全無料】」で開始** (7-14 実害: note 4本全てで stored title と公開タイトル乖離、title_fulfillment は stored 側だけ評価して A 判定) | 2026-07-14 | **恒久対策未**: ①生成時に H1 を stored title と同一化 or H1 を評価対象に ②publish 時 _extract_japanese_title 結果に対する deny/price 整合チェック (「無料」を含むタイトル×price>0 は拒否) | 🔴 恒久対策未 |
-| 25 | url_cleaner の許可ホスト外 URL 剥離で「（出典: ROOMIE — 」の**ダングリング出典**が note 4本に多発 (1記事9箇所実証)。#22 の亜種 — 実名媒体+URL無し形は deny `出典:媒体名` を素通り | 2026-07-14 | **恒久対策未**: ①url_cleaner が URL を剥ぐ際「出典: X —」プレフィックスごと除去 or 非allowlist でも出典 URL は保持 ②sanitizer に dangling 出典 (`出典: \S+ —\s*$`) の除去を追加 | 🔴 恒久対策未 |
+| 24 | #21 の残存構造ギャップが実害化: 本文 H1 が公開タイトルに昇格し、**¥500 有料記事の公開タイトルが「【完全無料】」で開始** (7-14 実害: note 4本全てで stored title と公開タイトル乖離、title_fulfillment は stored 側だけ評価して A 判定) | 2026-07-14 | live 2本タイトル修正 (¥500維持、user 判断)。恒久対策 3層 (同日): ①生成時 H1 を全ソースで stored title に採用 (ゲートが公開タイトルを評価) ②publish 時 タイトル-価格矛盾ゲート (無料系ワード×price>0 → 拒否+Slack) ③「科学(的に)証明」を deny 3箇所同期 | ✅ 修正済 (同日) |
+| 25 | url_cleaner の許可ホスト外 URL 剥離で「（出典: ROOMIE — 」の**ダングリング出典**が note 4本に多発 (1記事9箇所実証)。#22 の亜種 — 実名媒体+URL無し形は deny `出典:媒体名` を素通り | 2026-07-14 | live 4本中有料2本を修復 (無料2本は cosmetic 残置)。恒久対策 (同日): ①根本 = _BARE_URL_RE が全角文字を URL として食い閉じ括弧+後続文まで削除していた → 非ASCII 除外 ②_repair_dangling_citations で残骸を「（出典: X）」に自動修復 (実URL付き出典は `/` 除外で無傷保証) | ✅ 修正済 (同日) |
 
 ---
 
@@ -536,12 +536,12 @@ affiliate_injector も品質ゲートも「本文が完結しているか」を�
 title_fulfillment ゲートは stored title しか評価しないため全て A 判定で素通り。
 #21 で「タイトル抽出の構造ギャップは残」と明記していた箇所がそのまま発火した。
 
-**恒久対策 (未実施):**
-- 生成後に H1 と stored title を同一化する (H1 を title に採用するなら
-  その title で品質評価をやり直す — 7-13 の knowledge_topics 向け H1 採用
-  fix を全ソースに拡張し、採用後のタイトルを deny/fulfillment に通す)
-- publish 時: 抽出タイトルに「無料」を含む×price>0 → 拒否。
-  「科学が証明」「データが示す」等の裏付け必須ワードは evidence 照合
+**恒久対策 (2026-07-14 同日実装済):**
+- 生成時 H1 採用を全ソースに拡張 (main.py、以降のゲート/slug/画像クエリが
+  公開タイトルで動く)
+- publish 時 タイトル-価格矛盾ゲート (無料|タダ|0円 × price>0 → 拒否+Slack)
+- 「科学(的に)証明した/された」を forbidden_phrases + _PUBLISH_DENY 3箇所同期
+- live 2本はタイトル修正済 (¥500維持、_fix_titles_20260714.py)
 
 ## 25. url_cleaner の URL 剥離が「出典: ROOMIE — 」ダングリングを量産 (#22 亜種)
 
@@ -551,11 +551,14 @@ title_fulfillment ゲートは stored title しか評価しないため全て A 
 を残したまま URL だけ消す。#22 対策の deny `出典[:：]\s*媒体名` は
 プレースホルダ literal のみ対象で、実名媒体+URL 欠落の形は素通り。
 
-**恒久対策 (未実施):**
-- url_cleaner: URL を剥ぐ時に直前の `（出典: <媒体名> —` プレフィックスごと
-  除去する / または出典文脈の URL は剥離対象から除外
-- content_sanitizer: `出典[:：]\s*\S{1,20}\s*[—ー–-]\s*[)）]?$` 型の
-  dangling 出典行/括弧を除去する規則を追加 (#22 の internal-URI 系と同居)
+**恒久対策 (2026-07-14 同日実装済):**
+- 真の根本原因を特定: `_BARE_URL_RE` の文字クラスが全角文字 (）。、) を
+  URL の一部として食い、URL剥離時に閉じ括弧+後続文まで削除していた
+  (「…https://x）。続き。」→ 全部消失)。非ASCII (U+3000-U+FFFF) を除外
+- `_repair_dangling_citations` を clean_article_urls 末尾に追加 —
+  残骸「（出典: X — 」を「（出典: X）」に自動修復。媒体名グループから
+  `/` を除外することで実URL付きの正常出典は構造的にマッチ不能 (無傷保証)
+- live: 有料2本の既存ダングリング計15箇所を修復 (無料2本は cosmetic 残置)
 
 ---
 

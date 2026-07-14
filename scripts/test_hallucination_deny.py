@@ -82,6 +82,12 @@ DENY_TEST_CASES: list[tuple[str, str, bool]] = [
     ("内部URI-hyphen",     "> 出典: 媒体名 — knowledge-topic://hg_007\n",         True),
     ("媒体名placeholder",  "> 出典: 媒体名 — https://example.com\n",              True),
 
+    # ── 裏付け不能な科学的証明の断定 (2026-07-14 事故#24) ──
+    ("科学が証明した",     "科学が証明した「体温を下げる3ステップ戦略」\n",        True),
+    ("科学的に証明された", "この効果は科学的に証明されたものです。\n",             True),
+    ("正常-証明書",        "SSL証明書を更新した。\n",                             False),
+    ("正常-科学的な説明",  "科学的な視点から説明を試みる。\n",                     False),
+
     # ── AI 開示 footer (2026-05-08 拡充) ──
     ("AI生成-本記事は",    "本文。\n\n本記事はAIで自動生成しました。\n",          True),
     ("AI生成-構成",        "本文。\n\n本記事の店舗情報はAIが構成しています。\n",  True),
@@ -150,6 +156,13 @@ SANITIZER_CASES: list[tuple[str, str, str | None]] = [
     ("正常-実URL出典",
      "> 「引用文です。」\n> 出典: ROOMIE — https://www.roomie.jp/2026/07/1825126/\n",
      None),
+    # ── 2026-07-14 事故レビュー: 体裁バグの自動修復 ──
+    ("二重ハッシュ見出し",
+     "本文。\n\n## ## 参考文献\n\n- リンク\n",
+     "double_hash_heading"),
+    ("取得日の年ずれ",
+     "> 出典: ROOMIE — https://roomie.jp/x (取得日: 2024年6月20日)\n",
+     "retrieval_date_normalized"),
 ]
 
 # 完結性ガード (2026-07-13 事故#23): (label, input, should_be_incomplete)

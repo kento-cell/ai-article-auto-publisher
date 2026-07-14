@@ -1899,6 +1899,16 @@ _IMAGE_QUERY_BLACKLIST: frozenset[str] = frozenset({
     # fail on mixed JP/ASCII text (e.g. "B|luesky|" → "luesky").
     "luesky", "eddit", "oogle", "witter", "acebook", "nstagram",
     "iktok", "outube", "inkedin", "hreads", "astodon",
+    # 2026-07-14 incident review P3: 出典帰属の媒体名が「最頻出の
+    # 固有名詞」として画像クエリを乗っ取った (query='ROOMIE mermaid
+    # graph' → 人魚画像)。記事の被写体には決してならないメディア名。
+    "roomie", "gigazine", "itmedia", "impress", "publickey",
+    "techcrunch", "gizmodo", "lifehacker", "engadget", "cnet",
+    "wired", "verge", "hackernews", "github",
+    # mermaid 図・コードブロック由来の記法トークン (コードフェンスは
+    # スキャン前に除去するが、フェンス外に漏れた場合の保険)。
+    "mermaid", "graph", "subgraph", "flowchart", "sequencediagram",
+    "style", "fill", "stroke",
 })
 
 
@@ -1930,6 +1940,12 @@ def _extract_image_query(title: str, content: str = "") -> str:
             r"!\[[^\]]*\]\([^)]*\)", " ", content
         )
         content = re.sub(r"https?://\S+", " ", content)
+        # 2026-07-14 P3: code fences (```mermaid ... ```) leaked graph
+        # DSL tokens (TD / mermaid / fill) into the proper-noun scan and
+        # hijacked the image query — strip them before scanning.
+        content = re.sub(r"```[\s\S]*?(?:```|\Z)", " ", content)
+        # 出典行の媒体名も被写体ではないので落とす。
+        content = re.sub(r"[（(]\s*出典[:：][^）)\n]*[）)]?", " ", content)
 
     keywords: list[str] = []
 
@@ -3502,21 +3518,22 @@ def _generate_single_article(
     except Exception as exc:
         logger.warning("アフィリエイト挿入失敗: %s", exc)
 
-    # --- stored title の scaffold 除去 (incident #22 review 横断指摘 #3) ---
-    # knowledge_topics のシードタイトルは "(a) Jongno (鍾路) 区に12…" の
-    # ような promise 断片で、そのまま stored title / Sheets 行 / slug を
-    # 汚染していた (公開タイトルは H1 抽出で別物になるため読者には
-    # 出ないが、内部記録と OGP が生プロンプトのままになる)。生成本文の
-    # H1 を正式タイトルとして採用する。以降の画像クエリ・slug・Sheets
-    # 登録すべてがクリーンなタイトルで動く。
-    if str(article.get("source", "")) == "knowledge_topics":
-        _h1_title = _extract_japanese_title(content)
-        if _h1_title and len(_h1_title) >= 10:
-            logger.info(
-                "[%s] knowledge-topic title scaffold → H1 採用: %s",
-                platform, _h1_title[:50],
-            )
-            article["title"] = _h1_title
+    # --- 公開タイトル (H1) を正式 stored title に採用 (incident #24) ---
+    # publish 側の _extract_japanese_title は本文 H1 を公開タイトルに
+    # 昇格させる。7-14 実害: Writer が stored title と別の煽り H1
+    # (「【完全無料】」等) を書き、品質ゲート (deny / title_fulfillment)
+    # は stored title しか見ないため、¥500 有料記事が「【完全無料】」
+    # タイトルで公開された。生成時点で H1 を title に統一することで、
+    # 以降のスコアリング・deny・slug・画像クエリ・Sheets の全てが
+    # 「読者が実際に見るタイトル」で動く (7-13 の knowledge_topics 限定
+    # fix を全ソースに拡張)。
+    _h1_title = _extract_japanese_title(content)
+    if _h1_title and len(_h1_title) >= 10 and _h1_title != article.get("title"):
+        logger.info(
+            "[%s] 公開タイトル (H1) を stored title に採用: %s",
+            platform, _h1_title[:50],
+        )
+        article["title"] = _h1_title
 
     # --- slug生成（図表処理・スコアリングで使用） ---
     # Short prefix for readability + 8-char hash of the full title to
@@ -4395,6 +4412,11 @@ def publish_approved(
         _re.compile(r"knowledge[-_]topic://", _re.IGNORECASE),
         # `**出典:** 媒体名` の markdown 装飾と全角スペース揺れも拾う
         _re.compile(r"出典\s*[:：][\s*＊]*媒体名"),
+        # 2026-07-14 incident #24: ¥500 記事が「科学が証明した」を
+        # 裏付けゼロ (ソースは 300 円グッズのブログ 1 本) で主張。
+        # このパイプラインは科学的裏付けを検証できないので、
+        # 科学的証明の断定はタイトル/本文問わず deny (煽りは他の語彙で)。
+        _re.compile(r"科学(?:的に)?\s*[がはに]?\s*証明(?:した|された|済み)"),
         # 2026-05-07 一人飯記事で○○寿司/××焼鳥/□□ラーメン/△△バルが
         # 全店伏字で公開された実害事故。settings.yaml にも入っているが、
         # ここにハードコードして「外せない」状態にする (公開時の最終防衛線)。
@@ -4751,6 +4773,29 @@ def publish_approved(
                         note_price, title,
                     )
                     note_price = 0
+                # Incident #24 (2026-07-14): a ¥500 article went live
+                # titled 「【完全無料】…」. Title-vs-price contradiction
+                # is a hard block — the reader-visible title promising
+                # 無料 on a paywalled article is bait-and-switch.
+                # 行は ✅承認 のまま保持 (タイトル修正 or 降格を人間が判断)。
+                if note_price > 0 and re.search(r"無料|タダ|0円|￥0|¥0", title):
+                    logger.error(
+                        "[note] タイトル-価格矛盾ゲート → publish 拒否: "
+                        "「%s」 が ¥%d (タイトルに無料系ワード)",
+                        title[:40], note_price,
+                    )
+                    try:
+                        from publishers.slack_notifier import SlackNotifier
+                        SlackNotifier()._send({  # noqa: SLF001
+                            "text": (
+                                "🚨 タイトル-価格矛盾で publish 拒否 (要手動対応)\n"
+                                f"タイトル: {title[:60]}\n価格: ¥{note_price}\n"
+                                f"article_id: {article_id}"
+                            ),
+                        })
+                    except Exception as _sexc:  # noqa: BLE001
+                        logger.warning("price-gate alert failed: %s", _sexc)
+                    continue
                 url = _publish_note(
                     title, content, config,
                     source=str(source), price=note_price,

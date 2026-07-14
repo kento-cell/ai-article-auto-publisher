@@ -29,8 +29,16 @@
     - 画像被写体不一致 note3本 (backlog#1悪化)、zenn体裁再発 (backlog#3/#4)
     - Slack 通知済、ops_incidents #24/#25 追記 + RAG 693 chunks 再ingest、
       backlog #8-11 追記
-  - **ユーザー判断待ち**: 有料2本 (プロジェクター/ハンディファン) の
-    タイトル修正 or ¥0降格 (無断降格禁止ルールに従い提案のみ)
+  - **user 判断=タイトル修正のみ (¥500維持) → 同日実施済**:
+    - live 2本タイトル差し替え (「【完全無料】」「科学が証明した」除去) +
+      ダングリング出典 計15箇所修復 (`_fix_titles_20260714.py`、live検証済)
+    - **恒久対策も同日実装**: #24 3層 (H1採用全ソース化 / タイトル-価格
+      矛盾ゲート+Slack / 「科学(的に)証明」deny 3箇所同期)、
+      #25 根本 (_BARE_URL_RE が全角文字を食い後続文まで削除→非ASCII除外
+      + dangling自動修復パス)、P3 画像クエリ汚染 (コードフェンス/出典行
+      除去+媒体名blacklist)、zenn体裁 (## ## 修復+取得日正規化)
+    - regression: 49 deny + 15 sanitizer + 9 completeness + 8 RAG 全PASS、
+      ops #24/#25 → ✅修正済、RAG 693 chunks 再ingest
 - **7-13 投稿後レビュー (RSI、 article-reviewer subagent 初運用)**:
   - `.claude/agents/article-reviewer.md` 新設 (投稿済記事を外部読者視点で
     A〜G 7カテゴリ/31項目レビューする独立エージェント、 リサーチベース設計)

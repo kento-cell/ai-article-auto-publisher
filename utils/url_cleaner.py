@@ -62,7 +62,12 @@ _MARKDOWN_LINK_RE = re.compile(
 )
 
 # Bare URLs not wrapped in markdown.
-_BARE_URL_RE = re.compile(r"(?<!\]\()(?<!\()https?://[^\s\)\]]+")
+# Incident #25 (2026-07-14): the old class [^\s\)\]] treated full-width
+# CJK punctuation (）。、」etc.) as part of the URL, so stripping a
+# non-allowlisted URL also swallowed the closing full-width paren AND
+# the rest of the sentence (「…（出典: X — https://…）。続き」→
+# 「…（出典: X — 」). URLs are ASCII — stop at any non-ASCII char.
+_BARE_URL_RE = re.compile(r"(?<!\]\()(?<!\()https?://[^\s\)\]-￿]+")
 
 # Heading that marks the start of the references section.
 _REF_HEADING_RE = re.compile(r"(?m)^##+\s*参考(文献|リンク)")
@@ -141,6 +146,31 @@ def _strip_unwhitelisted_bare_urls(body: str) -> str:
     return _BARE_URL_RE.sub(_replace, body)
 
 
+# Incident #25 (2026-07-14): stripping a non-allowlisted bare URL out of
+# an inline citation eats the URL *and* the trailing full-width paren
+# (the bare-URL regex is \S-greedy), leaving 「（出典: ROOMIE — 」
+# dangling mid-sentence — observed 9-10 times per article across all 4
+# published notes. Repair pass: close the citation cleanly with just
+# the media name.
+# The media-name group excludes ``/`` so a HEALTHY citation that still
+# carries its URL (e.g. an allowlisted 「（出典: X — https://…）」) can
+# never be matched/rewritten — the slash forces a non-match.
+_DANGLING_CITE_RE = re.compile(
+    r"（\s*(?:出典|Source)\s*[:：]\s*([^\n（）/]{1,30}?)\s*[—ー–-]?\s*(?:）|(?=\n)|$)",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _repair_dangling_citations(body: str) -> str:
+    def _fix(m: re.Match[str]) -> str:
+        name = m.group(1).strip().rstrip("—ー–- ")
+        if not name:
+            return ""  # nothing left worth keeping
+        return f"（出典: {name}）"
+
+    return _DANGLING_CITE_RE.sub(_fix, body)
+
+
 def clean_article_urls(content: str) -> str:
     """Shorten inline links and strip hallucinated bare URLs.
 
@@ -158,6 +188,7 @@ def clean_article_urls(content: str) -> str:
 
     body = _shorten_markdown_links(body, enforce_allowlist=True)
     body = _strip_unwhitelisted_bare_urls(body)
+    body = _repair_dangling_citations(body)
     if refs:
         refs = _shorten_markdown_links(refs, enforce_allowlist=False)
     return body + refs
