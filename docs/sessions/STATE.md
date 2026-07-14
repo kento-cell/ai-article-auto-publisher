@@ -6,10 +6,29 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-14 09:07 JST
+2026-07-15 06:56 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
+
+- **7-15 朝 routine (7-14対策の効果を live 実証 + carryover 穴 #26 検出)**:
+  - learn 693 chunks / generate 6合格/1不合格 / 承認6件 /
+    publish: note4 (¥0×2 + ¥500×2) + zenn scrap1、live検証済
+  - **H1採用ガード初発火** (猛暑対策記事) — 公開タイトル=内部タイトル一致を
+    live確認。zenn は取得日正規化/## ## 修復も live 検証 OK
+  - **投稿後レビュー: CRITICAL 7 / WARN 12 / NOTE 4** (Slack通知済):
+    - **事故 #26**: 7-14対策デプロイ前に生成された承認済み carryover
+      (ブロワー¥0) が publish 時再サニタイズなしで旧欠陥ごと live 流出
+      (ダングリング6+リスト項目内切断)。新規生成分は対策有効を実証 —
+      問題は「生成時と publish 時の防御バージョン乖離」に局在
+    - 新パターン: LLM 偽アンカーリンク `[オルビス公式](# …)` + 架空オファー
+      (エクソソーム¥0、backlog#16)
+    - ゲート盲点: リスト項目内切断 / 約束セクション欠落 / 名詞レベル
+      タイトル約束 (「専門家」「氷点下」が本文ゼロの¥500記事) — backlog#13-15
+  - ops #26 登録 + RAG 700 chunks 再ingest + backlog #12-16 追記
+  - **ユーザー判断待ち**: ①ベビーモニター¥500 (まとめ欠落+出典ゼロ) と
+    猛暑対策¥500 (タイトル名詞未回収) の修正/降格 ②ブロワー¥0 の本文補完
+    ③恒久対策 (publish 時 re-sanitize パス等) の実施タイミング
 
 - **7-14 朝 routine (防御ゲート初の実戦発火 + レビューで新事故 #24/#25 検出)**:
   - learn: 685 chunks / generate: 6合格/1不合格 / 承認 6件
@@ -300,11 +319,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [2026年6月時点で在庫がある (新品 OR 中古並品) 3機種 (FUJIFILM X100V…](https://note.com/<NOTE_USER>/n/n1ad6c673fc7b?app_launch=false)
-- [(a) Jongno (鍾路) 区に120軒のtraditional makgeolli est…](https://note.com/<NOTE_USER>/n/n660937d81cdd?app_launch=false)
-- [(a) 2026年に$500M規模・rare cardが$200〜$1000+で取引される市場の…](https://note.com/<NOTE_USER>/n/n65306d782b03?app_launch=false)
-- [ループエンジニアリングをGitHub Copilotで組めるか調べてみた…](https://zenn.dev/kento_cell/scraps/71addcdd3a0ecd)
-- [AIと一緒にCAD設計できるソフト「cad-coworker」…](https://zenn.dev/kento_cell/scraps/a97d79a71be870)
+- [【2026年夏】300円から始める「体温を下げる」3ステップ暑さ対策 — 3COINS×ハンディ…](https://note.com/<NOTE_USER>/n/n648136dc2bba?app_launch=false)
+- [これ1台でリビングが映画館に。Ankerプロジェクター「音の常識」が変わった3つの理由…](https://note.com/<NOTE_USER>/n/n08979e185717?app_launch=false)
+- [荷物が多くてもかさばらない！「ミリタリー発想の小型バッグ」でスマートに過ごせるんだ…](https://note.com/<NOTE_USER>/n/n32e900f92780?app_launch=false)
+- [開発現場のAIセキュリティを見直す…](https://zenn.dev/kento_cell/scraps/f3b47480f13df7)
+- [Cursorに「不要なブランチを整理して」と頼んだら、Dドライブが消えた話…](https://zenn.dev/kento_cell/scraps/10de0daec2c410)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -313,11 +332,11 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
+  - 73b3534 fix(quality): 事故#24/#25 恒久対策 — タイトル昇格ギャップと出典ダングリングを根絶
+  - 1740554 docs: 7-14 routine 完走記録 — 防御ゲート初実戦発火 + レビューで事故 #24/#25 検出
   - a50bf96 sec(pii): pre-commit に PII スキャン常設 + 残存 path 露出 2 件マスク
   - 6905eb7 fix(pii): note ハンドル露出の根本対策 — _session_status.py がマスクの上書き元だった
   - d017226 feat(catchup): 同一ニュースのトピックレベル重複折りたたみ
-  - fdee11e docs: review_backlog #2/#6 を対応済みに更新 (a2b047d)
-  - a2b047d fix(sanitizer): 空の免責見出し除去 + RAG鮮度警告 + knowledge 3週間分の追跡漏れ解消
 <!-- /AUTO:pipeline -->
 
 ## Pointers

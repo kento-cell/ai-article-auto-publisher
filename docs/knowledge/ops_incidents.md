@@ -1,6 +1,6 @@
 # 運用インシデント・レジストリ
 
-_最終更新: 2026-07-14_
+_最終更新: 2026-07-15_
 
 ハルシネーション(`hallucination_registry.md`)とは別に、**運用上の手戻り**を
 1事案 1 H2 セクションで集約する。retry / re-publish / orphan / UI セレクタ
@@ -43,6 +43,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | live 3本修正 (有料2本 ¥0降格)。恒久対策 2層: ①生成側 trim_incomplete_tail (mid-sentence 段落/空見出しを刈って完結ブロック終端に) ②publish 側 is_incomplete ハードゲート (affiliate footer 手前の editorial 本文を検査、切断なら有料/無料問わず publish 拒否)。completeness 7 ケースを regression test 追加 | ✅ 修正済 (同日) |
 | 24 | #21 の残存構造ギャップが実害化: 本文 H1 が公開タイトルに昇格し、**¥500 有料記事の公開タイトルが「【完全無料】」で開始** (7-14 実害: note 4本全てで stored title と公開タイトル乖離、title_fulfillment は stored 側だけ評価して A 判定) | 2026-07-14 | live 2本タイトル修正 (¥500維持、user 判断)。恒久対策 3層 (同日): ①生成時 H1 を全ソースで stored title に採用 (ゲートが公開タイトルを評価) ②publish 時 タイトル-価格矛盾ゲート (無料系ワード×price>0 → 拒否+Slack) ③「科学(的に)証明」を deny 3箇所同期 | ✅ 修正済 (同日) |
 | 25 | url_cleaner の許可ホスト外 URL 剥離で「（出典: ROOMIE — 」の**ダングリング出典**が note 4本に多発 (1記事9箇所実証)。#22 の亜種 — 実名媒体+URL無し形は deny `出典:媒体名` を素通り | 2026-07-14 | live 4本中有料2本を修復 (無料2本は cosmetic 残置)。恒久対策 (同日): ①根本 = _BARE_URL_RE が全角文字を URL として食い閉じ括弧+後続文まで削除していた → 非ASCII 除外 ②_repair_dangling_citations で残骸を「（出典: X）」に自動修復 (実URL付き出典は `/` 除外で無傷保証) | ✅ 修正済 (同日) |
+| 26 | 修正デプロイ前に生成された承認済み記事 (carryover) が publish 時に再サニタイズされず、7-13/7-14 で潰した欠陥 (ダングリング出典6箇所+リスト項目内切断) が live 再流出 (7-15 実害: ブロワー記事¥0)。新規生成分では 7-14 対策の有効性を live 検証済 | 2026-07-15 | **恒久対策未**: publish 直前に stored content へ content_sanitizer + trim + dangling 修復を再適用する re-sanitize パス (生成時と publish 時の防御バージョン乖離を吸収) | 🔴 恒久対策未 |
 
 ---
 
@@ -559,6 +560,25 @@ title_fulfillment ゲートは stored title しか評価しないため全て A 
   残骸「（出典: X — 」を「（出典: X）」に自動修復。媒体名グループから
   `/` を除外することで実URL付きの正常出典は構造的にマッチ不能 (無傷保証)
 - live: 有料2本の既存ダングリング計15箇所を修復 (無料2本は cosmetic 残置)
+
+## 26. carryover 記事の publish 時再サニタイズ欠如 (防御バージョン乖離)
+
+**事象:** 2026-07-15 publish のブロワー記事 (¥0) は 7-14 朝 (= #23/#25 対策
+デプロイ前) に生成・承認された持ち越し。publish は stored content を
+そのまま出すため、生成側に足した防御 (trim_incomplete_tail / dangling 修復 /
+画像クエリ対策) が一切適用されず、ダングリング出典6箇所+リスト項目内
+切断が live 再流出した。同日の新規生成分 (エクソソーム/猛暑対策/zenn) では
+7-14 対策の有効性が live で確認できており、問題は「生成時と publish 時の
+防御バージョン乖離」に局在する。
+
+**恒久対策 (未実施):** publish_approved のゲート群の直前に、stored content へ
+content_sanitizer.sanitize + trim_incomplete_tail + url_cleaner の
+dangling 修復を再適用する re-sanitize パスを追加する。防御を強化するたびに
+「承認済み在庫」が旧防御のまま出る問題を構造的に吸収する。
+
+**How to apply:** 防御ロジックを強化したら「その防御は publish 経路でも
+効くか (stored 在庫に遡及するか)」を必ず問うこと。生成側だけの防御は
+cadence-cap 持ち越し在庫に対して常に1日以上の穴が開く。
 
 ---
 
