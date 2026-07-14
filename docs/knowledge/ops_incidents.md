@@ -41,6 +41,8 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 21 | _TITLE_BRACKETS の事実主張型ブラケット (【100人に聞いた】等) がタイトル捏造として zenn scrap に公開 (6-10 実害) | 2026-06-10 | bracket list から事実主張型 5 件除去 + forbidden_phrases/_PUBLISH_DENY 3 箇所同期で `\d+人に聞いた` deny + 公開済み scrap live 修正 | ✅ 修正済 (タイトル抽出の構造ギャップは残) |
 | 22 | knowledge_topic 記事で内部 URI (`knowledge_topic://kc_006`, `媒体名 — knowledge-topic://hg_007`) が出典として本文流出、scorer が citation と誤カウントし quality-gate 素通り (7-13 実害: note 3本) | 2026-07-13 | live 3本修正 + 恒久対策 5層: ①knowledge_block prompt 上書き ②content_sanitizer 内部URI引用スクラブ (3形態) ③objective_scorer citation counter 内部URI除外 + knowledge_topics exempt ④forbidden_phrases/_PUBLISH_DENY 3箇所同期 ⑤deny 3 + sanitizer 4 ケースを regression test 追加 | ✅ 修正済 (同日) |
 | 23 | 長尺 note 本文が length cap で mid-sentence 切断 → 未完のまま publish (7-13 実害: 3本、うち**有料¥500×2本**が切断状態で課金公開) | 2026-07-13 | live 3本修正 (有料2本 ¥0降格)。恒久対策 2層: ①生成側 trim_incomplete_tail (mid-sentence 段落/空見出しを刈って完結ブロック終端に) ②publish 側 is_incomplete ハードゲート (affiliate footer 手前の editorial 本文を検査、切断なら有料/無料問わず publish 拒否)。completeness 7 ケースを regression test 追加 | ✅ 修正済 (同日) |
+| 24 | #21 の残存構造ギャップが実害化: 本文 H1 が公開タイトルに昇格し、**¥500 有料記事の公開タイトルが「【完全無料】」で開始** (7-14 実害: note 4本全てで stored title と公開タイトル乖離、title_fulfillment は stored 側だけ評価して A 判定) | 2026-07-14 | **恒久対策未**: ①生成時に H1 を stored title と同一化 or H1 を評価対象に ②publish 時 _extract_japanese_title 結果に対する deny/price 整合チェック (「無料」を含むタイトル×price>0 は拒否) | 🔴 恒久対策未 |
+| 25 | url_cleaner の許可ホスト外 URL 剥離で「（出典: ROOMIE — 」の**ダングリング出典**が note 4本に多発 (1記事9箇所実証)。#22 の亜種 — 実名媒体+URL無し形は deny `出典:媒体名` を素通り | 2026-07-14 | **恒久対策未**: ①url_cleaner が URL を剥ぐ際「出典: X —」プレフィックスごと除去 or 非allowlist でも出典 URL は保持 ②sanitizer に dangling 出典 (`出典: \S+ —\s*$`) の除去を追加 | 🔴 恒久対策未 |
 
 ---
 
@@ -521,6 +523,39 @@ affiliate_injector も品質ゲートも「本文が完結しているか」を�
 **How to apply:** 「生成が終わった=本文が完成した」ではない。長尺 (5000字+)
 の note 記事ほど cap 到達率が上がるため、文字数を伸ばす施策を入れる時は
 必ずこの完結性ゲートとセットで。
+
+---
+
+## 24. 本文 H1 の公開タイトル昇格で「¥500 なのに【完全無料】」(#21 残存ギャップの実害化)
+
+**事象:** 2026-07-14 publish の note 4本全てで、Writer が stored title とは
+別の煽り H1 (「【完全保存版】」「【完全無料】」「【完全自動】」「【永久保存版】」)
+を書き、`_extract_japanese_title` がそれを公開タイトルに採用。最悪ケースは
+**¥500 有料のプロジェクター記事が「【完全無料】自宅が映画館レベルに…」で公開**
+(タイトル詐欺リスク)。ハンディファン記事は「科学が証明した」を裏付けゼロで主張。
+title_fulfillment ゲートは stored title しか評価しないため全て A 判定で素通り。
+#21 で「タイトル抽出の構造ギャップは残」と明記していた箇所がそのまま発火した。
+
+**恒久対策 (未実施):**
+- 生成後に H1 と stored title を同一化する (H1 を title に採用するなら
+  その title で品質評価をやり直す — 7-13 の knowledge_topics 向け H1 採用
+  fix を全ソースに拡張し、採用後のタイトルを deny/fulfillment に通す)
+- publish 時: 抽出タイトルに「無料」を含む×price>0 → 拒否。
+  「科学が証明」「データが示す」等の裏付け必須ワードは evidence 照合
+
+## 25. url_cleaner の URL 剥離が「出典: ROOMIE — 」ダングリングを量産 (#22 亜種)
+
+**事象:** 同 4本で「（出典: ROOMIE — 」の後に URL が無いダングリング出典が
+多発 (プロジェクター記事だけで 9 箇所実証)。推定原因: `utils/url_cleaner.py`
+の allowlist 外ホスト (roomie.jp) のインライン URL 剥離が、出典プレフィックス
+を残したまま URL だけ消す。#22 対策の deny `出典[:：]\s*媒体名` は
+プレースホルダ literal のみ対象で、実名媒体+URL 欠落の形は素通り。
+
+**恒久対策 (未実施):**
+- url_cleaner: URL を剥ぐ時に直前の `（出典: <媒体名> —` プレフィックスごと
+  除去する / または出典文脈の URL は剥離対象から除外
+- content_sanitizer: `出典[:：]\s*\S{1,20}\s*[—ー–-]\s*[)）]?$` 型の
+  dangling 出典行/括弧を除去する規則を追加 (#22 の internal-URI 系と同居)
 
 ---
 

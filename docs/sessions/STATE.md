@@ -6,11 +6,31 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-13 10:25 JST
+2026-07-14 09:07 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
 
+- **7-14 朝 routine (防御ゲート初の実戦発火 + レビューで新事故 #24/#25 検出)**:
+  - learn: 685 chunks / generate: 6合格/1不合格 / 承認 6件
+  - publish 1回目が外部停止 (killed) → orphan 検証 (note未投稿・プロセス残ゼロ
+    を実証、事故#1の再発なし) → ユーザー承認後に再開、完走
+  - **7-13 恒久対策が実戦で発火**: deny ゲートが壊れた持ち越し4本
+    (knowledge_topic:// 流出、修正前生成の在庫) を publish 前に阻止 (❌却下)、
+    完結性ゲートが1本 (マーナ、空免責見出し) を阻止 (承認のまま保持+Slack通知)
+  - publish 成功: note 4件 (PS5 ¥0 nafa05ea134c4 / 小型バッグ ¥0 n32e900f92780 /
+    プロジェクター ¥500 n08979e185717 / ハンディファン ¥500 n648136dc2bba、
+    live API 検証済) + zenn scrap 2件 (10de0daec2c410, f3b47480f13df7)
+  - **投稿後レビュー (手順7 初回自動実施): CRITICAL 13 / WARN 8 / NOTE 4**
+    - **事故 #24**: 本文H1が公開タイトルに昇格、 **¥500有料が「【完全無料】」
+      タイトルで公開** (#21残存ギャップの実害化、note全4本で乖離)
+    - **事故 #25**: url_cleaner の URL剥離で「出典: ROOMIE — 」ダングリング
+      多発 (1記事9箇所実証、#22亜種)
+    - 画像被写体不一致 note3本 (backlog#1悪化)、zenn体裁再発 (backlog#3/#4)
+    - Slack 通知済、ops_incidents #24/#25 追記 + RAG 693 chunks 再ingest、
+      backlog #8-11 追記
+  - **ユーザー判断待ち**: 有料2本 (プロジェクター/ハンディファン) の
+    タイトル修正 or ¥0降格 (無断降格禁止ルールに従い提案のみ)
 - **7-13 投稿後レビュー (RSI、 article-reviewer subagent 初運用)**:
   - `.claude/agents/article-reviewer.md` 新設 (投稿済記事を外部読者視点で
     A〜G 7カテゴリ/31項目レビューする独立エージェント、 リサーチベース設計)
@@ -272,11 +292,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [佐々木典士『ぼくたちに、もうモノは必要ない。』とやましたひでこ『新・片づけ術 断捨離』2冊を軸に…](https://note.com/<NOTE_USER>/n/necf05440c363?app_launch=false)
-- [美容皮膚科処方の Tranexamic Acid を OTC 配合した Anua Niacina…](https://note.com/<NOTE_USER>/n/n19b342c320e2?app_launch=false)
-- [Agentic RLにおけるMITOとTITO…](https://zenn.dev/kento_cell/scraps/ebb5bd3af49dc3)
-- [座ってスクワットができる不思議なイスを見つけたよ。梅雨も真夏もおうち時間に最適すぎる…](https://note.com/<NOTE_USER>/n/nd7f7edc2afcc?app_launch=false)
-- [電気代不要で360°見守れる。Ankerの防犯カメラが便利だった…](https://note.com/<NOTE_USER>/n/nbe658bae66ef?app_launch=false)
+- [2026年6月時点で在庫がある (新品 OR 中古並品) 3機種 (FUJIFILM X100V…](https://note.com/<NOTE_USER>/n/n1ad6c673fc7b?app_launch=false)
+- [(a) Jongno (鍾路) 区に120軒のtraditional makgeolli est…](https://note.com/<NOTE_USER>/n/n660937d81cdd?app_launch=false)
+- [(a) 2026年に$500M規模・rare cardが$200〜$1000+で取引される市場の…](https://note.com/<NOTE_USER>/n/n65306d782b03?app_launch=false)
+- [ループエンジニアリングをGitHub Copilotで組めるか調べてみた…](https://zenn.dev/kento_cell/scraps/71addcdd3a0ecd)
+- [AIと一緒にCAD設計できるソフト「cad-coworker」…](https://zenn.dev/kento_cell/scraps/a97d79a71be870)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -285,7 +305,11 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - (no commits in last 48h)
+  - a50bf96 sec(pii): pre-commit に PII スキャン常設 + 残存 path 露出 2 件マスク
+  - 6905eb7 fix(pii): note ハンドル露出の根本対策 — _session_status.py がマスクの上書き元だった
+  - d017226 feat(catchup): 同一ニュースのトピックレベル重複折りたたみ
+  - fdee11e docs: review_backlog #2/#6 を対応済みに更新 (a2b047d)
+  - a2b047d fix(sanitizer): 空の免責見出し除去 + RAG鮮度警告 + knowledge 3週間分の追跡漏れ解消
 <!-- /AUTO:pipeline -->
 
 ## Pointers
