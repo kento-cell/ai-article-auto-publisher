@@ -11,6 +11,27 @@
 
 ## In Flight (今このセッションで進行中の作業)
 
+- **7-16 夜 routine (全防御が揃った初回 publish + 新変種2種検出・即日修正)**:
+  - learn 693→707 chunks / generate 7合格/0不合格 / publish: note4 (全¥0) +
+    zenn scrap2、live検証済
+  - **防御の実戦成果**: ①無出典×有料→¥0強制降格が2回発火 (K-beauty/ハーブ、
+    無出典¥500を構造的に阻止) ②re-sanitize パスが 7-14 から stuck していた
+    エコバッグを自動修復して publish 復活 ③ダングリング/空免責見出し 0 を
+    live 確認 ④H1採用+completeness guard 発火
+  - **レビュー CRITICAL 5 (全¥0で課金リスクなし、Slack通知済)**:
+    - 偽アンカーリンクの真犯人判明: **.env の #placeholder アフィリ値** を
+      _is_valid_link が通していた (昨日の「LLM捏造」診断は誤り) →
+      http(s) 以外全却下に修正済
+    - 内部URI 日本語化変種「知識-topic://」live流出 → regex 4箇所拡張済
+    - 約束セクション欠落型切断2件 (給餌器Day2/3・ハーブまとめ、backlog#13b
+      盲点の実害化、恒久対策は設計課題)
+    - 画像被写体不一致 継続悪化 (backlog#1)、中国語混入「模块化」(新変種)
+  - regression 85ケース全PASS、backlog #17-23 (reviewer追記) + #16訂正、
+    RAG 707 chunks
+  - **ユーザー判断待ち**: live 3記事 (給餌器/K-beauty/ハーブ、全¥0) の本文修正
+  - 別件: 充電熱暴走記事が「記事コンテンツが見つかりません」(store欠落)、
+    渡韓美容が publish 対象に現れず — 次回調査
+
 - **7-15 朝 routine (7-14対策の効果を live 実証 + carryover 穴 #26 検出)**:
   - learn 693 chunks / generate 6合格/1不合格 / 承認6件 /
     publish: note4 (¥0×2 + ¥500×2) + zenn scrap1、live検証済

@@ -72,7 +72,9 @@ _AI_DISCLOSURE_LINE_RE: Final[re.Pattern[str]] = re.compile(
 # Codex review 2026-07-13: `\S*` was too greedy for Japanese text (no
 # spaces) — `knowledge_topic://id）。続き` would eat the closing paren,
 # the period, AND the next clause. Constrain to the actual ID alphabet.
-_INTERNAL_URI_RE: Final[str] = r"knowledge[-_]topic://[A-Za-z0-9_\-]*"
+# 2026-07-16: the LLM TRANSLATED the scheme — 「知識-topic://gd_001」
+# went live (ASCII-only pattern was blind to it). Accept the JP variant.
+_INTERNAL_URI_RE: Final[str] = r"(?:knowledge|知識)[-_‐]?topic://[A-Za-z0-9_\-]*"
 
 # Inline parenthetical citation containing an internal URI or the bare
 # 媒体名 placeholder: strip the whole parenthetical, keep the sentence.

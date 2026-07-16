@@ -323,7 +323,7 @@ class ObjectiveScorer:
             r"^>\s*(?:出典[:：]|Source:|https?://)[^\n]*", re.MULTILINE
         )
         _internal_uri = re.compile(
-            r"knowledge[-_]topic://|媒体名", re.IGNORECASE,
+            r"(?:knowledge|知識)[-_‐]?topic://|媒体名", re.IGNORECASE,
         )
         # Codex review 2026-07-13: also reject EMPTY attribution lines
         # (`> 出典:` / `> Source:` with nothing usable after) — these

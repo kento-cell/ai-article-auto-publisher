@@ -4447,7 +4447,7 @@ def publish_approved(
         # プレースホルダが出典として note 3本の本文に流出した。生成側
         # (content_sanitizer + prompt override) で除去されるが、既存
         # stored 記事や将来の regression に備えた最終防衛線。
-        _re.compile(r"knowledge[-_]topic://", _re.IGNORECASE),
+        _re.compile(r"(?:knowledge|知識)[-_‐]?topic://", _re.IGNORECASE),
         # `**出典:** 媒体名` の markdown 装飾と全角スペース揺れも拾う
         _re.compile(r"出典\s*[:：][\s*＊]*媒体名"),
         # 2026-07-14 incident #24: ¥500 記事が「科学が証明した」を

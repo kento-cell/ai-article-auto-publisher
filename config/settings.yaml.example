@@ -128,7 +128,7 @@ evidence:
     # 2026-07-13 事故#22: 内部 knowledge-topic URI / 「媒体名」placeholder
     # が出典として note 3本の本文に流出 (うち有料2本)。sanitizer で除去
     # されるが、3箇所同期 (forbidden_phrases + _PUBLISH_DENY) の最終防衛線。
-    - "(?i)knowledge[-_]topic://"
+    - "(?i)(?:knowledge|知識)[-_‐]?topic://"
     - "出典\\s*[:：][\\s*＊]*媒体名"
     # 2026-07-14 事故#24: ¥500記事が「科学が証明した」を裏付けゼロで主張。
     # 科学的証明の断定は検証不能なので deny (3箇所同期)。

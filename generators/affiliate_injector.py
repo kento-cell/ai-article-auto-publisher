@@ -78,13 +78,21 @@ class AffiliateInjector:
 
     @staticmethod
     def _is_valid_link(url: str) -> bool:
-        """Check if URL is usable (not empty and not a placeholder)."""
+        """Check if URL is usable (not empty and not a placeholder).
+
+        2026-07-16 incident: `.env` holds `#`-prefixed placeholder values
+        for ASP links still pending approval (A8_ORBIS_LINK=# オルビス…).
+        The old check only rejected empty/${}/YOURTAG, so those shipped
+        as dead `#` hrefs WITH the config's optimistic descriptions
+        (「初回購入¥1,000」「30日間返品保証」) — reader-facing fabricated
+        offers on two live articles. Only a real http(s) URL is a link.
+        """
         if not url:
             return False
         # Skip URLs that still contain unresolved placeholders
         if "${" in url or "YOURTAG" in url:
             return False
-        return True
+        return url.startswith(("http://", "https://"))
 
     def inject(
         self,

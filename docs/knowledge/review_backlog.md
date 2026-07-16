@@ -27,5 +27,12 @@ open 項目が新レビューで再確認されたか (解消/継続/悪化) を
 | 13 | 2026-07-15 | is_incomplete ゲート | 2盲点: (a)リスト項目内切断 → ✅対応済 (40字+の無終端リスト項目を検知、7-15)。(b)約束セクション欠落 → 🟡 open 継続 (ヒューリスティック設計要) |
 | 14 | 2026-07-15 | title_fulfillment | 「専門家」「氷点下」「データが示す」等の名詞レベル約束 → ✅ 対応済 (_title_claims_unfulfilled を生成+publish 2層配線、7-15)。live 猛暑対策はタイトル修正済 |
 | 15 | 2026-07-15 | knowledge_topic 有料 | #22 の citation exempt の副作用: evidence_required 実URL 0 でも有料化可能 | ✅ 対応済 (実URL引用ゼロ×price>0 は ¥0 強制、7-15)。有料の情報密度自体は #10 で継続 |
-| 16 | 2026-07-15 | LLM 偽アンカーリンク | `[オルビス公式…](# オルビス…)` 型の # プレースホルダURL+架空オファー (初回¥1,000等) を本文に捏造 (エクソソーム記事で live 流出) | ✅ 対応済 (sanitizer line-kill + live 除去、7-15) |
+| 16 | 2026-07-15 | LLM 偽アンカーリンク | `[オルビス公式…](# オルビス…)` 型の # プレースホルダURL+架空オファー (初回¥1,000等) を本文に捏造 (エクソソーム/K-beauty記事で live 流出) | ✅ 根本対応済 (7-16): 真犯人は LLM でなく .env の #placeholder アフィリ値を _is_valid_link が通していた → http(s) 以外を全却下。sanitizer line-kill は第2層として維持 |
 | — | 2026-07-14 | backlog #3/#4 zenn体裁 | **再発・悪化**: `## ##` が5箇所 (前回1)、擬似コード未定義参照、取得日が2024固定の年ずれ | 🟡 open 継続 |
+| 17 | 2026-07-16 | K-beauty (n9245a67de5ee) | #16 偽アンカー再発: `](# …)`+捏造オファー(オルビス初回¥1,000/30日返品保証, DHC, BLOOMBOX)が **affiliate footer** で live 流出。line-kill は editorial のみ走り affiliate は re-sanitize 対象外 | 🟡 open |
+| 18 | 2026-07-16 | ハーブLED (n44cd8cbafd9f) | ops#22 亜種: `知識-topic://gd_001` が live 流出。sanitizer/deny の `knowledge[-_]topic://` が LLM 日本語化 (知識) を素通し | 🟡 open |
+| 19 | 2026-07-16 | 給餌器/ハーブ (nc778/n44c) | 約束セクション欠落 (backlog#13b): 記事3=「3日間ガイド」Day1のみで Day2/3欠落、記事4=まとめ欠落。両方 live 切断。is_incomplete は末尾完結文のため未検知 | 🟡 open (13b継続・実害2件) |
+| 20 | 2026-07-16 | 給餌器 (nc778e...) | 画像被写体不一致 (backlog#1 悪化): 猫給餌器記事に映画撮影スタジオ/緑衣装女性 stock 4枚全て無関係。pet_life 新カテゴリのクエリ汚染 | 🟡 open (#1 悪化) |
+| 21 | 2026-07-16 | zenn scrap 2本 (2c05/6988) | 画像 markdown 破損 `](data/images/stock/…jpg ")` (stray quote + local path、zenn未解決) + 両本が同一の汎用ノートPC写真 (被写体無関係) | 🟡 open |
+| 22 | 2026-07-16 | knowledge_topic note 3本 | 具体価格・型番 (¥19,800/¥18,150/P570/P571) を出典ゼロで断定。¥0降格は発火(良)だが読者は無典拠の数値を受領。IKEA VÄXER は実世界で製造終了疑い | 🟡 open (#10密度と連結) |
+| 23 | 2026-07-16 | ハーブLED (n44c) | 中国語混入 `模块化` が live 流出 (モジュール化の誤変換)。K系分離ルールと別の言語汚染 | 🟡 open |
