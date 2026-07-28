@@ -155,9 +155,19 @@ def _strip_unwhitelisted_bare_urls(body: str) -> str:
 # The media-name group excludes ``/`` so a HEALTHY citation that still
 # carries its URL (e.g. an allowlisted 「（出典: X — https://…）」) can
 # never be matched/rewritten — the slash forces a non-match.
+# 2026-07-28 review: live regressions showed 3 variants the first
+# version missed — ASCII hyphen (「(出典: ROOMIE - )」), half-width
+# parens, and an empty-bracket source (「出典: []/Zenn トレンド」).
+# Paren class widened to both widths; dash class already includes -.
 _DANGLING_CITE_RE = re.compile(
-    r"（\s*(?:出典|Source)\s*[:：]\s*([^\n（）/]{1,30}?)\s*[—ー–-]?\s*(?:）|(?=\n)|$)",
+    r"[（(]\s*(?:出典|Source)\s*[:：]\s*([^\n（）()/\[\]]{1,30}?)\s*[—ー–-]?\s*(?:[）)]|(?=\n)|$)",
     re.MULTILINE | re.IGNORECASE,
+)
+
+# 「出典: []/Zenn トレンド.」 — an empty bracket where the media name
+# should be. Strip the broken bracket, keep the readable remainder.
+_EMPTY_BRACKET_CITE_RE = re.compile(
+    r"(出典\s*[:：]\s*)\[\]\s*/?\s*",
 )
 
 
@@ -168,7 +178,8 @@ def _repair_dangling_citations(body: str) -> str:
             return ""  # nothing left worth keeping
         return f"（出典: {name}）"
 
-    return _DANGLING_CITE_RE.sub(_fix, body)
+    body = _DANGLING_CITE_RE.sub(_fix, body)
+    return _EMPTY_BRACKET_CITE_RE.sub(r"\1", body)
 
 
 def clean_article_urls(content: str) -> str:

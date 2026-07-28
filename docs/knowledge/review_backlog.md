@@ -19,7 +19,7 @@ open 項目が新レビューで再確認されたか (解消/継続/悪化) を
 | 6 | 2026-07-13 | RAG 運用 | ops_incidents.md 更新後の build_rag_index.py 再ingest が人間の規律頼み | ✅ 対策済 `a2b047d` (generate 起動時に mtime 比較で [rag-staleness] WARNING) |
 | 7 | 2026-07-13 | STATE.md | 「60行未満で維持」ルールに対し 800行超に肥大。古い In Flight を archive へ機械的に押し出す仕組みが必要 (process audit e) | 🟡 open |
 | 8 | 2026-07-14 | note全4本 | 本文H1が公開タイトルに昇格し stored title と乖離、¥500有料で「【完全無料】」露出 (→ ops#24) | ✅ 対応済 (H1採用全ソース化+価格矛盾ゲート+live修正、7-14) |
-| 9 | 2026-07-14 | note全4本 | url_cleaner の URL剥離で「出典: ROOMIE —」ダングリング多発 (→ ops#25) | ✅ 対応済 (_BARE_URL_RE 非ASCII除外+修復パス+live修正、7-14) |
+| 9 | 2026-07-14 | note全4本 | url_cleaner の URL剥離で「出典: ROOMIE —」ダングリング多発 (→ ops#25) | 🔄 7-28 に3変種で再発 → #26 で修復パス拡張済 |
 | 10 | 2026-07-14 | note記事3-4 (¥500×2) | 有料の情報密度不足 (ROOMIE 1本の敷衍) + アフィリ不整合 + 記事4は :::message 生表示疑い/画像0。user 判断=タイトル修正のみ (¥500維持) → 実施済。情報密度の構造課題は残 | 🟡 open (密度のみ) |
 | 11 | 2026-07-14 | Cursor scrap (10de0daec2c410) | 破壊的コマンド検出regexが rm -rf を検出できずコア主張を裏切る (E1) | 🟡 open |
 | — | 2026-07-14 | backlog #1 画像テーマゲート | **悪化**: note3本で被写体完全不一致 (人魚/マイク/楽譜)。クエリ汚染は対策済 (コードフェンス/出典行除去+媒体名blacklist、7-14)。被写体語彙ゲート自体の強化は継続課題 | 🟡 open (縮小) |
@@ -28,6 +28,13 @@ open 項目が新レビューで再確認されたか (解消/継続/悪化) を
 | 14 | 2026-07-15 | title_fulfillment | 「専門家」「氷点下」「データが示す」等の名詞レベル約束 → ✅ 対応済 (_title_claims_unfulfilled を生成+publish 2層配線、7-15)。live 猛暑対策はタイトル修正済 |
 | 15 | 2026-07-15 | knowledge_topic 有料 | #22 の citation exempt の副作用: evidence_required 実URL 0 でも有料化可能 | ✅ 対応済 (実URL引用ゼロ×price>0 は ¥0 強制、7-15)。有料の情報密度自体は #10 で継続 |
 | 16 | 2026-07-15 | LLM 偽アンカーリンク | `[オルビス公式…](# オルビス…)` 型の # プレースホルダURL+架空オファー (初回¥1,000等) を本文に捏造 (エクソソーム/K-beauty記事で live 流出) | ✅ 根本対応済 (7-16): 真犯人は LLM でなく .env の #placeholder アフィリ値を _is_valid_link が通していた → http(s) 以外を全却下。sanitizer line-kill は第2層として維持 |
+| 24 | 2026-07-28 | zenn scrap 2本 (c6a0/4458) | publish が本文ゼロで成功扱い。commentsCount=0 の空スクラップが live 公開、ローカル35K字が未投稿 (→ops#27) | 🔴 ユーザー判断待ち (削除or投稿し直し) |
+| 25 | 2026-07-28 | Staging scrap / 韓国ガジェット | prompts.yaml のチェックリスト文言 (H2見出し/必須視覚要素N/カテゴリーN) が本文転写 | ✅ 対応済 (sanitizer 3規則追加、7-28) |
+| 26 | 2026-07-28 | ブックケース/TIMEORB/キャンプ/レガシー | 出典ダングリング再発 3変種 (ASCIIハイフン/括弧内/空ブラケット[]) — #9 の✅を取り消し | ✅ 修復パス拡張済 (7-28)。live 残存分 (記事2×3+記事4×1) は cosmetic につき残置 |
+| 27 | 2026-07-28 | TIMEORB/レガシー | Mermaid 角括弧ラベル内の丸括弧で構文エラー (zenn=エラー表示/note=生コード) | 🟡 open |
+| 28 | 2026-07-28 | TIMEORB/Staging | 一人称の実体験捏造 (「友人から見せてもらった」「私が実際に取り入れた」)。ops#18系 | 🟡 open (prompt制約の設計要) |
+| 29 | 2026-07-28 | ブックケース/色覚/TIMEORB | 元ソースの購入導線 (商品ページURL) を落とし汎用アフィリのみ残す | 🟡 open |
+| 30 | 2026-07-28 | 色覚多様性 (n6735) | 「コントラスト比は法律的な基準が存在」=誤情報 (日本に法的基準なし)。読者実害リスク | 🔴 ユーザー判断待ち (live修正) |
 | — | 2026-07-14 | backlog #3/#4 zenn体裁 | **再発・悪化**: `## ##` が5箇所 (前回1)、擬似コード未定義参照、取得日が2024固定の年ずれ | 🟡 open 継続 |
 | 17 | 2026-07-16 | K-beauty (n9245a67de5ee) | #16 偽アンカー再発: `](# …)`+捏造オファー(オルビス初回¥1,000/30日返品保証, DHC, BLOOMBOX)が **affiliate footer** で live 流出。line-kill は editorial のみ走り affiliate は re-sanitize 対象外 | 🟡 open |
 | 18 | 2026-07-16 | ハーブLED (n44cd8cbafd9f) | ops#22 亜種: `知識-topic://gd_001` が live 流出。sanitizer/deny の `knowledge[-_]topic://` が LLM 日本語化 (知識) を素通し | 🟡 open |

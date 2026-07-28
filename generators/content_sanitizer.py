@@ -253,6 +253,34 @@ def sanitize(content: str) -> tuple[str, list[str]]:
 
     cleaned = _fake_anchor_line.sub(_kill_fake_anchor, cleaned)
 
+    # 3b2. Prompt-checklist transcription (2026-07-28 review, backlog
+    #      #25): the LLM copied prompts.yaml's requirements INTO the
+    #      article — headings like 「## ⚙️ H2. セクション名」, markers
+    #      「（必須視覚要素３：比較テーブル）」, and meta narration
+    #      「カテゴリー5として取り上げられているのは」.
+    def _fix_h2_prefix(m: re.Match[str]) -> str:
+        removed.append(f"prompt_leak_h2_prefix: {m.group(0).strip()[:40]!r}")
+        return m.group(1) + " "
+
+    cleaned = re.sub(r"^(#{1,6})\s*[⚙️🔧\s]*H\d\.\s*", _fix_h2_prefix,
+                     cleaned, flags=re.MULTILINE)
+
+    def _kill_visual_marker(m: re.Match[str]) -> str:
+        removed.append(f"prompt_leak_visual_marker: {m.group(0)[:40]!r}")
+        return ""
+
+    cleaned = re.sub(r"[（(]\s*必須視覚要素[^）)]{0,20}[）)]",
+                     _kill_visual_marker, cleaned)
+
+    def _kill_category_meta(m: re.Match[str]) -> str:
+        removed.append(f"prompt_leak_category_meta: {m.group(0)[:50]!r}")
+        return ""
+
+    cleaned = re.sub(
+        r"^[^\n]*カテゴリー?\s*\d+\s*として(?:取り上げ|紹介)[^\n]*$\n?",
+        _kill_category_meta, cleaned, flags=re.MULTILINE,
+    )
+
     # 3c. Doubled heading markers 「## ## 参考文献」 (review backlog #4,
     #     re-observed 5x in the 7-14 Cursor scrap) — keep one marker.
     def _fix_double_hash(m: re.Match[str]) -> str:
