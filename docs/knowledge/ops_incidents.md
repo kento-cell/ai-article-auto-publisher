@@ -44,7 +44,7 @@ generate / publish の前段で類似度マッチした事案を Critic / publis
 | 24 | #21 の残存構造ギャップが実害化: 本文 H1 が公開タイトルに昇格し、**¥500 有料記事の公開タイトルが「【完全無料】」で開始** (7-14 実害: note 4本全てで stored title と公開タイトル乖離、title_fulfillment は stored 側だけ評価して A 判定) | 2026-07-14 | live 2本タイトル修正 (¥500維持、user 判断)。恒久対策 3層 (同日): ①生成時 H1 を全ソースで stored title に採用 (ゲートが公開タイトルを評価) ②publish 時 タイトル-価格矛盾ゲート (無料系ワード×price>0 → 拒否+Slack) ③「科学(的に)証明」を deny 3箇所同期 | ✅ 修正済 (同日) |
 | 25 | url_cleaner の許可ホスト外 URL 剥離で「（出典: ROOMIE — 」の**ダングリング出典**が note 4本に多発 (1記事9箇所実証)。#22 の亜種 — 実名媒体+URL無し形は deny `出典:媒体名` を素通り | 2026-07-14 | live 4本中有料2本を修復 (無料2本は cosmetic 残置)。恒久対策 (同日): ①根本 = _BARE_URL_RE が全角文字を URL として食い閉じ括弧+後続文まで削除していた → 非ASCII 除外 ②_repair_dangling_citations で残骸を「（出典: X）」に自動修復 (実URL付き出典は `/` 除外で無傷保証) | ✅ 修正済 (同日) |
 | 26 | 修正デプロイ前に生成された承認済み記事 (carryover) が publish 時に再サニタイズされず、7-13/7-14 で潰した欠陥 (ダングリング出典6箇所+リスト項目内切断) が live 再流出 (7-15 実害: ブロワー記事¥0)。新規生成分では 7-14 対策の有効性を live 検証済 | 2026-07-15 | live 4本修正 (7-15 同日) + 恒久対策: publish 直前に editorial 部分へ sanitize + url_cleaner + trim を再適用する re-sanitize パス実装 (affiliate footer は分離保持)。ゲート盲点も同時に封鎖: 長文リスト項目切断検知 / タイトル名詞約束チェック (生成+publish 2層) / 実URL引用ゼロ×有料の¥0強制 / 偽アンカーリンク line-kill | ✅ 修正済 (同日) |
-| 27 | zenn scrap publish が**本文ゼロで成功扱い** — スクラップ作成+タイトル設定は成功、本文コメント投稿だけが silent 失敗し published_url が書き戻される (7-28 実害: 2/2本、計35K字未投稿の空スクラップが live 公開) | 2026-07-28 | **恒久対策未**: ZennScrapPublisher に投稿後検証 (commentsCount>=1 or 本文文字列の live 確認) を追加し、失敗時は fail 扱いで Sheets を更新しない | 🔴 恒久対策未 |
+| 27 | zenn scrap publish が**本文ゼロで成功扱い** — スクラップ作成+タイトル設定は成功、本文コメント投稿だけが silent 失敗し published_url が書き戻される (7-28 実害: 2/2本、計35K字未投稿の空スクラップが live 公開) | 2026-07-28 | live 2本とも本文 repost+検証済 (7-28 同日)。恒久対策: publish_scrap に投稿後 live 検証+1回リトライ+失敗時 Slack 強制通知を実装、add_post_to_scrap/verify_scrap_has_body 新設 (silent 失敗の根絶) | ✅ 修正済 (同日) |
 
 ---
 
@@ -593,9 +593,12 @@ cadence-cap 持ち越し在庫に対して常に1日以上の穴が開く。
 7-16 までの scrap は本文込みで成功しており、直近の zenn UI 変更が原因の
 可能性 (セレクタ漂流)。
 
-**恒久対策 (未実施):** ZennScrapPublisher の投稿フローに post-publish 検証を
-追加 — 投稿直後に scrap ページを fetch し本文断片 or commentsCount>=1 を
-確認、失敗なら False を返して Sheets 更新を止める (成功判定の fail-closed 化)。
+**恒久対策 (2026-07-28 同日実装済):** publish_scrap 末尾に live 検証
+(verify_scrap_has_body: 本文断片の実在確認) + 失敗時1回リトライ
+(add_post_to_scrap) + それでも失敗なら Slack 強制通知。既存スクラップへの
+本文投稿 API (add_post_to_scrap) を新設し、今回の空スクラップ2本は
+本文クリーニング (プロンプト転写/破損画像/placeholder 除去) 後に
+repost し live 検証 2/2 成功。
 
 **How to apply:** 「URL が返ってきた=成功」ではない。Selenium 投稿系は
 必ず live 側の内容一致で成功判定すること (note の price/can_read 検証と同思想)。

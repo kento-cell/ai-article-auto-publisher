@@ -307,17 +307,33 @@ class ZennScrapPublisher:
                 except Exception:
                     pass
 
+            # Incident #27 (2026-07-28): the body-post step above failed
+            # SILENTLY on 2/2 scraps (warnings only) and the empty scrap
+            # shipped as a success. Verify the body actually landed;
+            # retry once; if still empty, escalate loudly — the sin was
+            # silence, not the failure itself.
+            if not self.verify_scrap_has_body(scrap_url, content):
+                logger.error(
+                    "scrap body EMPTY after publish — retrying once: %s",
+                    scrap_url,
+                )
+                if not self.add_post_to_scrap(scrap_url, content):
+                    logger.error(
+                        "scrap body STILL empty after retry: %s", scrap_url,
+                    )
+                    try:
+                        from publishers.slack_notifier import SlackNotifier
+                        SlackNotifier()._send({  # noqa: SLF001
+                            "text": (
+                                "🚨 zenn scrap が本文ゼロのまま公開 (要手動対応)\n"
+                                f"{scrap_url}\n"
+                                "本文投稿が2回失敗しました (incident #27)。"
+                            ),
+                        })
+                    except Exception:  # noqa: BLE001
+                        pass
+
             return scrap_url
-
-            # Wait for redirect to the new scrap URL
-            try:
-                page.wait_for_url("**/scraps/**", timeout=30_000)
-                if page.url == _NEW_SCRAP_URL:
-                    page.wait_for_timeout(3000)
-            except PlaywrightTimeoutError:
-                logger.warning("スクラップ作成後のリダイレクト未検出: %s", page.url)
-
-            return page.url
 
         except PlaywrightTimeoutError as e:
             logger.exception("Zennスクラップ作成タイムアウト")
@@ -325,3 +341,109 @@ class ZennScrapPublisher:
         except PlaywrightError as e:
             logger.exception("Zennスクラップ作成エラー")
             raise RuntimeError(f"Playwrightエラー: {e}") from e
+
+    def verify_scrap_has_body(self, scrap_url: str, content: str) -> bool:
+        """Live check that the scrap page actually shows the body.
+
+        Compares against a distinctive fragment of *content* (first
+        non-heading line >= 12 chars); falls back to a text-length
+        heuristic when no fragment is found.
+        """
+        assert self._page is not None
+        page = self._page
+        try:
+            page.goto(scrap_url, timeout=_NAV_TIMEOUT)
+            page.wait_for_timeout(3000)
+            body_text = page.evaluate("() => document.body.innerText || ''")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("verify_scrap_has_body failed to load: %s", exc)
+            return False
+        fragment = ""
+        for ln in content.split("\n"):
+            ln = ln.strip()
+            if len(ln) >= 12 and not ln.startswith(("#", "!", "```", ">", "|")):
+                fragment = ln[:30]
+                break
+        if fragment:
+            return fragment in body_text
+        return len(body_text) > 2000
+
+    def add_post_to_scrap(self, scrap_url: str, content: str) -> bool:
+        """Post *content* as a new comment on an EXISTING scrap.
+
+        Added 2026-07-28 (incident #27 remediation) — reuses the same
+        CodeMirror insert + 投稿する flow as publish_scrap's step 3,
+        then verifies the body is live before reporting success.
+        """
+        content = self._sanitize_mermaid(content)
+        self._ensure_started()
+        assert self._page is not None
+        page = self._page
+        try:
+            page.goto(scrap_url, timeout=_NAV_TIMEOUT)
+            page.wait_for_timeout(3000)
+            if "enter" in page.url or "login" in page.url:
+                raise RuntimeError("Zennログイン切れ")
+
+            editor = page.locator(".cm-content").first
+            editor.wait_for(state="visible", timeout=15000)
+            editor.scroll_into_view_if_needed(timeout=5000)
+            editor.click()
+            page.wait_for_timeout(500)
+            page.keyboard.press("Control+a")
+            page.wait_for_timeout(200)
+            page.keyboard.press("Delete")
+            page.wait_for_timeout(300)
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if line:
+                    page.keyboard.insert_text(line)
+                if i < len(lines) - 1:
+                    page.keyboard.press("Enter")
+                page.wait_for_timeout(30)
+            page.wait_for_timeout(1500)
+
+            inserted = page.evaluate(
+                "() => document.querySelector('.cm-content')?.textContent || ''"
+            )
+            if not inserted.strip():
+                logger.error("editor still empty after insert_text")
+                return False
+
+            clicked = False
+            for sel in (
+                "button.Button_primary__VcoA9:has-text('投稿する')",
+                "button[class*='Button_primary']:has-text('投稿する')",
+            ):
+                try:
+                    btn = page.locator(sel).first
+                    if btn.is_visible(timeout=2000) and not btn.evaluate(
+                        "el => el.disabled"
+                    ):
+                        btn.scroll_into_view_if_needed(timeout=2000)
+                        btn.click(timeout=3000)
+                        clicked = True
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+            if not clicked:
+                btns = page.locator("button:has-text('投稿する')").all()
+                if btns:
+                    btns[-1].scroll_into_view_if_needed(timeout=2000)
+                    btns[-1].click(timeout=3000)
+                    clicked = True
+            if not clicked:
+                logger.error("投稿する button not clickable (add_post)")
+                return False
+            page.wait_for_timeout(4000)
+            return self.verify_scrap_has_body(scrap_url, content)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("add_post_to_scrap failed: %s", exc)
+            try:
+                page.screenshot(
+                    path=str(_REPO_ROOT / "logs" / "scrap_addpost_failed.png"),
+                    full_page=True,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            return False
