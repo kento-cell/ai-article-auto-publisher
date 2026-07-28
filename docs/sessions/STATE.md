@@ -6,10 +6,36 @@
 > 次回 run で上書きされる。
 
 **Updated**: <!-- AUTO:updated -->
-2026-07-15 06:56 JST
+2026-07-28 09:48 JST
 <!-- /AUTO:updated -->
 
 ## In Flight (今このセッションで進行中の作業)
+
+- **7-28 routine (12日ぶり) + 文藝春秋SDGsエッセイ応募 + 夏の1コマ準備**:
+  - routine: learn 707 chunks / generate 7合格/0不合格 / publish note4 (全¥0、
+    **¥0強制降格がまた2回発火**: 色覚・機械式時計) + zenn scrap2、live検証済。
+    12日前の持ち越し在庫2本 (韓国ガジェット/ブックケース) を re-sanitize 経由で
+    消化。持ち越し3件 (とうもろこし/夏装備/キャンプ「プロが選ぶ」⚠️プローブ盲点)
+  - catchup: 22件を Slack 配信 (12日分、**TTS は user 指示で今回のみ無効**
+    `CATCHUP_TTS=0`、次回から自動読み上げに自動復帰)
+  - **文藝春秋SDGsエッセイ大賞2026 応募** (user 指示、multi-agent 制作):
+    - writer 2名 (角度別) + critic 1名の3エージェント協働 → B案ベース+A案
+      移植+一次事実修正3点 (伏字寿司は実公開済/起きる前に→削除/購入者未確認形)
+    - **「嘘のリストは、六十個になった」994字 公開**: n35ce8c653833 ¥0
+      (このシステム自身の運用実話、全数値実測: 575本/46件/60個)
+    - 修正経緯: Gemini カバーが煽りバナーで不適合 → PIL自作の静かなカバーに
+      差し替え済 (og:image 確認)。publish_custom_post に --inline-count 0
+      対応を追加
+    - ⚠️ **タグ #未来のためにできること が未設定 — user 手動1分対応が必要**:
+      コンテストタグの候補UI が Chrome拡張3回フリーズ + Playwright 2回失敗。
+      公開設定 → ハッシュタグ欄に入力 → 更新する、またはコンテストバナー
+      から参加。既存4タグ (エッセイ/創作/AIとやってみた/SDGs) は設定済
+    - 残骸: Chrome に editor タブ3枚フリーズ残り (閉じてOK)
+  - **#夏の1コマ 準備完了 (明日投稿)**: PIL ジェネラティブ花火 1280×1280
+    (素材ゼロ・シード=7/28) + 本文 `2026-07-29_natsu_hitokoma.md`。
+    今日は5本/日のため 6本/日検知シグネチャ回避で明日に
+  - 別件: dependabot/pip/pillow-12.3.0 ブランチ出現 (要レビュー)、
+    投稿後レビュー (review-2026-07-28) は結果待ち
 
 - **7-16 夜 routine (全防御が揃った初回 publish + 新変種2種検出・即日修正)**:
   - learn 693→707 chunks / generate 7合格/0不合格 / publish: note4 (全¥0) +
@@ -346,11 +372,11 @@
 ## Recent Output (auto)
 
 <!-- AUTO:recent -->
-- [【2026年夏】300円から始める「体温を下げる」3ステップ暑さ対策 — 3COINS×ハンディ…](https://note.com/<NOTE_USER>/n/n648136dc2bba?app_launch=false)
-- [これ1台でリビングが映画館に。Ankerプロジェクター「音の常識」が変わった3つの理由…](https://note.com/<NOTE_USER>/n/n08979e185717?app_launch=false)
-- [荷物が多くてもかさばらない！「ミリタリー発想の小型バッグ」でスマートに過ごせるんだ…](https://note.com/<NOTE_USER>/n/n32e900f92780?app_launch=false)
-- [開発現場のAIセキュリティを見直す…](https://zenn.dev/kento_cell/scraps/f3b47480f13df7)
-- [Cursorに「不要なブランチを整理して」と頼んだら、Dドライブが消えた話…](https://zenn.dev/kento_cell/scraps/10de0daec2c410)
+- [【朝メモ】ハーブ栽培の常識が変わる。初心者必見のLED水耕キット徹底比較と失敗しない選び方…](https://note.com/<NOTE_USER>/n/n44cd8cbafd9f?app_launch=false)
+- [【注意】テクスチャーで選ぶのが失敗？K-beauty化粧水・美容液選びの常識が変わる9大原則…](https://note.com/<NOTE_USER>/n/n9245a67de5ee?app_launch=false)
+- [【速報】共働き世帯が後悔しない！自動給餌器「PETKIT vs PETLIBRO」徹底比較ガイド…](https://note.com/<NOTE_USER>/n/nc778ed8e6f70?app_launch=false)
+- [【保存版】スパイクニューラルネットワークの限界？ラベルゼロ時代に必須な自己教師あり学習戦略を徹底…](https://zenn.dev/kento_cell/scraps/6988933d4ac5c4)
+- [【警告・永久保存版】動画生成モデルの常識が変わる。VFM時代の「真の潜在空間」設計図を公開する…](https://zenn.dev/kento_cell/scraps/2c05f63e28ced8)
 <!-- /AUTO:recent -->
 
 ## Pipeline Health (auto)
@@ -359,11 +385,7 @@
 - JOURNAL.md: 154 lines (rotation at 500 via SessionStart hook)
 - Zenn queue head: (skipped in quick mode — run `py scripts/_session_status.py` for full probe)
 - Recent commits (last 48h):
-  - 73b3534 fix(quality): 事故#24/#25 恒久対策 — タイトル昇格ギャップと出典ダングリングを根絶
-  - 1740554 docs: 7-14 routine 完走記録 — 防御ゲート初実戦発火 + レビューで事故 #24/#25 検出
-  - a50bf96 sec(pii): pre-commit に PII スキャン常設 + 残存 path 露出 2 件マスク
-  - 6905eb7 fix(pii): note ハンドル露出の根本対策 — _session_status.py がマスクの上書き元だった
-  - d017226 feat(catchup): 同一ニュースのトピックレベル重複折りたたみ
+  - (no commits in last 48h)
 <!-- /AUTO:pipeline -->
 
 ## Pointers

@@ -255,9 +255,14 @@ def main() -> int:
             query, f"{slug_hint}_inline", missing,
         )
         inline_paths.extend(unsplash_inline)
-    if not inline_paths:
+    if not inline_paths and args.inline_count > 0:
         logger.error("No inline images obtained — abort")
         return 1
+    if args.inline_count == 0:
+        # 2026-07-28: text-first posts (essay contest entries) legitimately
+        # run with zero inline images — only abort when images were asked
+        # for and none arrived.
+        logger.info("inline-count=0 — publishing text-only body")
 
     # Cover handling: explicit path > ChatGPT > Unsplash.
     override = spec.get("cover_image_path")
